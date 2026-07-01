@@ -62,6 +62,7 @@ import { WtaxModule } from './wtax/wtax.module';
         autoLoadEntities: true,
         synchronize: false,
         logging:     false,
+        ssl:         cfg.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : undefined,
       }),
     }),
     AuthModule, UsersModule, RolesModule, PermissionsModule, DashboardModule,
