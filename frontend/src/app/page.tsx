@@ -212,7 +212,7 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    const wrap=wrapRef.current, svg=svgRef.current, layer=layerRef.current
+    const wrap=wrapRef.current as HTMLDivElement, svg=svgRef.current as SVGSVGElement, layer=layerRef.current as HTMLDivElement
     if (!wrap||!svg||!layer) return
     const NW=106, NH=72
     type Node={id:string;label:string;type:string;emoji:string;color:string;rx:number;ry:number;x:number;y:number}
