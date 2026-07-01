@@ -29,7 +29,7 @@ const EMPTY_FORM: FormState = {
   status: 1,
 }
 
-const API = 'http://localhost:3000'
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
   'Content-Type': 'application/json',
   Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
