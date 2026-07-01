@@ -7,7 +7,12 @@ export class Renter {
   @Column({ nullable: true }) property_id: number;
   @Column({ nullable: true }) floor_id: number;
   @Column({ nullable: true }) unit_id: number;
+  @Column({ nullable: true }) first_name: string;
+  @Column({ nullable: true }) middle_name: string;
+  @Column({ nullable: true }) last_name: string;
   @Column({ nullable: true }) name: string;
+  @Column({ nullable: true }) renter_type: string;
+  @Column({ nullable: true }) company_type: string;
   @Column({ nullable: true }) email: string;
   @Column({ nullable: true }) password: string;
   @Column({ nullable: true }) contact: string;

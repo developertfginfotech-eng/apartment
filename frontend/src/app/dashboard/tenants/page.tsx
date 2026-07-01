@@ -232,8 +232,9 @@ export default function TenantsPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
+                <th>#</th>
                 <th>Name</th>
-                <th>Email</th>
+                <th>Type</th>
                 <th>Contact</th>
                 <th>Rent / Month</th>
                 <th>Status</th>
@@ -243,17 +244,27 @@ export default function TenantsPage() {
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
+                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
                     No tenants found
                   </td>
                 </tr>
               )}
-              {filtered.map(r => (
+              {filtered.map((r, i) => (
                 <tr key={r.id}>
+                  <td style={{ color: 'var(--muted)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</td>
                   <td>
-                    <div style={{ fontWeight: 650 }}>{r.name}</div>
+                    <div style={{ fontWeight: 650 }}>{r.name || '—'}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{r.email}</div>
                   </td>
-                  <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.email}</td>
+                  <td>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100,
+                      background: (r as any).renter_type === 'company' ? 'rgba(59,130,246,0.12)' : 'rgba(168,85,247,0.12)',
+                      color: (r as any).renter_type === 'company' ? '#60a5fa' : '#c084fc',
+                    }}>
+                      {(r as any).renter_type ?? 'individual'}
+                    </span>
+                  </td>
                   <td style={{ fontSize: 13 }}>{r.contact}</td>
                   <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.rent_per_month}</td>
                   <td>

@@ -7,7 +7,15 @@ import { Renter } from './renter.entity';
 export class RenterService {
   constructor(@InjectRepository(Renter) private repo: Repository<Renter>) {}
 
-  findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
+  async findAll() {
+    const renters = await this.repo.find({ order: { first_name: 'ASC' } });
+    return renters.map(r => ({
+      ...r,
+      name: r.first_name
+        ? [r.first_name, r.last_name].filter(Boolean).join(' ')
+        : (r.name ?? ''),
+    }));
+  }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
   create(dto: Partial<Renter>) { return this.repo.save(this.repo.create(dto)); }
   async update(id: number, dto: Partial<Renter>) {
