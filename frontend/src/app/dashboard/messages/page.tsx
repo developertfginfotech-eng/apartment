@@ -1,0 +1,116 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+interface Msg { id:string; from:string; role:'tenant'|'owner'|'staff'; subject:string; body:string; date:string; read:boolean }
+
+const SEED: Msg[] = [
+  { id:'m1', from:'James Carter',  role:'tenant', subject:'AC not working in Unit 4B',  body:'Hello, the air conditioning unit in my apartment has stopped working. It has been 2 days and the heat is unbearable. Please arrange for maintenance as soon as possible. Thank you.',                 date:'2026-06-29', read:false },
+  { id:'m2', from:'Priya Sharma',  role:'tenant', subject:'Lease renewal inquiry',       body:'I would like to inquire about renewing my lease for Unit 2A. My current lease expires in September. Could you please let me know the updated rent amount and renewal terms?',                        date:'2026-06-28', read:false },
+  { id:'m3', from:'Robert Johnson',role:'owner',  subject:'Q2 income report request',   body:'Could you please send me the Q2 income report for Sunrise Towers? I need the figures for my accountant by end of month.',                                                                           date:'2026-06-27', read:true  },
+  { id:'m4', from:'Marco Rivera',  role:'tenant', subject:'Water pressure issue Unit 7C',body:'There is very low water pressure in Unit 7C especially in the mornings. I have tried the taps and the shower and both have the same issue. Could this please be checked?',                          date:'2026-06-26', read:true  },
+  { id:'m5', from:'Aisha Okonkwo', role:'tenant', subject:'Additional parking request',  body:'I recently purchased a second car and would like to request an additional parking space. Please let me know if there is availability and the monthly cost.',                                         date:'2026-06-24', read:true  },
+]
+
+const ROLE_COLOR: Record<string,string> = { tenant:'#3b82f6', owner:'#22c55e', staff:'#f97316' }
+
+export default function MessagesPage() {
+  const router = useRouter()
+  useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
+
+  const [messages, setMessages] = useState<Msg[]>(SEED)
+  const [selected, setSelected] = useState<Msg|null>(null)
+  const [showCompose, setShowCompose] = useState(false)
+  const [filter, setFilter] = useState<'all'|'unread'|'read'>('all')
+  const [form, setForm] = useState({ to:'', subject:'', body:'' })
+
+  const unread = messages.filter(m => !m.read).length
+  const filtered = messages.filter(m => filter==='all' ? true : filter==='unread' ? !m.read : m.read)
+
+  const open = (m: Msg) => {
+    setSelected(m)
+    setMessages(ms => ms.map(x => x.id===m.id ? {...x, read:true} : x))
+    setShowCompose(false)
+    setForm({ to:'', subject:'', body:'' })
+  }
+
+  const send = () => {
+    if (!form.to || !form.subject || !form.body) return
+    setMessages(ms => [{ id:`m${Date.now()}`, from:'You', role:'staff', subject:form.subject, body:form.body, date:new Date().toISOString().split('T')[0], read:true }, ...ms])
+    setShowCompose(false); setForm({ to:'', subject:'', body:'' })
+  }
+
+  return (
+    <main className="af-db-main">
+      <div className="af-db-topbar">
+        <div>
+          <h1 className="af-db-greeting" style={{fontSize:26}}>Messages</h1>
+          <p className="af-db-subtitle">{messages.length} total · {unread > 0 ? <strong style={{color:'var(--accent)'}}>{unread} unread</strong> : 'all read'}</p>
+        </div>
+        <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>setShowCompose(true)}>+ Compose</button>
+      </div>
+
+      <div style={{display:'flex',gap:6,marginBottom:16}}>
+        {(['all','unread','read'] as const).map(f => (
+          <button key={f} onClick={()=>setFilter(f)} style={{padding:'7px 14px',borderRadius:8,border:'1px solid',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:'inherit',borderColor:filter===f?'var(--accent)':'var(--border2)',background:filter===f?'rgba(249,115,22,0.12)':'var(--surface)',color:filter===f?'var(--accent)':'var(--muted)'}}>
+            {f==='all'?'All':f==='unread'?`Unread${unread>0?` (${unread})`:'`'}`:'Read'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:'flex',gap:16,height:480}}>
+        <div style={{width:300,flexShrink:0,overflowY:'auto',background:'var(--surface)',borderRadius:12,border:'1px solid var(--border2)'}}>
+          {filtered.length===0 && <div style={{padding:32,textAlign:'center',color:'var(--muted)',fontSize:13}}>No messages</div>}
+          {filtered.map(m => (
+            <div key={m.id} onClick={()=>open(m)} style={{padding:'12px 14px',borderBottom:'1px solid var(--border2)',cursor:'pointer',background:selected?.id===m.id?'var(--surface2)':m.read?'transparent':'rgba(249,115,22,0.06)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                <span style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:100,background:`${ROLE_COLOR[m.role]}18`,color:ROLE_COLOR[m.role],textTransform:'capitalize'}}>{m.role}</span>
+                {!m.read && <span style={{width:6,height:6,borderRadius:'50%',background:'var(--accent)',display:'inline-block',marginLeft:'auto'}}/>}
+              </div>
+              <div style={{fontWeight:m.read?500:700,fontSize:13,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.from}</div>
+              <div style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.subject}</div>
+              <div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>{m.date}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{flex:1,background:'var(--surface)',borderRadius:12,border:'1px solid var(--border2)',padding:24,overflowY:'auto'}}>
+          {!selected ? (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',flexDirection:'column',gap:8,color:'var(--muted)'}}>
+              <div style={{fontSize:32}}>✉️</div>
+              <div style={{fontSize:14}}>Select a message to read</div>
+            </div>
+          ) : (
+            <>
+              <h2 style={{fontSize:17,fontWeight:750,marginBottom:8}}>{selected.subject}</h2>
+              <div style={{display:'flex',gap:14,fontSize:12.5,color:'var(--muted)',marginBottom:20}}>
+                <span>From: <strong style={{color:'var(--text)'}}>{selected.from}</strong></span>
+                <span style={{textTransform:'capitalize'}}>Role: <strong style={{color:ROLE_COLOR[selected.role]}}>{selected.role}</strong></span>
+                <span>Date: {selected.date}</span>
+              </div>
+              <div style={{borderTop:'1px solid var(--border2)',paddingTop:18,fontSize:14,lineHeight:1.8,color:'var(--text2)'}}>{selected.body}</div>
+              <button className="af-btn-primary" style={{cursor:'pointer',border:'none',fontSize:13,marginTop:20}} onClick={()=>{ setForm(f=>({...f,subject:`Re: ${selected.subject}`})); setShowCompose(true) }}>Reply</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {showCompose && (
+        <div className="af-modal-overlay" onClick={()=>setShowCompose(false)}>
+          <div className="af-modal" onClick={e=>e.stopPropagation()}>
+            <h2 className="af-modal-title">{selected?`Reply to ${selected.from}`:'New Message'}</h2>
+            <div className="af-modal-form">
+              <div className="af-field"><label>To</label><input value={form.to} onChange={e=>setForm(f=>({...f,to:e.target.value}))} placeholder="Recipient"/></div>
+              <div className="af-field"><label>Subject</label><input value={form.subject} onChange={e=>setForm(f=>({...f,subject:e.target.value}))} placeholder="Subject"/></div>
+              <div className="af-field"><label>Message</label><textarea value={form.body} onChange={e=>setForm(f=>({...f,body:e.target.value}))} placeholder="Type your message…" style={{resize:'vertical',minHeight:120}}/></div>
+            </div>
+            <div style={{display:'flex',gap:10,marginTop:22,justifyContent:'flex-end'}}>
+              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>setShowCompose(false)}>Cancel</button>
+              <button className="af-auth-submit" style={{width:'auto',padding:'10px 24px'}} onClick={send}>Send</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  )
+}
