@@ -1,48 +1,197 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
+interface CalEvent { id: number; title: string; start: string; end?: string; description?: string }
+
+function pad2(n: number) { return String(n).padStart(2, '0') }
+function toDateStr(y: number, m: number, d: number) { return `${y}-${pad2(m + 1)}-${pad2(d)}` }
 
 function Calendar() {
   const today = new Date()
   const [cur, setCur] = useState({ y: today.getFullYear(), m: today.getMonth() })
-  const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+  const [events, setEvents] = useState<CalEvent[]>([])
+  const [modal, setModal] = useState(false)
+  const [form, setForm] = useState({ title: '', start: '', end: '', description: '' })
+  const [saving, setSaving] = useState(false)
+  const [detailDay, setDetailDay] = useState<string | null>(null)
+
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-  const first = new Date(cur.y, cur.m, 1).getDay()
+
+  const first      = new Date(cur.y, cur.m, 1).getDay()
   const daysInMonth = new Date(cur.y, cur.m + 1, 0).getDate()
-  const daysInPrev = new Date(cur.y, cur.m, 0).getDate()
+  const daysInPrev  = new Date(cur.y, cur.m, 0).getDate()
   const cells: { d: number; cur: boolean }[] = []
   for (let i = first - 1; i >= 0; i--) cells.push({ d: daysInPrev - i, cur: false })
   for (let d = 1; d <= daysInMonth; d++) cells.push({ d, cur: true })
   while (cells.length % 7 !== 0) cells.push({ d: cells.length - daysInMonth - first + 1, cur: false })
+
   const prev = () => setCur(c => c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 })
   const next = () => setCur(c => c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 })
-  const isToday = (d: number, isCur: boolean) => isCur && d === today.getDate() && cur.m === today.getMonth() && cur.y === today.getFullYear()
+  const isToday = (d: number, isCur: boolean) =>
+    isCur && d === today.getDate() && cur.m === today.getMonth() && cur.y === today.getFullYear()
+
+  const fetchEvents = useCallback(() => {
+    const token = localStorage.getItem('apt_token')
+    fetch(`${API}/calendar`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => Array.isArray(d) && setEvents(d))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => { fetchEvents() }, [fetchEvents])
+
+  const eventsOnDay = (dateStr: string) =>
+    events.filter(e => e.start <= dateStr && (!e.end || e.end >= dateStr))
+
+  const openAdd = (d: number) => {
+    const dateStr = toDateStr(cur.y, cur.m, d)
+    setForm({ title: '', start: dateStr, end: dateStr, description: '' })
+    setDetailDay(null)
+    setModal(true)
+  }
+
+  const saveEvent = async () => {
+    if (!form.title || !form.start) return
+    setSaving(true)
+    try {
+      const token = localStorage.getItem('apt_token')
+      await fetch(`${API}/calendar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form),
+      })
+      setModal(false)
+      fetchEvents()
+    } finally { setSaving(false) }
+  }
+
+  const deleteEvent = async (id: number) => {
+    const token = localStorage.getItem('apt_token')
+    await fetch(`${API}/calendar/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    fetchEvents()
+    setDetailDay(null)
+  }
+
+  const dayEventsForDetail = detailDay ? eventsOnDay(detailDay) : []
+
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ fontWeight: 750, fontSize: 15 }}>{MONTHS[cur.m]} {cur.y}</span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={prev} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-          <button onClick={() => setCur({ y: today.getFullYear(), m: today.getMonth() })} style={{ padding: '0 10px', height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Today</button>
-          <button onClick={next} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+    <>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontWeight: 750, fontSize: 15 }}>{MONTHS[cur.m]} {cur.y}</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={prev} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <button onClick={() => setCur({ y: today.getFullYear(), m: today.getMonth() })} style={{ padding: '0 10px', height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Today</button>
+            <button onClick={next} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, textAlign: 'center' }}>
+          {DAYS.map(d => (
+            <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', padding: '4px 0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>
+          ))}
+          {cells.map((c, i) => {
+            const dateStr = c.cur ? toDateStr(cur.y, cur.m, c.d) : ''
+            const dayEvents = dateStr ? eventsOnDay(dateStr) : []
+            const hasDot = dayEvents.length > 0
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  if (!c.cur) return
+                  if (dayEvents.length > 0) { setDetailDay(dateStr); setModal(false) }
+                  else openAdd(c.d)
+                }}
+                title={c.cur ? (hasDot ? `${dayEvents.length} event(s) — click to view` : 'Click to add event') : ''}
+                style={{
+                  fontSize: 13, padding: '7px 2px', borderRadius: 8,
+                  fontWeight: isToday(c.d, c.cur) ? 800 : 500,
+                  background: isToday(c.d, c.cur) ? 'var(--accent)' : 'transparent',
+                  color: isToday(c.d, c.cur) ? '#fff' : c.cur ? 'var(--text)' : 'var(--border2)',
+                  cursor: c.cur ? 'pointer' : 'default',
+                  position: 'relative',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                }}
+              >
+                {c.d}
+                {hasDot && (
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: isToday(c.d, c.cur) ? '#fff' : 'var(--accent)', display: 'block' }} />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, textAlign: 'center' }}>
-        {DAYS.map(d => <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', padding: '4px 0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>)}
-        {cells.map((c, i) => (
-          <div key={i} style={{
-            fontSize: 13, padding: '7px 0', borderRadius: 8, fontWeight: isToday(c.d, c.cur) ? 800 : 500,
-            background: isToday(c.d, c.cur) ? 'var(--accent)' : 'transparent',
-            color: isToday(c.d, c.cur) ? '#fff' : c.cur ? 'var(--text)' : 'var(--border2)',
-            cursor: 'default',
-          }}>{c.d}</div>
-        ))}
-      </div>
-    </div>
+
+      {/* Add event modal */}
+      {modal && (
+        <div className="af-modal-overlay" onClick={() => setModal(false)}>
+          <div className="af-modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Add Calendar Detail</h2>
+            <div className="af-modal-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="af-field">
+                <label>Title name</label>
+                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Rent collection" autoFocus />
+              </div>
+              <div className="af-field">
+                <label>Start Date</label>
+                <input type="date" value={form.start} onChange={e => setForm(f => ({ ...f, start: e.target.value }))} />
+              </div>
+              <div className="af-field">
+                <label>End Date</label>
+                <input type="date" value={form.end} onChange={e => setForm(f => ({ ...f, end: e.target.value }))} />
+              </div>
+              <div className="af-field">
+                <label>Description</label>
+                <textarea
+                  value={form.description}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Optional notes…"
+                  rows={3}
+                  style={{ resize: 'vertical', background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 9, padding: '10px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setModal(false)}>Close</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} disabled={saving} onClick={saveEvent}>
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day detail modal */}
+      {detailDay && (
+        <div className="af-modal-overlay" onClick={() => setDetailDay(null)}>
+          <div className="af-modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title" style={{ marginBottom: 14 }}>Events — {detailDay}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+              {dayEventsForDetail.map(ev => (
+                <div key={ev.id} style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{ev.title}</div>
+                    {ev.description && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{ev.description}</div>}
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>{ev.start}{ev.end && ev.end !== ev.start ? ` → ${ev.end}` : ''}</div>
+                  </div>
+                  <button onClick={() => deleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', fontSize: 16, padding: '0 0 0 10px', flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setDetailDay(null)}>Close</button>
+              <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none' }} onClick={() => { openAdd(parseInt(detailDay.split('-')[2])); setDetailDay(null) }}>+ Add Event</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
 interface Stats {
   properties: { total: number; active: number }
