@@ -141,24 +141,39 @@ export default function PayrollPage() {
 
   return (
     <main className="af-db-main">
-      <div style={{ display:'flex', gap:20, alignItems:'flex-start' }}>
-
-        {/* Left sub-nav */}
-        <div style={{ flexShrink:0, width:180, background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:14, overflow:'hidden' }}>
-          {SUB_NAV.map(tab => (
-            <button key={tab} onClick={()=>setActiveTab(tab)} style={{
-              width:'100%', padding:'13px 18px', textAlign:'left', background: activeTab===tab?'var(--accent)':'none',
-              border:'none', borderBottom:'1px solid var(--border2)', color: activeTab===tab?'#fff':'var(--text2)',
-              fontWeight: activeTab===tab?700:500, fontSize:13.5, cursor:'pointer', fontFamily:'inherit',
-              transition:'background 0.15s,color 0.15s',
-            }}>
-              {tab}
-            </button>
-          ))}
+      {/* Page header */}
+      <div className="af-db-topbar" style={{ marginBottom: 20 }}>
+        <div>
+          <h1 className="af-db-greeting" style={{ fontSize: 26 }}>Payroll</h1>
+          <p className="af-db-subtitle">Employee salary and payroll management</p>
         </div>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={exportCSV} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, background:'rgba(34,197,94,0.12)', border:'1px solid rgba(34,197,94,0.3)', color:'#22c55e', fontWeight:650, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
+            ↓ Export
+          </button>
+          <button className="af-btn-primary" style={{ cursor:'pointer', border:'none' }} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
+            + Add New
+          </button>
+        </div>
+      </div>
 
-        {/* Main content */}
-        <div style={{ flex:1, minWidth:0 }}>
+      {/* Horizontal tab pills */}
+      <div style={{ display:'flex', gap:4, marginBottom:24, background:'var(--surface)', border:'1px solid var(--border2)', borderRadius:12, padding:5, width:'fit-content' }}>
+        {SUB_NAV.map(tab => (
+          <button key={tab} onClick={()=>setActiveTab(tab)} style={{
+            padding:'8px 18px', borderRadius:9, border:'none', cursor:'pointer', fontFamily:'inherit',
+            fontSize:13, fontWeight: activeTab===tab ? 700 : 500,
+            background: activeTab===tab ? 'var(--accent)' : 'transparent',
+            color: activeTab===tab ? '#fff' : 'var(--text2)',
+            transition:'background 0.15s, color 0.15s',
+          }}>
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Main content */}
+      <div>
           {/* Filters row */}
           <div style={{ display:'flex', gap:12, marginBottom:18, flexWrap:'wrap', alignItems:'flex-end' }}>
             <div className="af-field" style={{margin:0,minWidth:160}}>
@@ -175,14 +190,11 @@ export default function PayrollPage() {
               <label style={{fontSize:11.5}}>To Date</label>
               <input type="date" value={filterTo} onChange={e=>setFilterTo(e.target.value)} style={{padding:'8px 10px'}}/>
             </div>
-            <div style={{marginLeft:'auto',display:'flex',gap:10}}>
-              <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-                ↓ Export
+            {(filterMonth||filterFrom||filterTo) && (
+              <button onClick={()=>{setFilterMonth('');setFilterFrom('');setFilterTo('')}} style={{alignSelf:'flex-end',padding:'8px 14px',borderRadius:8,background:'none',border:'1px solid var(--border2)',color:'var(--muted)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>
+                Clear
               </button>
-              <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
-                + Add New
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Summary cards */}
@@ -271,7 +283,6 @@ export default function PayrollPage() {
             Showing {filtered.length} of {payrolls.length} entries
           </div>
         </div>
-      </div>
 
       {/* Add / Edit Modal */}
       {showForm && (
@@ -371,3 +382,4 @@ export default function PayrollPage() {
     </main>
   )
 }
+
