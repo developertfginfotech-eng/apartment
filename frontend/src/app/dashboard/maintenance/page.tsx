@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
 interface Maintenance {
   id: number
   property_id: number
@@ -56,7 +58,7 @@ export default function MaintenancePage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('http://localhost:3000/maintenances', { headers: authHeaders() })
+      const res = await fetch('${API}/maintenance', { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
       setRecords(Array.isArray(data) ? data : data.data ?? [])
@@ -113,8 +115,8 @@ export default function MaintenancePage() {
       }
 
       const url = editTarget
-        ? `http://localhost:3000/maintenances/${editTarget.id}`
-        : 'http://localhost:3000/maintenances'
+        ? `${API}/maintenance/${editTarget.id}`
+        : '${API}/maintenance'
       const method = editTarget ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
@@ -136,7 +138,7 @@ export default function MaintenancePage() {
     if (!confirm('Delete this maintenance record?')) return
     setError('')
     try {
-      const res = await fetch(`http://localhost:3000/maintenances/${id}`, {
+      const res = await fetch(`${API}/maintenance/${id}`, {
         method: 'DELETE',
         headers: authHeaders(),
       })

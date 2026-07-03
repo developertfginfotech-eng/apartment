@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const MODULES = ['properties','tenants','leases','payments','maintenance','expenses','employees','reports']
 const ACTIONS  = ['read','create','update','delete']
 
@@ -30,7 +31,7 @@ export default function AdminsPage() {
     const user = JSON.parse(localStorage.getItem('apt_user') ?? '{}')
     if (!t || user.role !== 'super_admin') { router.push('/dashboard'); return }
     setToken(t)
-    fetch('http://localhost:3000/auth/admins', { headers:{ Authorization:`Bearer ${t}` } })
+    fetch('${API}/auth/admins', { headers:{ Authorization:`Bearer ${t}` } })
       .then(r => r.json())
       .then(data => Array.isArray(data) && setAdmins(data))
   }, [router])
@@ -56,7 +57,7 @@ export default function AdminsPage() {
     const permissions = Object.entries(perms).filter(([,a])=>a.length>0).map(([module,actions])=>({module,actions}))
     setSaving(true); setError('')
     try {
-      const res  = await fetch('http://localhost:3000/auth/admins', {
+      const res  = await fetch('${API}/auth/admins', {
         method: 'POST',
         headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
         body: JSON.stringify({ ...form, permissions }),

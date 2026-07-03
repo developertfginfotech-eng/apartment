@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
 interface Payment {
   id: number
   renter_id: number
@@ -54,7 +56,7 @@ export default function PaymentsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('http://localhost:3000/payments', { headers: authHeaders() })
+      const res = await fetch('${API}/payments', { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
       setPayments(Array.isArray(data) ? data : data.data ?? [])
@@ -108,8 +110,8 @@ export default function PaymentsPage() {
       }
 
       const url = editTarget
-        ? `http://localhost:3000/payments/${editTarget.id}`
-        : 'http://localhost:3000/payments'
+        ? `${API}/payments/${editTarget.id}`
+        : '${API}/payments'
       const method = editTarget ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
@@ -131,7 +133,7 @@ export default function PaymentsPage() {
     if (!confirm('Delete this payment?')) return
     setError('')
     try {
-      const res = await fetch(`http://localhost:3000/payments/${id}`, {
+      const res = await fetch(`${API}/payments/${id}`, {
         method: 'DELETE',
         headers: authHeaders(),
       })
@@ -145,7 +147,7 @@ export default function PaymentsPage() {
   const markPaid = async (p: Payment) => {
     setError('')
     try {
-      const res = await fetch(`http://localhost:3000/payments/${p.id}`, {
+      const res = await fetch(`${API}/payments/${p.id}`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ ...p, status: 1 }),

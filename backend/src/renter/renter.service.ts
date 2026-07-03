@@ -11,22 +11,32 @@ export class RenterService {
   ) {}
 
   async findAll() {
-    const rows = await this.dataSource.query(`
-      SELECT r.*,
-        CONCAT_WS(' ', r.first_name, r.last_name) AS full_name,
-        p.property_name,
-        f.floor_name,
-        l.on_rent
-      FROM tbl_renters r
-      LEFT JOIN tbl_properties p ON p.id = r.property_id
-      LEFT JOIN tbl_property_floors f ON f.id = r.floor_id
-      LEFT JOIN tbl_leases l ON l.renter_id = r.id AND l.status = 1
-      ORDER BY r.first_name ASC
-    `);
-    return rows.map((r: any) => ({
-      ...r,
-      name: r.full_name || r.name || '',
-    }));
+    try {
+      const rows = await this.dataSource.query(`
+        SELECT r.*,
+          CONCAT_WS(' ', r.first_name, r.last_name) AS full_name,
+          p.property_name,
+          f.floor_name,
+          l.on_rent
+        FROM tbl_renters r
+        LEFT JOIN tbl_properties p ON p.id = r.property_id
+        LEFT JOIN tbl_property_floors f ON f.id = r.floor_id
+        LEFT JOIN tbl_leases l ON l.renter_id = r.id AND l.status = 1
+        ORDER BY r.first_name ASC
+      `);
+      return rows.map((r: any) => ({
+        ...r,
+        name: r.full_name || r.name || '',
+      }));
+    } catch (err) {
+      console.error('[RenterService] findAll error:', err instanceof Error ? err.message : err);
+      // Fallback: return basic list without JOIN
+      const rows = await this.dataSource.query('SELECT * FROM tbl_renters ORDER BY first_name ASC');
+      return rows.map((r: any) => ({
+        ...r,
+        name: r.full_name || (r.first_name ? `${r.first_name} ${r.last_name ?? ''}`.trim() : r.name) || '',
+      }));
+    }
   }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
   create(dto: Partial<Renter>) { return this.repo.save(this.repo.create(dto)); }
