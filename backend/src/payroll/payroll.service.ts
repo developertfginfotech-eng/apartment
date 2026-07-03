@@ -119,7 +119,7 @@ export class PayrollService {
 
   async getEmployees() {
     return this.ds.query(
-      `SELECT id, COALESCE(name, CONCAT_WS(' ', first_name, last_name)) AS name FROM employees WHERE status = 1 ORDER BY name ASC`
+      `SELECT id, name FROM employees WHERE status = 1 ORDER BY name ASC`
     ).catch(() => []);
   }
 }
