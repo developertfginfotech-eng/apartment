@@ -33,8 +33,8 @@ export class PayrollService {
       bindings.push(to);
     }
     if (search) {
-      conditions.push('(e.first_name LIKE ? OR e.last_name LIKE ? OR e.name LIKE ?)');
-      bindings.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      conditions.push('e.name LIKE ?');
+      bindings.push(`%${search}%`);
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -53,9 +53,9 @@ export class PayrollService {
          p.gross_pay, p.sss, p.phic, p.hdmf, p.gross_pay_net,
          p.sss_loan, p.hdmf_loan, p.cash_advance, p.adjustment,
          p.net_pay, p.checked_by, p.approved_by, p.prepared_by, p.status,
-         COALESCE(e.name, CONCAT_WS(' ', e.first_name, e.last_name)) AS employee_name,
-         cb.first_name AS checked_by_name,
-         ab.first_name AS approved_by_name
+         e.name AS employee_name,
+         cb.name AS checked_by_name,
+         ab.name AS approved_by_name
        FROM payrolls p
        LEFT JOIN employees e  ON e.id = p.employee_id
        LEFT JOIN users    cb  ON cb.id = p.checked_by
