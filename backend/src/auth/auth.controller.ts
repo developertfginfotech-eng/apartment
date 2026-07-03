@@ -35,6 +35,13 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  resetPassword(@Body() body: { email: string; newPassword: string }) {
+    return this.authService.resetPassword(body.email, body.newPassword);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

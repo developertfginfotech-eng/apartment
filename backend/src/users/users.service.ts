@@ -1,4 +1,6 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, OnModuleInit } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 
 export enum UserRole {
@@ -8,8 +10,8 @@ export enum UserRole {
 }
 
 export interface Permission {
-  module: string;   // e.g. 'properties', 'tenants', 'payments'
-  actions: string[]; // e.g. ['read', 'create', 'update', 'delete']
+  module: string;
+  actions: string[];
 }
 
 export interface User {
@@ -18,34 +20,61 @@ export interface User {
   email: string;
   passwordHash: string;
   role: UserRole;
-  permissions: Permission[];   // custom per-admin permissions (granted by super_admin)
+  permissions: Permission[];
   createdAt: Date;
-  createdBy?: string;          // id of super_admin who created this user
+  createdBy?: string;
 }
 
 export type SafeUser = Omit<User, 'passwordHash'>;
 
 @Injectable()
-export class UsersService {
-  private readonly store = new Map<string, User>();
+export class UsersService implements OnModuleInit {
+  constructor(@InjectDataSource() private readonly ds: DataSource) {}
 
-  constructor() {
-    // Seed a default super admin so the system is usable right away
-    void this.seedSuperAdmin();
+  async onModuleInit() {
+    await this.ds.query(`
+      CREATE TABLE IF NOT EXISTS \`app_users\` (
+        \`id\` varchar(64) NOT NULL,
+        \`name\` varchar(255) NOT NULL,
+        \`email\` varchar(255) NOT NULL,
+        \`password_hash\` varchar(255) NOT NULL,
+        \`role\` varchar(50) NOT NULL DEFAULT 'staff',
+        \`permissions\` json,
+        \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        \`created_by\` varchar(64),
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`uq_app_users_email\` (\`email\`)
+      )
+    `);
+    await this.seedSuperAdmin();
   }
 
   private async seedSuperAdmin() {
+    const rows = await this.ds.query(
+      'SELECT id FROM app_users WHERE email = ?',
+      ['admin@apartment.local'],
+    );
+    if (rows.length) return;
     const hash = await bcrypt.hash('superadmin123', 10);
-    const sa: User = {
-      id: 'super-admin-seed',
-      name: 'Super Admin',
-      email: 'admin@apartment.local',
-      passwordHash: hash,
-      role: UserRole.SUPER_ADMIN,
-      permissions: [],
-      createdAt: new Date(),
+    await this.ds.query(
+      'INSERT INTO app_users (id, name, email, password_hash, role, permissions) VALUES (?,?,?,?,?,?)',
+      ['super-admin-seed', 'Super Admin', 'admin@apartment.local', hash, UserRole.SUPER_ADMIN, '[]'],
+    );
+  }
+
+  private mapRow(row: any): User {
+    return {
+      id:           row.id,
+      name:         row.name,
+      email:        row.email,
+      passwordHash: row.password_hash,
+      role:         row.role as UserRole,
+      permissions:  typeof row.permissions === 'string'
+                      ? JSON.parse(row.permissions)
+                      : (row.permissions ?? []),
+      createdAt:    row.created_at,
+      createdBy:    row.created_by ?? undefined,
     };
-    this.store.set(sa.email, sa);
   }
 
   async create(
@@ -56,49 +85,62 @@ export class UsersService {
     permissions: Permission[] = [],
     createdBy?: string,
   ): Promise<SafeUser> {
-    if (this.store.has(email.toLowerCase())) {
-      throw new ConflictException('An account with this email already exists');
-    }
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user: User = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      name,
-      email: email.toLowerCase(),
-      passwordHash,
-      role,
-      permissions,
-      createdAt: new Date(),
-      createdBy,
-    };
-    this.store.set(user.email, user);
+    const lc = email.toLowerCase();
+    const existing = await this.ds.query('SELECT id FROM app_users WHERE email = ?', [lc]);
+    if (existing.length) throw new ConflictException('An account with this email already exists');
+
+    const id   = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const hash = await bcrypt.hash(password, 10);
+    await this.ds.query(
+      'INSERT INTO app_users (id, name, email, password_hash, role, permissions, created_by) VALUES (?,?,?,?,?,?,?)',
+      [id, name, lc, hash, role, JSON.stringify(permissions), createdBy ?? null],
+    );
+    const rows = await this.ds.query('SELECT * FROM app_users WHERE id = ?', [id]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { passwordHash: _h, ...safe } = user;
+    const { passwordHash: _h, ...safe } = this.mapRow(rows[0]);
     return safe;
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.store.get(email.toLowerCase());
+    const rows = await this.ds.query('SELECT * FROM app_users WHERE email = ?', [email.toLowerCase()]);
+    return rows.length ? this.mapRow(rows[0]) : undefined;
   }
 
   async findById(id: string): Promise<User | undefined> {
-    for (const user of this.store.values()) {
-      if (user.id === id) return user;
-    }
-    return undefined;
+    const rows = await this.ds.query('SELECT * FROM app_users WHERE id = ?', [id]);
+    return rows.length ? this.mapRow(rows[0]) : undefined;
   }
 
   async listAdmins(): Promise<SafeUser[]> {
-    return [...this.store.values()]
-      .filter(u => u.role === UserRole.ADMIN)
-      .map(({ passwordHash: _h, ...safe }) => safe);
+    const rows = await this.ds.query(
+      'SELECT * FROM app_users WHERE role IN (?,?) ORDER BY name ASC',
+      [UserRole.ADMIN, UserRole.STAFF],
+    );
+    return rows.map((r: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash: _h, ...safe } = this.mapRow(r);
+      return safe;
+    });
   }
 
   async updatePermissions(id: string, permissions: Permission[]): Promise<SafeUser> {
+    await this.ds.query('UPDATE app_users SET permissions = ? WHERE id = ?', [JSON.stringify(permissions), id]);
     const user = await this.findById(id);
     if (!user) throw new Error('User not found');
-    user.permissions = permissions;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...safe } = user;
     return safe;
+  }
+
+  async updatePassword(id: string, newPassword: string): Promise<void> {
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.ds.query('UPDATE app_users SET password_hash = ? WHERE id = ?', [hash, id]);
+  }
+
+  async resetPasswordByEmail(email: string, newPassword: string): Promise<boolean> {
+    const user = await this.findByEmail(email);
+    if (!user) return false;
+    await this.updatePassword(user.id, newPassword);
+    return true;
   }
 }

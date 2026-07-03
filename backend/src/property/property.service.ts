@@ -10,7 +10,7 @@ export class PropertyService {
   ) {}
 
   findAll() {
-    return this.repo.find({ where: { status: 1 }, order: { created_at: 'DESC' } });
+    return this.repo.find({ where: { status: 1 }, order: { property_name: 'ASC' } });
   }
 
   findOne(id: number) {

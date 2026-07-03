@@ -55,6 +55,11 @@ export class AuthService {
     return this.usersService.updatePermissions(adminId, permissions);
   }
 
+  async resetPassword(email: string, newPassword: string): Promise<{ ok: boolean }> {
+    const ok = await this.usersService.resetPasswordByEmail(email, newPassword);
+    return { ok };
+  }
+
   private signToken(id: string, email: string, role: UserRole): string {
     return this.jwtService.sign({ sub: id, email, role });
   }
