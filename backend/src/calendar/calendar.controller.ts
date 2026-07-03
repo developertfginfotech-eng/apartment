@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Delete, Param, Body, Request, HttpCode, HttpStatus } from '@nestjs/common';
 import { CalendarService } from './calendar.service';
-import { Public } from '../common/decorators/public.decorator';
 
 @Controller('calendar')
 export class CalendarController {
