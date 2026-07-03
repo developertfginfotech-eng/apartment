@@ -283,10 +283,7 @@ export default function Home() {
               <a className="af-nav-cta" href="/dashboard">Dashboard</a>
             </>
           ) : (
-            <>
-              <a className="af-nav-ghost" href="/login">Sign in</a>
-              <a className="af-nav-cta" href="/signup">Get Started</a>
-            </>
+            <a className="af-nav-cta" href="/login">Sign in</a>
           )}
           <button className="af-theme-btn" onClick={() => setDark(d => !d)} aria-label="Toggle theme">
             {dark ? '🌙' : '☀️'}
@@ -315,13 +312,12 @@ export default function Home() {
               <li><strong>Manage maintenance, utilities, loans, and payroll</strong> from the same dashboard your whole team uses.</li>
             </ul>
             <div className="af-actions">
-              <a className="af-btn-primary" href="/signup">
-                Start free
+              <a className="af-btn-primary" href="/login">
+                Sign in
                 <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
                   <path d="M2 6.5h9M8 3l3.5 3.5L8 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </a>
-              <a className="af-btn-secondary" href="/login">Sign in</a>
             </div>
           </div>
 
@@ -343,8 +339,8 @@ export default function Home() {
           <p className="af-wf-desc">
             From tenant onboarding and lease renewal to rent collection and maintenance — each process is mapped out and trackable in real time.
           </p>
-          <a className="af-btn-primary" href="/signup" style={{alignSelf:'flex-start',marginTop:8}}>
-            Get started free
+          <a className="af-btn-primary" href="/login" style={{alignSelf:'flex-start',marginTop:8}}>
+            Sign in
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
               <path d="M2 6.5h9M8 3l3.5 3.5L8 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
