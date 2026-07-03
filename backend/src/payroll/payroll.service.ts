@@ -17,7 +17,7 @@ export class PayrollService {
     const { page = 1, limit = 50, month, from, to, search } = params;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ['p.status = 0'];
+    const conditions: string[] = ['p.status = 1'];
     const bindings: any[] = [];
 
     if (month) {
@@ -82,7 +82,7 @@ export class PayrollService {
          late, rental, gross_pay, sss, phic, hdmf, gross_pay_net,
          sss_loan, hdmf_loan, cash_advance, adjustment, net_pay,
          checked_by, approved_by, prepared_by, status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
       [
         body.employee_id ?? null,
         body.start_date, body.end_date, body.payment_date ?? null,
@@ -113,7 +113,7 @@ export class PayrollService {
   }
 
   async remove(id: number) {
-    await this.ds.query(`UPDATE payrolls SET status = 1 WHERE id = ?`, [id]);
+    await this.ds.query(`UPDATE payrolls SET status = 0 WHERE id = ?`, [id]);
     return { ok: true };
   }
 
