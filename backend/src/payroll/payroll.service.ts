@@ -17,27 +17,15 @@ export class PayrollService {
     const { page = 1, limit = 50, month, from, to, search } = params;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ['p.status = 1'];
+    const conditions: string[] = ['p.status = 0'];
     const bindings: any[] = [];
 
-    if (month) {
-      conditions.push('MONTH(p.start_date) = ?');
-      bindings.push(parseInt(month, 10));
-    }
-    if (from) {
-      conditions.push('p.start_date >= ?');
-      bindings.push(from);
-    }
-    if (to) {
-      conditions.push('p.end_date <= ?');
-      bindings.push(to);
-    }
     if (search) {
       conditions.push('e.name LIKE ?');
       bindings.push(`%${search}%`);
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where = `WHERE ${conditions.join(' AND ')}`;
 
     const [countResult] = await this.ds.query(
       `SELECT COUNT(*) as total FROM payrolls p
@@ -53,13 +41,9 @@ export class PayrollService {
          p.gross_pay, p.sss, p.phic, p.hdmf, p.gross_pay_net,
          p.sss_loan, p.hdmf_loan, p.cash_advance, p.adjustment,
          p.net_pay, p.checked_by, p.approved_by, p.prepared_by, p.status,
-         e.name AS employee_name,
-         cb.name AS checked_by_name,
-         ab.name AS approved_by_name
+         e.name AS employee_name
        FROM payrolls p
-       LEFT JOIN employees e  ON e.id = p.employee_id
-       LEFT JOIN users    cb  ON cb.id = p.checked_by
-       LEFT JOIN users    ab  ON ab.id = p.approved_by
+       LEFT JOIN employees e ON e.id = p.employee_id
        ${where}
        ORDER BY p.id DESC
        LIMIT ? OFFSET ?`,
@@ -82,7 +66,7 @@ export class PayrollService {
          late, rental, gross_pay, sss, phic, hdmf, gross_pay_net,
          sss_loan, hdmf_loan, cash_advance, adjustment, net_pay,
          checked_by, approved_by, prepared_by, status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
       [
         body.employee_id ?? null,
         body.start_date, body.end_date, body.payment_date ?? null,
@@ -113,7 +97,7 @@ export class PayrollService {
   }
 
   async remove(id: number) {
-    await this.ds.query(`UPDATE payrolls SET status = 0 WHERE id = ?`, [id]);
+    await this.ds.query(`UPDATE payrolls SET status = 1 WHERE id = ?`, [id]);
     return { ok: true };
   }
 
