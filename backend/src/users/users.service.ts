@@ -32,21 +32,33 @@ export class UsersService implements OnModuleInit {
   constructor(@InjectDataSource() private readonly ds: DataSource) {}
 
   async onModuleInit() {
-    await this.ds.query(`
-      CREATE TABLE IF NOT EXISTS \`app_users\` (
-        \`id\` varchar(64) NOT NULL,
-        \`name\` varchar(255) NOT NULL,
-        \`email\` varchar(255) NOT NULL,
-        \`password_hash\` varchar(255) NOT NULL,
-        \`role\` varchar(50) NOT NULL DEFAULT 'staff',
-        \`permissions\` json,
-        \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        \`created_by\` varchar(64),
-        PRIMARY KEY (\`id\`),
-        UNIQUE KEY \`uq_app_users_email\` (\`email\`)
-      )
-    `);
-    await this.seedSuperAdmin();
+    // Retry up to 5 times with backoff — remote DB (Aiven) may need a moment on cold start
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        await this.ds.query(`
+          CREATE TABLE IF NOT EXISTS \`app_users\` (
+            \`id\` varchar(64) NOT NULL,
+            \`name\` varchar(255) NOT NULL,
+            \`email\` varchar(255) NOT NULL,
+            \`password_hash\` varchar(255) NOT NULL,
+            \`role\` varchar(50) NOT NULL DEFAULT 'staff',
+            \`permissions\` json,
+            \`created_at\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            \`created_by\` varchar(64),
+            PRIMARY KEY (\`id\`),
+            UNIQUE KEY \`uq_app_users_email\` (\`email\`)
+          )
+        `);
+        await this.seedSuperAdmin();
+        console.log('[UsersService] app_users table ready');
+        return;
+      } catch (err) {
+        console.error(`[UsersService] init attempt ${attempt} failed:`, err instanceof Error ? err.message : err);
+        if (attempt < 5) await new Promise(r => setTimeout(r, attempt * 1000));
+      }
+    }
+    // Log but don't crash — DB may be temporarily unavailable
+    console.error('[UsersService] Could not initialize app_users table after 5 attempts');
   }
 
   private async seedSuperAdmin() {
