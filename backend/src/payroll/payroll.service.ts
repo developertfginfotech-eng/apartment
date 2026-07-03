@@ -117,6 +117,14 @@ export class PayrollService {
     return { ok: true };
   }
 
+  async debug() {
+    const tables  = await this.ds.query(`SHOW TABLES`).catch(e => ({ error: String(e) }));
+    const counts  = await this.ds.query(`SELECT COUNT(*) as total FROM payrolls`).catch(e => ({ error: String(e) }));
+    const sample  = await this.ds.query(`SELECT id, status FROM payrolls LIMIT 5`).catch(e => ({ error: String(e) }));
+    const byStatus = await this.ds.query(`SELECT status, COUNT(*) as cnt FROM payrolls GROUP BY status`).catch(e => ({ error: String(e) }));
+    return { tables, counts, sample, byStatus };
+  }
+
   async getEmployees() {
     return this.ds.query(
       `SELECT id, name FROM employees WHERE status = 1 ORDER BY name ASC`

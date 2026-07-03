@@ -21,6 +21,11 @@ export class PayrollController {
     });
   }
 
+  @Get('debug')
+  debug() {
+    return this.svc.debug();
+  }
+
   @Get('employees')
   getEmployees() {
     return this.svc.getEmployees();
