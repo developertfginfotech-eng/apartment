@@ -58,7 +58,7 @@ export default function MaintenancePage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('${API}/maintenance', { headers: authHeaders() })
+      const res = await fetch(`${API}/maintenance`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
       setRecords(Array.isArray(data) ? data : data.data ?? [])
@@ -116,7 +116,7 @@ export default function MaintenancePage() {
 
       const url = editTarget
         ? `${API}/maintenance/${editTarget.id}`
-        : '${API}/maintenance'
+        : `${API}/maintenance`
       const method = editTarget ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
