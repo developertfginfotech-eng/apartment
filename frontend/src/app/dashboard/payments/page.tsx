@@ -56,7 +56,7 @@ export default function PaymentsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('${API}/payments', { headers: authHeaders() })
+      const res = await fetch(`${API}/payments`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
       setPayments(Array.isArray(data) ? data : data.data ?? [])
@@ -111,7 +111,7 @@ export default function PaymentsPage() {
 
       const url = editTarget
         ? `${API}/payments/${editTarget.id}`
-        : '${API}/payments'
+        : `${API}/payments`
       const method = editTarget ? 'PUT' : 'POST'
 
       const res = await fetch(url, {
