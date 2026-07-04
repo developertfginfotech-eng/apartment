@@ -41,9 +41,13 @@ export class PayrollService {
          p.gross_pay, p.sss, p.phic, p.hdmf, p.gross_pay_net,
          p.sss_loan, p.hdmf_loan, p.cash_advance, p.adjustment,
          p.net_pay, p.checked_by, p.approved_by, p.prepared_by, p.status,
-         e.name AS employee_name
+         e.name AS employee_name,
+         CONCAT(cb.first_name, ' ', COALESCE(cb.last_name,'')) AS checked_by_name,
+         CONCAT(ab.first_name, ' ', COALESCE(ab.last_name,'')) AS approved_by_name
        FROM payrolls p
-       LEFT JOIN employees e ON e.id = p.employee_id
+       LEFT JOIN employees e  ON e.id = p.employee_id
+       LEFT JOIN users    cb  ON cb.id = p.checked_by
+       LEFT JOIN users    ab  ON ab.id = p.approved_by
        ${where}
        ORDER BY p.id DESC
        LIMIT ? OFFSET ?`,
@@ -112,6 +116,12 @@ export class PayrollService {
   async getEmployees() {
     return this.ds.query(
       `SELECT id, name FROM employees WHERE status = 1 ORDER BY name ASC`
+    ).catch(() => []);
+  }
+
+  async getSignatories() {
+    return this.ds.query(
+      `SELECT id, CONCAT(first_name, ' ', COALESCE(last_name,'')) AS name FROM users WHERE status = 1 ORDER BY first_name ASC`
     ).catch(() => []);
   }
 }

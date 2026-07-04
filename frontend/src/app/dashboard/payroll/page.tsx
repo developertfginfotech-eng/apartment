@@ -57,7 +57,8 @@ export default function PayrollPage() {
   const [pages, setPages]         = useState(1)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
-  const [employees, setEmployees] = useState<{id:number; name:string}[]>([])
+  const [employees, setEmployees]     = useState<{id:number; name:string}[]>([])
+  const [signatories, setSignatories] = useState<{id:number; name:string}[]>([])
 
   const [activeTab, setActiveTab] = useState('Payroll')
   const [showForm, setShowForm]   = useState(false)
@@ -97,8 +98,11 @@ export default function PayrollPage() {
   useEffect(() => { fetchPayrolls() }, [fetchPayrolls])
 
   useEffect(() => {
-    fetch(`${API}/payroll/employees`, { headers: authHeaders() })
+    const h = authHeaders()
+    fetch(`${API}/payroll/employees`, { headers: h })
       .then(r => r.json()).then(d => Array.isArray(d) && setEmployees(d)).catch(()=>{})
+    fetch(`${API}/payroll/signatories`, { headers: h })
+      .then(r => r.json()).then(d => Array.isArray(d) && setSignatories(d)).catch(()=>{})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const n = (v:string) => parseFloat(v)||0
@@ -277,13 +281,29 @@ export default function PayrollPage() {
                   </td>
                   <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums',color:'#22c55e'}}>{fmt(p.net_pay)}</td>
                   <td>
-                    <select value={p.checked_by??''} onChange={()=>{}} style={selectStyle}>
-                      <option value="">{p.checked_by_name||'-- Select --'}</option>
+                    <select
+                      value={p.checked_by??''}
+                      onChange={e => {
+                        const v = e.target.value
+                        fetch(`${API}/payroll/${p.id}`, { method:'PUT', headers: authHeaders(), body: JSON.stringify({ checked_by: v||null }) }).then(() => fetchPayrolls())
+                      }}
+                      style={selectStyle}
+                    >
+                      <option value="">-- Select --</option>
+                      {signatories.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </td>
                   <td>
-                    <select value={p.approved_by??''} onChange={()=>{}} style={selectStyle}>
-                      <option value="">{p.approved_by_name||'-- Select --'}</option>
+                    <select
+                      value={p.approved_by??''}
+                      onChange={e => {
+                        const v = e.target.value
+                        fetch(`${API}/payroll/${p.id}`, { method:'PUT', headers: authHeaders(), body: JSON.stringify({ approved_by: v||null }) }).then(() => fetchPayrolls())
+                      }}
+                      style={selectStyle}
+                    >
+                      <option value="">-- Select --</option>
+                      {signatories.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </td>
                   <td>

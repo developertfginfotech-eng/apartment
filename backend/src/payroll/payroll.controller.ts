@@ -31,6 +31,11 @@ export class PayrollController {
     return this.svc.getEmployees();
   }
 
+  @Get('signatories')
+  getSignatories() {
+    return this.svc.getSignatories();
+  }
+
   @Post()
   create(@Body() body: any, @Request() req: any) {
     return this.svc.create({ ...body, user_id: req.user?.id });
