@@ -66,21 +66,22 @@ export class PayrollService {
   async create(body: any) {
     const res = await this.ds.query(
       `INSERT INTO payrolls
-        (employee_id, start_date, end_date, payment_date, basic, ot_pay, allowance, absences,
-         late, rental, gross_pay, sss, phic, hdmf, gross_pay_net,
-         sss_loan, hdmf_loan, cash_advance, adjustment, net_pay,
+        (employee_id, start_date, end_date, payment_date,
+         basic, ot_pay, rental, absences, late,
+         g_pay, sss, phic, hdmf, g_pay_net, gross_pay, gross_pay_net,
+         sss_loan, hdmf_loan, cash_advance, allowance, adjustment, net_pay,
          checked_by, approved_by, prepared_by, status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
       [
         body.employee_id ?? null,
         body.start_date, body.end_date, body.payment_date ?? null,
-        body.basic ?? 0, body.ot_pay ?? 0, body.allowance ?? 0,
-        body.absences ?? 0, body.late ?? 0, body.rental ?? 0,
-        body.gross_pay ?? 0,
+        body.basic ?? 0, body.ot_pay ?? 0, body.rental ?? 0,
+        body.absences ?? 0, body.late ?? 0,
+        body.g_pay ?? 0,
         body.sss ?? 0, body.phic ?? 0, body.hdmf ?? 0,
-        body.gross_pay_net ?? 0,
+        body.g_pay_net ?? 0, body.gross_pay ?? 0, body.gross_pay_net ?? 0,
         body.sss_loan ?? 0, body.hdmf_loan ?? 0, body.cash_advance ?? 0,
-        body.adjustment ?? 0, body.net_pay ?? 0,
+        body.allowance ?? 0, body.adjustment ?? 0, body.net_pay ?? 0,
         body.checked_by ?? null, body.approved_by ?? null, body.prepared_by ?? null,
       ],
     );

@@ -12,16 +12,22 @@ interface Payroll {
   end_date: string
   payment_date: string
   basic: number
-  allowance: number
   ot_pay: number
+  rental: number
   absences: number
+  late: number
   gross_pay: number
+  g_pay: number
+  g_pay_net: number
   sss: number
   phic: number
   hdmf: number
+  gross_pay_net: number
   sss_loan: number
   hdmf_loan: number
   cash_advance: number
+  allowance: number
+  adjustment: number
   net_pay: number
   checked_by_name: string
   approved_by_name: string
@@ -44,8 +50,10 @@ const SUB_NAV = ['Payroll','Manage Payroll','Payslip','Employee','Salary Structu
 
 const EMPTY_FORM = {
   employee_id:'', start_date:'', end_date:'', payment_date:'',
-  basic:'', ot_pay:'', allowance:'', absences:'', late:'', rental:'',
-  sss:'', phic:'', hdmf:'', sss_loan:'', hdmf_loan:'', cash_advance:'', adjustment:'',
+  basic:'0', ot_pay:'0', rental:'0', absences:'0', late:'0',
+  sss:'0', phic:'0', hdmf:'0',
+  sss_loan:'0', hdmf_loan:'0', cash_advance:'0',
+  allowance:'0', adjustment:'0',
 }
 
 export default function PayrollPage() {
@@ -106,8 +114,13 @@ export default function PayrollPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const n = (v:string) => parseFloat(v)||0
-  const liveGross = n(form.basic)+n(form.allowance)+n(form.ot_pay)-n(form.absences)-n(form.late)
-  const liveNet   = liveGross - n(form.sss) - n(form.phic) - n(form.hdmf) - n(form.sss_loan) - n(form.hdmf_loan) - n(form.cash_advance) + n(form.adjustment)
+  // Match Laravel formula exactly:
+  // G-Pay = basic + ot_pay - rental - absences - late
+  // G-Pay Net = G-Pay - SSS - PHIC - HDMF
+  // Net Pay = G-Pay Net - SSS Loan - HDMF Loan - Cash Advance + Allowance + Adjustment
+  const liveGPay    = n(form.basic) + n(form.ot_pay) - n(form.rental) - n(form.absences) - n(form.late)
+  const liveGPayNet = liveGPay - n(form.sss) - n(form.phic) - n(form.hdmf)
+  const liveNet     = liveGPayNet - n(form.sss_loan) - n(form.hdmf_loan) - n(form.cash_advance) + n(form.allowance) + n(form.adjustment)
 
   const resetForm = () => setForm(EMPTY_FORM)
 
@@ -116,28 +129,30 @@ export default function PayrollPage() {
     setForm({
       employee_id: '', start_date: p.start_date, end_date: p.end_date,
       payment_date: p.payment_date ?? '',
-      basic: String(p.basic), ot_pay: String(p.ot_pay), allowance: String(p.allowance),
-      absences: String(p.absences), late: '0', rental: '0',
+      basic: String(p.basic), ot_pay: String(p.ot_pay), rental: String(p.rental ?? 0),
+      absences: String(p.absences), late: String(p.late ?? 0),
       sss: String(p.sss), phic: String(p.phic), hdmf: String(p.hdmf),
       sss_loan: String(p.sss_loan), hdmf_loan: String(p.hdmf_loan),
-      cash_advance: String(p.cash_advance), adjustment: '0',
+      cash_advance: String(p.cash_advance), allowance: String(p.allowance), adjustment: String(p.adjustment ?? 0),
     })
     setShowForm(true)
   }
 
   const save = async () => {
     if (!form.start_date || !form.end_date) return
-    const gross_pay = liveGross
-    const net_pay   = liveNet
     const body = {
       employee_id: form.employee_id ? parseInt(form.employee_id) : null,
       start_date: form.start_date, end_date: form.end_date, payment_date: form.payment_date,
-      basic: n(form.basic), ot_pay: n(form.ot_pay), allowance: n(form.allowance),
-      absences: n(form.absences), late: n(form.late), rental: n(form.rental),
-      gross_pay, sss: n(form.sss), phic: n(form.phic), hdmf: n(form.hdmf),
-      gross_pay_net: gross_pay - n(form.sss) - n(form.phic) - n(form.hdmf),
+      basic: n(form.basic), ot_pay: n(form.ot_pay), rental: n(form.rental),
+      absences: n(form.absences), late: n(form.late),
+      g_pay: liveGPay,
+      sss: n(form.sss), phic: n(form.phic), hdmf: n(form.hdmf),
+      g_pay_net: liveGPayNet,
+      gross_pay: liveGPay, gross_pay_net: liveGPayNet,
       sss_loan: n(form.sss_loan), hdmf_loan: n(form.hdmf_loan),
-      cash_advance: n(form.cash_advance), adjustment: n(form.adjustment), net_pay,
+      cash_advance: n(form.cash_advance),
+      allowance: n(form.allowance), adjustment: n(form.adjustment),
+      net_pay: liveNet,
     }
     try {
       if (editItem) {
@@ -362,25 +377,47 @@ export default function PayrollPage() {
                 <div className="af-field" style={{gridColumn:'span 2'}}><label>Payment Date</label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
 
                 <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
-                {(['basic','allowance','ot_pay','absences','late','rental'] as const).map(k=>(
-                  <div key={k} className="af-field"><label style={{textTransform:'capitalize'}}>{k.replace('_',' ')}</label>
-                    <input type="number" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0"/></div>
+                {([['basic','Basic Pay'],['ot_pay','OT Pay'],['rental','Rental'],['absences','Absences'],['late','Late']] as const).map(([k,l])=>(
+                  <div key={k} className="af-field"><label>{l}</label>
+                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
                 ))}
 
-                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Deductions</div>
-                {([['sss','SSS'],['phic','PhilHealth'],['hdmf','Pag-IBIG'],['sss_loan','SSS Loan'],['hdmf_loan','HDMF Loan'],['cash_advance','Cash Advance'],['adjustment','Adjustment']] as const).map(([k,l])=>(
+                {/* G-Pay auto-calculated */}
+                <div className="af-field" style={{gridColumn:'span 2'}}>
+                  <label style={{color:'var(--accent)'}}>G-Pay (Auto Calculated)</label>
+                  <input type="number" readOnly value={liveGPay.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
+                </div>
+
+                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Contributions</div>
+                {([['sss','SSS'],['phic','PhilHealth (PHIC)'],['hdmf','Pag-IBIG (HDMF)']] as const).map(([k,l])=>(
                   <div key={k} className="af-field"><label>{l}</label>
-                    <input type="number" value={form[k as keyof typeof form]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0"/></div>
+                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
+                ))}
+
+                {/* G-Pay Net auto-calculated */}
+                <div className="af-field" style={{gridColumn:'span 2'}}>
+                  <label style={{color:'var(--accent)'}}>G-Pay Net (Auto Calculated)</label>
+                  <input type="number" readOnly value={liveGPayNet.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
+                </div>
+
+                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Deductions & Additions</div>
+                {([['sss_loan','SSS Loan'],['hdmf_loan','HDMF Loan'],['cash_advance','Payment Loan'],['allowance','Allowance'],['adjustment','Adjustment']] as const).map(([k,l])=>(
+                  <div key={k} className="af-field"><label>{l}</label>
+                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
                 ))}
               </div>
               <div style={{background:'var(--surface2)',borderRadius:10,padding:'14px 18px',marginTop:16,display:'flex',gap:28,flexWrap:'wrap'}}>
                 <div>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>Gross Pay</div>
-                  <div style={{fontSize:18,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{fmt(liveGross)}</div>
+                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>G-Pay</div>
+                  <div style={{fontSize:16,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{fmt(liveGPay)}</div>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>Net Pay</div>
-                  <div style={{fontSize:18,fontWeight:700,color:'#22c55e',fontVariantNumeric:'tabular-nums'}}>{fmt(liveNet)}</div>
+                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>G-Pay Net</div>
+                  <div style={{fontSize:16,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{fmt(liveGPayNet)}</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>Net Pay (Auto Calculated)</div>
+                  <div style={{fontSize:20,fontWeight:700,color:'#22c55e',fontVariantNumeric:'tabular-nums'}}>{fmt(liveNet)}</div>
                 </div>
               </div>
             </div>
