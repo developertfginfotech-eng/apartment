@@ -1,217 +1,247 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
 interface UtilityBill {
-  id: string
-  property: string
-  floor: string
-  unit: string
-  renter: string
-  month: string
-  water: number
-  electric: number
-  gas: number
-  security: number
-  other: number
-  paid: boolean
-  date: string
+  id: number
+  renter_name: string | null
+  property_name: string | null
+  floor_name: string | null
+  unit_name: string | null
+  month: string | null
+  water_bill: string | number
+  electric_bill: string | number
+  gas_bill: string | number
+  security_bill: string | number
+  cusa: string | number
+  other_bill: string | number
+  total_rent: string | number
+  issue_date: string | null
+  payment_type: string | null
+  payment_mode: string | null
+  payment_status: number
 }
 
-const SEED: UtilityBill[] = [
-  { id:'u1', property:'Sunrise Towers',    floor:'Floor 4', unit:'4B', renter:'James Carter',   month:'June 2026', water:85, electric:142, gas:38, security:20, other:0,  paid:false, date:'2026-06-01' },
-  { id:'u2', property:'Sunrise Towers',    floor:'Floor 2', unit:'2A', renter:'Priya Sharma',   month:'June 2026', water:72, electric:118, gas:29, security:20, other:15, paid:true,  date:'2026-06-01' },
-  { id:'u3', property:'Green Valley Block',floor:'Floor 1', unit:'1D', renter:'Aisha Okonkwo',  month:'June 2026', water:95, electric:165, gas:44, security:20, other:0,  paid:false, date:'2026-06-01' },
-  { id:'u4', property:'Green Valley Block',floor:'Floor 5', unit:'5F', renter:'Liam Thompson',  month:'May 2026',  water:88, electric:130, gas:35, security:20, other:0,  paid:true,  date:'2026-05-01' },
-  { id:'u5', property:'Metro Heights',     floor:'Floor 7', unit:'7C', renter:'Marco Rivera',   month:'June 2026', water:78, electric:155, gas:40, security:20, other:0,  paid:false, date:'2026-06-01' },
-]
+const bill = (b: UtilityBill) => Number(b.water_bill) + Number(b.electric_bill) + Number(b.gas_bill) + Number(b.security_bill) + Number(b.cusa) + Number(b.other_bill)
 
-const total = (b: UtilityBill) => b.water + b.electric + b.gas + b.security + b.other
-
-const EMPTY_FORM = { property:'', floor:'', unit:'', renter:'', month:'', water:'', electric:'', gas:'', security:'', other:'', date:'' }
+const EMPTY_FORM = { renter_id: '', property_id: '', month: '', water_bill: '', electric_bill: '', gas_bill: '', security_bill: '', cusa: '', other_bill: '', issue_date: '' }
 
 export default function UtilitiesPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
 
-  const [bills, setBills]       = useState<UtilityBill[]>(SEED)
-  const [filter, setFilter]     = useState<'all'|'paid'|'unpaid'>('all')
+  const [bills, setBills] = useState<UtilityBill[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all')
   const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing]   = useState<UtilityBill | null>(null)
-  const [form, setForm]         = useState(EMPTY_FORM)
+  const [editing, setEditing] = useState<UtilityBill | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [renters, setRenters] = useState<{ id: number; name: string }[]>([])
+  const [properties, setProperties] = useState<{ id: number; property_name: string }[]>([])
 
-  const filtered = filter === 'all' ? bills : bills.filter(b => filter === 'paid' ? b.paid : !b.paid)
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
+  })
 
-  const totalBillsThisMonth = bills.filter(b => b.month.includes('June 2026')).reduce((s, b) => s + total(b), 0)
-  const paidCount   = bills.filter(b => b.paid).length
-  const unpaidCount = bills.filter(b => !b.paid).length
-  const paidAmount  = bills.filter(b => b.paid).reduce((s, b) => s + total(b), 0)
-  const unpaidAmount= bills.filter(b => !b.paid).reduce((s, b) => s + total(b), 0)
+  const fetchBills = useCallback(async () => {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`${API}/utility`, { headers: authHeaders() })
+      setBills(await res.json())
+    } catch { setError('Failed to load utility bills') }
+    finally { setLoading(false) }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openNew  = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true) }
+  useEffect(() => { fetchBills() }, [fetchBills])
+
+  useEffect(() => {
+    fetch(`${API}/renters`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setRenters(d)).catch(() => {})
+    fetch(`${API}/properties`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setProperties(d)).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const filtered = filter === 'all' ? bills : bills.filter(b => filter === 'paid' ? b.payment_status === 1 : b.payment_status !== 1)
+
+  const fmt = (v: string | number) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const billTotal = (b: UtilityBill) => Number(b.total_rent) || bill(b)
+  const totalAll = bills.reduce((s, b) => s + billTotal(b), 0)
+  const paidCount = bills.filter(b => b.payment_status === 1).length
+  const unpaidCount = bills.filter(b => b.payment_status !== 1).length
+  const paidAmount = bills.filter(b => b.payment_status === 1).reduce((s, b) => s + billTotal(b), 0)
+  const unpaidAmount = bills.filter(b => b.payment_status !== 1).reduce((s, b) => s + billTotal(b), 0)
+
+  const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true) }
   const openEdit = (b: UtilityBill) => {
     setEditing(b)
-    setForm({ property:b.property, floor:b.floor, unit:b.unit, renter:b.renter, month:b.month, water:String(b.water), electric:String(b.electric), gas:String(b.gas), security:String(b.security), other:String(b.other), date:b.date })
+    setForm({
+      renter_id: '', property_id: '', month: b.month ?? '',
+      water_bill: String(b.water_bill ?? 0), electric_bill: String(b.electric_bill ?? 0),
+      gas_bill: String(b.gas_bill ?? 0), security_bill: String(b.security_bill ?? 0),
+      cusa: String(b.cusa ?? 0), other_bill: String(b.other_bill ?? 0),
+      issue_date: b.issue_date ?? '',
+    })
     setShowModal(true)
   }
 
-  const save = () => {
-    if (!form.property || !form.unit || !form.renter) return
-    const parsed = {
-      property: form.property, floor: form.floor, unit: form.unit, renter: form.renter,
-      month: form.month, date: form.date,
-      water: Number(form.water) || 0, electric: Number(form.electric) || 0,
-      gas: Number(form.gas) || 0, security: Number(form.security) || 0,
-      other: Number(form.other) || 0,
+  const save = async () => {
+    if (!form.property_id) return
+    const total = (Number(form.water_bill) || 0) + (Number(form.electric_bill) || 0) + (Number(form.gas_bill) || 0) + (Number(form.security_bill) || 0) + (Number(form.cusa) || 0) + (Number(form.other_bill) || 0)
+    const body = {
+      renter_id: form.renter_id ? parseInt(form.renter_id, 10) : null,
+      property_id: parseInt(form.property_id, 10),
+      month: form.month, issue_date: form.issue_date,
+      water_bill: form.water_bill || 0, electric_bill: form.electric_bill || 0,
+      gas_bill: form.gas_bill || 0, security_bill: form.security_bill || 0,
+      cusa: form.cusa || 0, other_bill: form.other_bill || 0,
+      total_rent: total,
     }
-    if (editing) {
-      setBills(bs => bs.map(b => b.id === editing.id ? { ...b, ...parsed } : b))
-    } else {
-      setBills(bs => [...bs, { id:`u${Date.now()}`, paid: false, ...parsed }])
-    }
-    setShowModal(false)
+    try {
+      if (editing) {
+        await fetch(`${API}/utility/${editing.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
+      } else {
+        await fetch(`${API}/utility`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) })
+      }
+      setShowModal(false)
+      fetchBills()
+    } catch { setError('Failed to save utility bill') }
   }
 
-  const del     = (id: string) => setBills(bs => bs.filter(b => b.id !== id))
-  const markPaid= (id: string) => setBills(bs => bs.map(b => b.id === id ? { ...b, paid: true } : b))
+  const del = async (id: number) => {
+    if (!confirm('Delete this utility bill?')) return
+    try { await fetch(`${API}/utility/${id}`, { method: 'DELETE', headers: authHeaders() }); fetchBills() }
+    catch { setError('Failed to delete') }
+  }
+  const markPaid = async (id: number) => {
+    try { await fetch(`${API}/utility/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ payment_status: 1 }) }); fetchBills() }
+    catch { setError('Failed to update') }
+  }
 
-  const sf = (v: string, k: string) => setForm(f => ({ ...f, [k]: v }))
+  const sf = (v: string, k: keyof typeof EMPTY_FORM) => setForm(f => ({ ...f, [k]: v }))
 
   return (
     <main className="af-db-main">
-      <div className="af-db-topbar">
+      <div className="af-db-topbar af-fade-in">
         <div>
-          <h1 className="af-db-greeting" style={{fontSize:26}}>Utility Bills</h1>
-          <p className="af-db-subtitle">Water, electricity &amp; gas billing per unit</p>
+          <h1 className="af-db-greeting" style={{ fontSize: 26 }}>Utility Bills</h1>
+          <p className="af-db-subtitle">Water, electricity &amp; other billing per unit</p>
         </div>
-        <button className="af-btn-primary" onClick={openNew} style={{cursor:'pointer',border:'none'}}>+ Add Bill</button>
+        <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }}>+ Add Bill</button>
       </div>
 
-      {/* Summary cards */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:28}}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 28 }}>
         {[
-          { label:'Total Bills (June)',  value:`$${totalBillsThisMonth.toLocaleString()}`, sub:`${bills.filter(b=>b.month.includes('June 2026')).length} records`, color:'var(--accent)' },
-          { label:`Paid (${paidCount})`,    value:`$${paidAmount.toLocaleString()}`,           sub:'Cleared',         color:'#22c55e' },
-          { label:`Unpaid (${unpaidCount})`,value:`$${unpaidAmount.toLocaleString()}`,          sub:'Outstanding',     color:'#ef4444' },
-        ].map(s => (
-          <div key={s.label} style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:14,padding:'20px 22px'}}>
-            <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',color:'var(--muted)',marginBottom:8}}>{s.label}</div>
-            <div style={{fontSize:26,fontWeight:820,letterSpacing:'-0.03em',color:s.color,fontVariantNumeric:'tabular-nums'}}>{s.value}</div>
-            <div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>{s.sub}</div>
+          { label: 'Total Bills', value: fmt(totalAll), sub: `${bills.length} records`, color: 'var(--accent)' },
+          { label: `Paid (${paidCount})`, value: fmt(paidAmount), sub: 'Cleared', color: '#22c55e' },
+          { label: `Unpaid (${unpaidCount})`, value: fmt(unpaidAmount), sub: 'Outstanding', color: '#ef4444' },
+        ].map((s, i) => (
+          <div key={s.label} className="af-stat-card af-fade-in" style={{ animationDelay: `${i * 0.05}s`, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '20px 22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 8 }}>{s.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 820, letterSpacing: '-0.03em', color: s.color, fontVariantNumeric: 'tabular-nums' }}>{s.value}</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Filter buttons */}
-      <div style={{display:'flex',gap:6,marginBottom:18}}>
-        {(['all','unpaid','paid'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{padding:'7px 14px',borderRadius:8,border:'1px solid',fontSize:12.5,fontWeight:600,cursor:'pointer',fontFamily:'inherit',borderColor:filter===f?'var(--accent)':'var(--border2)',background:filter===f?'rgba(249,115,22,0.12)':'var(--surface)',color:filter===f?'var(--accent)':'var(--muted)'}}>
-            {f.charAt(0).toUpperCase()+f.slice(1)}
-          </button>
+      {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
+
+      <div className="af-tab-bar af-fade-in" style={{ animationDelay: '0.06s' }}>
+        {(['all', 'unpaid', 'paid'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)} className={`af-tab-pill ${filter === f ? 'active' : ''}`}>{f.charAt(0).toUpperCase() + f.slice(1)}</button>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="af-prop-table-wrap">
-        <table className="af-prop-table">
-          <thead>
-            <tr>
-              <th>Renter</th>
-              <th>Property / Unit</th>
-              <th>Month</th>
-              <th>Water ($)</th>
-              <th>Electric ($)</th>
-              <th>Gas ($)</th>
-              <th>Security ($)</th>
-              <th>Total ($)</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && (
-              <tr><td colSpan={10} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No bills found</td></tr>
-            )}
-            {filtered.map(b => (
-              <tr key={b.id}>
-                <td style={{fontWeight:650}}>{b.renter}</td>
-                <td>
-                  <div style={{fontSize:13}}>{b.property}</div>
-                  <div style={{fontSize:11,color:'var(--muted)'}}>{b.floor} · <span className="af-prop-badge type">{b.unit}</span></div>
-                </td>
-                <td style={{fontSize:13}}>{b.month}</td>
-                <td style={{fontVariantNumeric:'tabular-nums'}}>{b.water}</td>
-                <td style={{fontVariantNumeric:'tabular-nums'}}>{b.electric}</td>
-                <td style={{fontVariantNumeric:'tabular-nums'}}>{b.gas}</td>
-                <td style={{fontVariantNumeric:'tabular-nums'}}>{b.security}</td>
-                <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums'}}>${total(b)}</td>
-                <td>
-                  <span
-                    onClick={() => !b.paid && markPaid(b.id)}
-                    style={{
-                      fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:100,
-                      background: b.paid ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                      color:      b.paid ? '#22c55e'              : '#ef4444',
-                      cursor:     b.paid ? 'default'              : 'pointer',
-                      userSelect: 'none',
-                    }}
-                    title={b.paid ? '' : 'Click to mark as paid'}
-                  >
-                    {b.paid ? 'paid' : 'unpaid'}
-                  </span>
-                </td>
-                <td>
-                  <div style={{display:'flex',gap:8}}>
-                    <button className="af-prop-act edit" onClick={() => openEdit(b)}>Edit</button>
-                    <button className="af-prop-act del"  onClick={() => del(b.id)}>Delete</button>
-                  </div>
-                </td>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading utility bills…</div>
+      ) : (
+        <div className="af-prop-table-wrap af-fade-in" style={{ overflowX: 'auto' }}>
+          <table className="af-prop-table">
+            <thead>
+              <tr>
+                <th>Renter</th><th>Property / Unit</th><th>Month</th>
+                <th>Water</th><th>Electric</th><th>Cusa</th><th>Other</th><th>Total</th><th>Status</th><th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
+              ) : filtered.map((b, i) => (
+                <tr key={b.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
+                  <td style={{ fontWeight: 650 }}>{b.renter_name?.trim() || '—'}</td>
+                  <td>
+                    <div style={{ fontSize: 13 }}>{b.property_name || '—'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>{b.floor_name || '—'} · <span className="af-prop-badge type">{b.unit_name || '—'}</span></div>
+                  </td>
+                  <td style={{ fontSize: 13 }}>{b.month || '—'}</td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.water_bill)}</td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.electric_bill)}</td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.cusa)}</td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.other_bill)}</td>
+                  <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(billTotal(b))}</td>
+                  <td>
+                    <span
+                      onClick={() => b.payment_status !== 1 && markPaid(b.id)}
+                      className={`af-status-pill ${b.payment_status !== 1 ? 'af-pulse' : ''}`}
+                      style={{ background: b.payment_status === 1 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: b.payment_status === 1 ? '#22c55e' : '#ef4444', cursor: b.payment_status === 1 ? 'default' : 'pointer' }}
+                      title={b.payment_status === 1 ? '' : 'Click to mark as paid'}
+                    >
+                      {b.payment_status === 1 ? 'paid' : 'unpaid'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="af-prop-act edit" onClick={() => openEdit(b)}>Edit</button>
+                      <button className="af-prop-act del" onClick={() => del(b.id)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Add / Edit Modal */}
       {showModal && (
         <div className="af-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="af-modal" style={{maxWidth:560,maxHeight:'88vh',overflowY:'auto'}} onClick={e => e.stopPropagation()}>
+          <div className="af-modal af-modal-in" style={{ maxWidth: 560, maxHeight: '88vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <h2 className="af-modal-title">{editing ? 'Edit Utility Bill' : 'Add Utility Bill'}</h2>
             <div className="af-modal-form">
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                <div className="af-field" style={{gridColumn:'1/-1'}}>
-                  <label>Property</label>
-                  <select className="af-select" value={form.property} onChange={e => sf(e.target.value,'property')}>
-                    <option value="">Select property…</option>
-                    <option>Sunrise Towers</option>
-                    <option>Green Valley Block</option>
-                    <option>Metro Heights</option>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="af-field">
+                  <label>Renter</label>
+                  <select className="af-select" value={form.renter_id} onChange={e => sf(e.target.value, 'renter_id')}>
+                    <option value="">-- Select Renter --</option>
+                    {renters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
-                <div className="af-field"><label>Floor</label><input value={form.floor} onChange={e=>sf(e.target.value,'floor')} placeholder="Floor 4"/></div>
-                <div className="af-field"><label>Unit</label><input value={form.unit} onChange={e=>sf(e.target.value,'unit')} placeholder="4B"/></div>
-                <div className="af-field"><label>Renter Name</label><input value={form.renter} onChange={e=>sf(e.target.value,'renter')} placeholder="James Carter"/></div>
-                <div className="af-field"><label>Month</label><input value={form.month} onChange={e=>sf(e.target.value,'month')} placeholder="June 2026"/></div>
-                <div className="af-field"><label>Water Bill ($)</label><input type="number" min="0" value={form.water} onChange={e=>sf(e.target.value,'water')} placeholder="0"/></div>
-                <div className="af-field"><label>Electric Bill ($)</label><input type="number" min="0" value={form.electric} onChange={e=>sf(e.target.value,'electric')} placeholder="0"/></div>
-                <div className="af-field"><label>Gas Bill ($)</label><input type="number" min="0" value={form.gas} onChange={e=>sf(e.target.value,'gas')} placeholder="0"/></div>
-                <div className="af-field"><label>Security Bill ($)</label><input type="number" min="0" value={form.security} onChange={e=>sf(e.target.value,'security')} placeholder="0"/></div>
-                <div className="af-field"><label>Other Bill ($)</label><input type="number" min="0" value={form.other} onChange={e=>sf(e.target.value,'other')} placeholder="0"/></div>
-                <div className="af-field"><label>Issue Date</label><input type="date" value={form.date} onChange={e=>sf(e.target.value,'date')}/></div>
+                <div className="af-field">
+                  <label>Property</label>
+                  <select className="af-select" value={form.property_id} onChange={e => sf(e.target.value, 'property_id')}>
+                    <option value="">-- Select Property --</option>
+                    {properties.map(p => <option key={p.id} value={p.id}>{p.property_name}</option>)}
+                  </select>
+                </div>
+                <div className="af-field"><label>Month</label><input value={form.month} onChange={e => sf(e.target.value, 'month')} placeholder="June" /></div>
+                <div className="af-field"><label>Issue Date</label><input type="date" value={form.issue_date} onChange={e => sf(e.target.value, 'issue_date')} /></div>
+                <div className="af-field"><label>Water Bill</label><input type="number" min="0" value={form.water_bill} onChange={e => sf(e.target.value, 'water_bill')} placeholder="0" /></div>
+                <div className="af-field"><label>Electric Bill</label><input type="number" min="0" value={form.electric_bill} onChange={e => sf(e.target.value, 'electric_bill')} placeholder="0" /></div>
+                <div className="af-field"><label>Gas Bill</label><input type="number" min="0" value={form.gas_bill} onChange={e => sf(e.target.value, 'gas_bill')} placeholder="0" /></div>
+                <div className="af-field"><label>Security Bill</label><input type="number" min="0" value={form.security_bill} onChange={e => sf(e.target.value, 'security_bill')} placeholder="0" /></div>
+                <div className="af-field"><label>Cusa</label><input type="number" min="0" value={form.cusa} onChange={e => sf(e.target.value, 'cusa')} placeholder="0" /></div>
+                <div className="af-field"><label>Other Bill</label><input type="number" min="0" value={form.other_bill} onChange={e => sf(e.target.value, 'other_bill')} placeholder="0" /></div>
               </div>
-              {/* Running total preview */}
-              <div style={{marginTop:12,padding:'10px 14px',background:'var(--surface2)',borderRadius:10,fontSize:13,fontWeight:600}}>
-                Total: <span style={{fontVariantNumeric:'tabular-nums',color:'var(--accent)'}}>
-                  ${(Number(form.water)||0)+(Number(form.electric)||0)+(Number(form.gas)||0)+(Number(form.security)||0)+(Number(form.other)||0)}
+              <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--surface2)', borderRadius: 10, fontSize: 13, fontWeight: 600 }}>
+                Total: <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--accent)' }}>
+                  {fmt((Number(form.water_bill) || 0) + (Number(form.electric_bill) || 0) + (Number(form.gas_bill) || 0) + (Number(form.security_bill) || 0) + (Number(form.cusa) || 0) + (Number(form.other_bill) || 0))}
                 </span>
               </div>
             </div>
-            <div style={{display:'flex',gap:10,marginTop:22,justifyContent:'flex-end'}}>
-              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="af-auth-submit" style={{width:'auto',padding:'10px 24px'}} onClick={save}>
-                {editing ? 'Save changes' : 'Add bill'}
-              </button>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={save}>{editing ? 'Save changes' : 'Add bill'}</button>
             </div>
           </div>
         </div>
