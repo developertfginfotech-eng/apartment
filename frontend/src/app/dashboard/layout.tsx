@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTheme } from '../../lib/useTheme'
 
 interface UserInfo { name: string; role: string }
 
@@ -32,6 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const [user, setUser]         = useState<UserInfo | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const { dark, toggle: toggleTheme } = useTheme()
 
   useEffect(() => {
     const token  = localStorage.getItem('apt_token')
@@ -104,6 +106,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {NAV.find(n => isActive(n.href))?.label ?? 'Dashboard'}
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{
+                display:'flex',alignItems:'center',justifyContent:'center',
+                width:36,height:36,borderRadius:10,cursor:'pointer',
+                background:'var(--surface2)',border:'1px solid var(--border2)',
+                color:'var(--text)',fontSize:16,
+              }}
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
             <div className="af-db-user-chip">
               <div className="af-db-avatar" style={{width:28,height:28,fontSize:11}}>{user?.name?.[0]?.toUpperCase()}</div>
               <span style={{fontSize:13,fontWeight:600}}>{user?.name}</span>

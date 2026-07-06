@@ -27,6 +27,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('apt_theme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useTheme } from '../lib/useTheme'
 
 /* ── SVG helpers ─────────────────────────────────────────────────────────── */
 type ArrProps = { x1:number; y1:number; x2:number; y2:number; dashed?:boolean }
@@ -171,17 +172,12 @@ function WfCard({ name, cat, Diagram }: DiagramCard) {
 
 /* ── Main page ───────────────────────────────────────────────────────────── */
 export default function Home() {
-  const [dark, setDark] = useState(true)
+  const { dark, toggle: setDark } = useTheme()
   const [authedUser, setAuthedUser] = useState<{name:string;role:string}|null>(null)
   const sparksRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
   const svgRef    = useRef<SVGSVGElement>(null)
   const layerRef  = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (dark) document.documentElement.removeAttribute('data-theme')
-    else      document.documentElement.setAttribute('data-theme', 'light')
-  }, [dark])
 
   useEffect(() => {
     const stored = localStorage.getItem('apt_user')
@@ -285,7 +281,7 @@ export default function Home() {
           ) : (
             <a className="af-nav-cta" href="/login">Sign in</a>
           )}
-          <button className="af-theme-btn" onClick={() => setDark(d => !d)} aria-label="Toggle theme">
+          <button className="af-theme-btn" onClick={() => setDark()} aria-label="Toggle theme">
             {dark ? '🌙' : '☀️'}
           </button>
         </div>
