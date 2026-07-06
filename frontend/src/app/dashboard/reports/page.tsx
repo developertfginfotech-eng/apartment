@@ -1,72 +1,216 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
-type ReportType = 'collection'|'financial'|'outstanding'|'utility'|'expense'|'wtax'
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
-const PAYMENT_DATA = [
-  { lease:'LS0001', renter:'James Carter',  property:'Sunrise Towers',    unit:'4B', collected:13200, months:6 },
-  { lease:'LS0002', renter:'Priya Sharma',  property:'Green Valley Block', unit:'2A', collected:9250,  months:5 },
-  { lease:'LS0003', renter:'Marco Rivera',  property:'Sunrise Towers',    unit:'7C', collected:0,     months:0 },
-  { lease:'LS0004', renter:'Aisha Okonkwo', property:'Metro Heights',     unit:'1D', collected:12600, months:6 },
-  { lease:'LS0005', renter:'Liam Thompson', property:'Green Valley Block', unit:'5F', collected:10000, months:5 },
+type ReportKey =
+  | 'property' | 'outstanding' | 'financial' | 'collection' | 'utility' | 'expenses'
+  | 'wtax-expenses' | 'vat' | 'wtax-income' | 'parking' | 'refund-deposit'
+
+interface ReportDef {
+  key: ReportKey; icon: string; label: string; desc: string
+  endpoint: string; dateFilter: boolean; search: boolean
+}
+
+const ROWS: ReportDef[][] = [
+  [
+    { key:'property',    icon:'🏢', label:'Property Report',     desc:'Floors, units, and renters per property',      endpoint:'property',    dateFilter:false, search:false },
+    { key:'outstanding', icon:'⚠️', label:'Property Outstanding', desc:'Amounts owed vs paid per lease',               endpoint:'outstanding', dateFilter:true,  search:true },
+    { key:'financial',   icon:'📈', label:'Financial Report',    desc:'Revenue, costs, and profit per property',      endpoint:'financial',   dateFilter:true,  search:false },
+    { key:'collection',  icon:'💳', label:'Collection Report',   desc:'Rent payments collected per lease',            endpoint:'collection',  dateFilter:true,  search:true },
+    { key:'utility',     icon:'⚡', label:'Utility Report',      desc:'Utility bills summary per property',           endpoint:'utility',     dateFilter:true,  search:false },
+    { key:'expenses',    icon:'💰', label:'Expenses Report',     desc:'All expenses by property and category',        endpoint:'expenses',    dateFilter:true,  search:true },
+  ],
+  [
+    { key:'wtax-expenses', icon:'🧾', label:'Withholding Expenses Report', desc:'Expenses tagged as withholding',      endpoint:'wtax-expenses', dateFilter:true, search:true },
+    { key:'vat',           icon:'🧮', label:'VAT Report',                  desc:'VAT amounts collected per lease',     endpoint:'vat',           dateFilter:true, search:true },
+    { key:'wtax-income',   icon:'📉', label:'Withholding Income Report',   desc:'Withholding tax amounts per lease',   endpoint:'wtax-income',   dateFilter:true, search:true },
+    { key:'parking',       icon:'🅿️', label:'Parking Income Report',       desc:'Parking payments per renter',         endpoint:'parking',       dateFilter:true, search:true },
+    { key:'refund-deposit',icon:'🔁', label:'Refund Deposit Report',       desc:'Security deposit refunds per lease',  endpoint:'refund-deposit',dateFilter:true, search:true },
+  ],
 ]
+const ALL_REPORTS = ROWS.flat()
 
-const FINANCIAL_DATA = [
-  { property:'Sunrise Towers',    rentCollected:22450, maintenance:3200, expenses:4800, profit:14450 },
-  { property:'Green Valley Block',rentCollected:19250, maintenance:1850, expenses:2900, profit:14500 },
-  { property:'Metro Heights',     rentCollected:12600, maintenance:2200, expenses:3100, profit:7300  },
-]
-
-const OUTSTANDING_DATA = [
-  { lease:'LS0001', renter:'James Carter',  property:'Sunrise Towers',    totalDue:2200, paid:2200, balance:0    },
-  { lease:'LS0002', renter:'Priya Sharma',  property:'Green Valley Block', totalDue:1850, paid:1850, balance:0    },
-  { lease:'LS0003', renter:'Marco Rivera',  property:'Sunrise Towers',    totalDue:1950, paid:0,    balance:1950 },
-  { lease:'LS0004', renter:'Aisha Okonkwo', property:'Metro Heights',     totalDue:2100, paid:2100, balance:0    },
-  { lease:'LS0005', renter:'Liam Thompson', property:'Green Valley Block', totalDue:2000, paid:2000, balance:0    },
-]
-
-const EXPENSE_DATA = [
-  { property:'Sunrise Towers',    category:'Repairs',        title:'Fix leaking pipe Unit 3B', amount:352,  date:'2026-06-01' },
-  { property:'Green Valley Block',category:'Administration',  title:'Annual property insurance',amount:2400, date:'2026-05-15' },
-  { property:'Sunrise Towers',    category:'Cleaning',        title:'Monthly cleaning contract',amount:577,  date:'2026-06-05' },
-  { property:'Metro Heights',     category:'Utilities',       title:'Common area electricity',  amount:180,  date:'2026-06-10' },
-  { property:'Green Valley Block',category:'Repairs',         title:'Replace corridor lighting',amount:264,  date:'2026-05-28' },
-  { property:'Metro Heights',     category:'Administration',  title:'Lease contract review',    amount:862,  date:'2026-05-20' },
-]
-
-const REPORT_TYPES: { key: ReportType; icon:string; label:string; desc:string }[] = [
-  { key:'collection', icon:'💳', label:'Rent Collection',   desc:'Payments collected per lease for the period' },
-  { key:'financial',  icon:'📈', label:'Financial Summary', desc:'Revenue, costs, and profit per property' },
-  { key:'outstanding',icon:'⚠️', label:'Outstanding Ledger',desc:'Amounts owed vs paid per lease' },
-  { key:'expense',    icon:'💰', label:'Expense Report',    desc:'All expenses by property and category' },
-  { key:'utility',    icon:'⚡', label:'Utility Report',    desc:'Utility bills summary per property' },
-  { key:'wtax',       icon:'🧾', label:'Withholding Tax',   desc:'WHT amounts per lease' },
-]
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
+const fmt = (v: number|string|null|undefined) => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
 
 export default function ReportsPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
 
-  const [active, setActive] = useState<ReportType>('collection')
-  const report = REPORT_TYPES.find(r => r.key === active)!
+  const [active, setActive] = useState<ReportKey>('property')
+  const report = ALL_REPORTS.find(r => r.key === active)!
+
+  const [rows, setRows]       = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState('')
+  const [from, setFrom]       = useState('')
+  const [to, setTo]           = useState('')
+  const [search, setSearch]   = useState('')
+
+  const fetchReport = useCallback(async () => {
+    setLoading(true); setError('')
+    try {
+      const params = new URLSearchParams()
+      if (report.dateFilter) { if (from) params.set('from', from); if (to) params.set('to', to) }
+      if (report.search && search) params.set('search', search)
+      const res  = await fetch(`${API}/report/${report.endpoint}?${params}`, { headers: authHeaders() })
+      const data = await res.json()
+      setRows(Array.isArray(data) ? data : [])
+    } catch { setError('Failed to load report data'); setRows([]) }
+    finally { setLoading(false) }
+  }, [report, from, to, search])
+
+  useEffect(() => { fetchReport() }, [fetchReport])
+
+  const switchTab = (key: ReportKey) => { setActive(key); setFrom(''); setTo(''); setSearch('') }
+
+  // column definitions per report, kept declarative so export + render share one source of truth
+  const columns: Record<ReportKey, { label:string; get:(r:any)=>string|number }[]> = {
+    property: [
+      { label:'Name', get:r=>r.property_name },
+      { label:'Total Floor', get:r=>r.total_floor },
+      { label:'Total Unit', get:r=>r.total_unit },
+      { label:'Total Renter', get:r=>r.total_renter },
+      { label:'Status', get:r=>Number(r.total_renter)>0?'On Rent':'Available' },
+    ],
+    outstanding: [
+      { label:'Lease No', get:r=>r.lease_no },
+      { label:'Property', get:r=>r.property_name },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Renter', get:r=>r.renter_name },
+      { label:'Last Bill Date', get:r=>r.lastbill_date??'—' },
+      { label:'Total Rent', get:r=>fmt(r.lease_total_rent) },
+      { label:'Paid', get:r=>fmt(r.paid_amount) },
+      { label:'Balance', get:r=>fmt(Number(r.lease_total_rent??0)-Number(r.paid_amount??0)) },
+    ],
+    financial: [
+      { label:'Property', get:r=>r.property_name },
+      { label:'Rent Collected', get:r=>fmt(r.pay_amount) },
+      { label:'Owner Maintenance', get:r=>fmt(r.owner_maintenance) },
+      { label:'Renter Maintenance', get:r=>fmt(r.renter_maintenance) },
+      { label:'Expenses', get:r=>fmt(r.expenses) },
+      { label:'Deposit', get:r=>fmt(r.deposit) },
+      { label:'Net Profit', get:r=>fmt(Number(r.pay_amount??0)-Number(r.expenses??0)-Number(r.owner_maintenance??0)+Number(r.renter_maintenance??0)) },
+    ],
+    collection: [
+      { label:'Lease No', get:r=>r.lease_no },
+      { label:'Property', get:r=>r.property_name },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Renter', get:r=>r.renter_name },
+      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'Amount', get:r=>fmt(r.total_paid_amount) },
+    ],
+    utility: [
+      { label:'Property', get:r=>r.property_name },
+      { label:'MCWD (Water)', get:r=>fmt(r.water_bill) },
+      { label:'VECO (Gas)', get:r=>fmt(r.gas_bill) },
+      { label:'Security', get:r=>fmt(r.security_bill) },
+      { label:'Telephone', get:r=>fmt(r.utility_bill) },
+      { label:'Other', get:r=>fmt(r.other_bill) },
+      { label:'Total', get:r=>fmt(r.total_rent) },
+    ],
+    expenses: [
+      { label:'Title', get:r=>r.title },
+      { label:'Date', get:r=>r.date },
+      { label:'Property', get:r=>r.property_name??'—' },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Category', get:r=>r.category??'—' },
+      { label:'Amount', get:r=>fmt(r.amount) },
+    ],
+    'wtax-expenses': [
+      { label:'Title', get:r=>r.title },
+      { label:'Date', get:r=>r.date },
+      { label:'Property', get:r=>r.property_name??'—' },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Category', get:r=>r.category??'—' },
+      { label:'Amount', get:r=>fmt(r.amount) },
+    ],
+    vat: [
+      { label:'Lease No', get:r=>r.lease_no },
+      { label:'Property', get:r=>r.property_name },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Renter', get:r=>r.renter_name },
+      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'VAT Amount', get:r=>fmt(r.total_paid_amount) },
+    ],
+    'wtax-income': [
+      { label:'Lease No', get:r=>r.lease_no },
+      { label:'Property', get:r=>r.property_name },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Renter', get:r=>r.renter_name },
+      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'WHT Amount', get:r=>fmt(r.total_paid_amount) },
+    ],
+    parking: [
+      { label:'Property', get:r=>r.property_name??'—' },
+      { label:'Renter', get:r=>r.renter_name??'—' },
+      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?r.payment_date:'—' },
+      { label:'Amount', get:r=>fmt(Number(r.payment_status)!==0?r.price:0) },
+    ],
+    'refund-deposit': [
+      { label:'Property', get:r=>r.property_name??'—' },
+      { label:'Renter', get:r=>r.renter_name??'—' },
+      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?r.payment_date:'—' },
+      { label:'Amount', get:r=>fmt(Number(r.payment_status)!==0?r.amount:0) },
+    ],
+  }
+
+  const cols = columns[active]
+  const numericCols = new Set(['Total Rent','Paid','Balance','Rent Collected','Owner Maintenance','Renter Maintenance','Expenses','Deposit','Net Profit','Amount','VAT Amount','WHT Amount','MCWD (Water)','VECO (Gas)','Security','Telephone','Other','Total'])
+
+  const exportCSV = () => {
+    const csv = [cols.map(c=>c.label), ...rows.map(r=>cols.map(c=>c.get(r)))].map(r=>r.join(',')).join('\n')
+    const a = Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`${report.endpoint}.csv`})
+    a.click()
+  }
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation:'landscape' })
+    doc.setFontSize(14)
+    doc.text(report.label, 14, 14)
+    autoTable(doc, {
+      head: [cols.map(c=>c.label)],
+      body: rows.map(r=>cols.map(c=>String(c.get(r)))),
+      startY: 20,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [249,115,22] },
+    })
+    doc.save(`${report.endpoint}.pdf`)
+  }
 
   return (
     <main className="af-db-main">
-      <div className="af-db-topbar">
+      <div className="af-db-topbar" style={{marginBottom:20}}>
         <div>
           <h1 className="af-db-greeting" style={{fontSize:26}}>Reports</h1>
           <p className="af-db-subtitle">Financial and operational reports</p>
         </div>
-        <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>alert('Export to PDF — connects to backend in production')}>Export PDF</button>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>↓ Export CSV</button>
+          <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>↓ Export PDF</button>
+        </div>
       </div>
 
-      {/* Report type tabs */}
-      <div style={{display:'flex',gap:8,marginBottom:22,flexWrap:'wrap'}}>
-        {REPORT_TYPES.map(r => (
-          <button key={r.key} onClick={()=>setActive(r.key)} style={{display:'flex',alignItems:'center',gap:7,padding:'8px 14px',borderRadius:9,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit',borderColor:active===r.key?'var(--accent)':'var(--border2)',background:active===r.key?'rgba(249,115,22,0.12)':'var(--surface)',color:active===r.key?'var(--accent)':'var(--muted)'}}>
-            <span>{r.icon}</span>{r.label}
-          </button>
+      {/* Report type tabs — two rows, matching the reference nav grouping */}
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:22}}>
+        {ROWS.map((row,i) => (
+          <div key={i} style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {row.map(r => (
+              <button key={r.key} onClick={()=>switchTab(r.key)} style={{display:'flex',alignItems:'center',gap:7,padding:'8px 14px',borderRadius:9,border:'1px solid',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit',borderColor:active===r.key?'var(--accent)':'var(--border2)',background:active===r.key?'rgba(249,115,22,0.12)':'var(--surface)',color:active===r.key?'var(--accent)':'var(--muted)'}}>
+                <span>{r.icon}</span>{r.label}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -76,108 +220,46 @@ export default function ReportsPage() {
         <div style={{fontSize:12.5,color:'var(--muted)',marginTop:2}}>{report.desc}</div>
       </div>
 
-      {/* Collection Report */}
-      {active==='collection' && (
-        <div className="af-prop-table-wrap">
-          <table className="af-prop-table">
-            <thead><tr><th>Lease No</th><th>Renter</th><th>Property</th><th>Unit</th><th>Months Paid</th><th>Total Collected</th></tr></thead>
-            <tbody>
-              {PAYMENT_DATA.map((r,i) => (
-                <tr key={i}>
-                  <td><span className="af-prop-badge type">{r.lease}</span></td>
-                  <td style={{fontWeight:650}}>{r.renter}</td>
-                  <td style={{color:'var(--muted)',fontSize:13}}>{r.property}</td>
-                  <td>{r.unit}</td>
-                  <td style={{textAlign:'center',fontVariantNumeric:'tabular-nums'}}>{r.months}</td>
-                  <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums',color:r.collected>0?'var(--text)':'#ef4444'}}>${r.collected.toLocaleString()}</td>
-                </tr>
-              ))}
-              <tr style={{background:'var(--surface2)'}}>
-                <td colSpan={5} style={{fontWeight:700,textAlign:'right'}}>Total</td>
-                <td style={{fontWeight:800,fontVariantNumeric:'tabular-nums'}}>${PAYMENT_DATA.reduce((s,r)=>s+r.collected,0).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
+      {(report.dateFilter || report.search) && (
+        <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
+          {report.dateFilter && <>
+            <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>From Date</label>
+              <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{padding:'8px 10px'}}/></div>
+            <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>To Date</label>
+              <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{padding:'8px 10px'}}/></div>
+          </>}
+          {report.search && (
+            <div className="af-field" style={{margin:0,minWidth:200}}><label style={{fontSize:11.5}}>Search</label>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{padding:'8px 10px'}}/></div>
+          )}
+          {(from||to||search) && (
+            <button onClick={()=>{setFrom('');setTo('');setSearch('')}} style={{padding:'8px 14px',borderRadius:8,background:'none',border:'1px solid var(--border2)',color:'var(--muted)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>
+          )}
         </div>
       )}
 
-      {/* Financial Summary */}
-      {active==='financial' && (
-        <div className="af-prop-table-wrap">
-          <table className="af-prop-table">
-            <thead><tr><th>Property</th><th>Rent Collected</th><th>Maintenance Cost</th><th>Other Expenses</th><th>Net Profit</th></tr></thead>
-            <tbody>
-              {FINANCIAL_DATA.map((r,i) => (
-                <tr key={i}>
-                  <td style={{fontWeight:650}}>{r.property}</td>
-                  <td style={{fontVariantNumeric:'tabular-nums',color:'#22c55e',fontWeight:600}}>${r.rentCollected.toLocaleString()}</td>
-                  <td style={{fontVariantNumeric:'tabular-nums',color:'#f97316'}}>${r.maintenance.toLocaleString()}</td>
-                  <td style={{fontVariantNumeric:'tabular-nums',color:'#f97316'}}>${r.expenses.toLocaleString()}</td>
-                  <td style={{fontWeight:750,fontVariantNumeric:'tabular-nums',color:r.profit>0?'#22c55e':'#ef4444'}}>${r.profit.toLocaleString()}</td>
-                </tr>
-              ))}
-              <tr style={{background:'var(--surface2)'}}>
-                <td style={{fontWeight:700}}>Total</td>
-                <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums'}}>${FINANCIAL_DATA.reduce((s,r)=>s+r.rentCollected,0).toLocaleString()}</td>
-                <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums'}}>${FINANCIAL_DATA.reduce((s,r)=>s+r.maintenance,0).toLocaleString()}</td>
-                <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums'}}>${FINANCIAL_DATA.reduce((s,r)=>s+r.expenses,0).toLocaleString()}</td>
-                <td style={{fontWeight:800,fontVariantNumeric:'tabular-nums',color:'#22c55e'}}>${FINANCIAL_DATA.reduce((s,r)=>s+r.profit,0).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
+      {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:10,padding:'10px 16px',marginBottom:16,color:'#ef4444',fontSize:13}}>{error}</div>}
 
-      {/* Outstanding Ledger */}
-      {active==='outstanding' && (
+      {loading ? (
+        <div style={{textAlign:'center',padding:'60px 0',color:'var(--muted)'}}>Loading…</div>
+      ) : (
         <div className="af-prop-table-wrap">
           <table className="af-prop-table">
-            <thead><tr><th>Lease</th><th>Renter</th><th>Property</th><th>Total Due</th><th>Paid</th><th>Balance</th></tr></thead>
+            <thead><tr>{cols.map(c=><th key={c.label}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {OUTSTANDING_DATA.map((r,i) => (
+              {rows.length===0 ? (
+                <tr><td colSpan={cols.length} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No data available</td></tr>
+              ) : rows.map((r,i) => (
                 <tr key={i}>
-                  <td><span className="af-prop-badge type">{r.lease}</span></td>
-                  <td style={{fontWeight:650}}>{r.renter}</td>
-                  <td style={{color:'var(--muted)',fontSize:13}}>{r.property}</td>
-                  <td style={{fontVariantNumeric:'tabular-nums'}}>${r.totalDue.toLocaleString()}</td>
-                  <td style={{fontVariantNumeric:'tabular-nums',color:'#22c55e'}}>${r.paid.toLocaleString()}</td>
-                  <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums',color:r.balance>0?'#ef4444':'#22c55e'}}>{r.balance>0?`$${r.balance.toLocaleString()}`:'Settled'}</td>
+                  {cols.map(c => (
+                    <td key={c.label} style={{fontVariantNumeric:numericCols.has(c.label)?'tabular-nums':undefined,fontWeight:numericCols.has(c.label)?700:undefined}}>
+                      {c.get(r)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Expense Report */}
-      {active==='expense' && (
-        <div className="af-prop-table-wrap">
-          <table className="af-prop-table">
-            <thead><tr><th>Date</th><th>Property</th><th>Category</th><th>Title</th><th>Amount</th></tr></thead>
-            <tbody>
-              {EXPENSE_DATA.map((r,i) => (
-                <tr key={i}>
-                  <td style={{fontSize:12.5,color:'var(--muted)'}}>{r.date}</td>
-                  <td style={{fontWeight:650}}>{r.property}</td>
-                  <td><span className="af-prop-badge type">{r.category}</span></td>
-                  <td style={{fontSize:13}}>{r.title}</td>
-                  <td style={{fontWeight:700,fontVariantNumeric:'tabular-nums'}}>${r.amount.toLocaleString()}</td>
-                </tr>
-              ))}
-              <tr style={{background:'var(--surface2)'}}>
-                <td colSpan={4} style={{fontWeight:700,textAlign:'right'}}>Total</td>
-                <td style={{fontWeight:800,fontVariantNumeric:'tabular-nums'}}>${EXPENSE_DATA.reduce((s,r)=>s+r.amount,0).toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {(active==='utility'||active==='wtax') && (
-        <div style={{textAlign:'center',padding:'48px 20px',color:'var(--muted)'}}>
-          <div style={{fontSize:36,marginBottom:12}}>{report.icon}</div>
-          <div style={{fontSize:15,fontWeight:650,marginBottom:6,color:'var(--text)'}}>{report.label}</div>
-          <div style={{fontSize:13}}>This report will pull live data once connected to the database.</div>
         </div>
       )}
     </main>

@@ -4,12 +4,14 @@ import * as bcrypt from 'bcryptjs';
 import { UsersService, UserRole, Permission } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private activityLog: ActivityLogService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -26,6 +28,7 @@ export class AuthService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...safe } = user;
     const token = this.signToken(user.id, user.email, user.role);
+    this.activityLog.record(`User ${user.name} logged in`, user.name).catch(() => {});
     return { user: safe, token };
   }
 
