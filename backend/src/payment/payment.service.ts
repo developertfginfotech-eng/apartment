@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Payment } from './payment.entity';
 
 @Injectable()
 export class PaymentService {
-  constructor(@InjectRepository(Payment) private repo: Repository<Payment>) {}
+  constructor(
+    @InjectRepository(Payment) private repo: Repository<Payment>,
+    @InjectDataSource() private readonly ds: DataSource,
+  ) {}
 
   findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
@@ -19,5 +22,133 @@ export class PaymentService {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException();
     return this.repo.remove(e);
+  }
+
+  // ── Rent / Interest tab: lease-level summary with month-by-month overdue ──
+  async findRentSummary(from?: string, to?: string, search?: string) {
+    const conditions: string[] = ['l.status = 1'];
+    const bindings: any[] = [];
+
+    if (search) {
+      conditions.push('(r.first_name LIKE ? OR r.last_name LIKE ? OR p.property_name LIKE ? OR l.rent_amount LIKE ?)');
+      bindings.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    if (from) { conditions.push('l.start_date >= ?'); bindings.push(from); }
+    if (to)   { conditions.push('l.start_date <= ?'); bindings.push(to); }
+
+    const leases = await this.ds.query(
+      `SELECT
+         l.id, l.rent_amount, l.start_date, l.end_date, l.lastbill_date,
+         CONCAT(r.first_name, ' ', COALESCE(r.middle_name,''), ' ', COALESCE(r.last_name,'')) AS renter_name,
+         p.property_name,
+         f.name AS floor_name,
+         (SELECT GROUP_CONCAT(pu.name SEPARATOR ', ')
+            FROM tbl_lease_units lu
+            JOIN tbl_property_units pu ON pu.id = lu.unit_id
+            WHERE lu.lease_id = l.id) AS units
+       FROM tbl_leases l
+       LEFT JOIN tbl_renters r ON r.id = l.renter_id
+       LEFT JOIN tbl_properties p ON p.id = l.property_id
+       LEFT JOIN tbl_property_floors f ON f.id = l.floor_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY l.lastbill_date ASC`,
+      bindings,
+    );
+
+    if (!leases.length) return [];
+
+    const leaseIds = leases.map((l: any) => l.id);
+    const pays = await this.ds.query(
+      `SELECT lease_id, payment_month, payment_type
+       FROM tbl_pay_rents
+       WHERE lease_id IN (${leaseIds.map(() => '?').join(',')})`,
+      leaseIds,
+    );
+    const paysByLease = new Map<number, { payment_month: string; payment_type: string }[]>();
+    for (const p of pays) {
+      const arr = paysByLease.get(p.lease_id) ?? [];
+      arr.push(p);
+      paysByLease.set(p.lease_id, arr);
+    }
+
+    const monthLabel = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', '-');
+    const currentYm = new Date().toISOString().slice(0, 7);
+
+    return leases.map((l: any) => {
+      const lp = paysByLease.get(l.id) ?? [];
+      const paidMonths = new Set(lp.map(p => p.payment_month));
+      const overdueMonths: string[] = [];
+      let paymentStatus: 'Paid' | 'Pending' = 'Pending';
+      let paymentMethod: string | null = null;
+
+      if (l.start_date && l.end_date) {
+        const start = new Date(l.start_date);
+        const end = new Date(l.end_date);
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        const endCursor = new Date(end.getFullYear(), end.getMonth(), 1);
+        while (cursor <= endCursor) {
+          const ym = cursor.toISOString().slice(0, 7);
+          if (!paidMonths.has(ym)) overdueMonths.push(monthLabel(cursor));
+          if (ym === currentYm) {
+            const rec = lp.find(p => p.payment_month === ym);
+            if (rec) { paymentStatus = 'Paid'; paymentMethod = rec.payment_type; }
+          }
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      }
+
+      return { ...l, overdueMonths, payment_status: paymentStatus, payment_method: paymentMethod };
+    });
+  }
+
+  // ── Maintenances tab ──
+  async findMaintenance() {
+    return this.ds.query(
+      `SELECT m.id, m.title, m.amount, m.date, m.description, m.payment_type, m.payment_status,
+              p.property_name
+       FROM tbl_maintenances m
+       LEFT JOIN tbl_properties p ON p.id = m.property_id
+       ORDER BY m.date DESC`,
+    );
+  }
+  async payMaintenance(id: number) {
+    await this.ds.query(`UPDATE tbl_maintenances SET payment_status = 1 WHERE id = ?`, [id]);
+    return { ok: true };
+  }
+
+  // ── Utilities Bill tab ──
+  async findUtility() {
+    return this.ds.query(
+      `SELECT u.id, u.total_rent, u.issue_date, u.payment_type, u.payment_status,
+              p.property_name
+       FROM tbl_utilities u
+       LEFT JOIN tbl_properties p ON p.id = u.property_id
+       ORDER BY u.issue_date DESC`,
+    );
+  }
+  async payUtility(id: number) {
+    await this.ds.query(`UPDATE tbl_utilities SET payment_status = 1 WHERE id = ?`, [id]);
+    return { ok: true };
+  }
+
+  // ── Parking Bill tab ──
+  async findParking() {
+    return this.ds.query(
+      `SELECT pk.id, pk.price, pk.payment_date, pk.payment_type, pk.payment_status,
+              CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS renter_name,
+              p.property_name
+       FROM parkings pk
+       LEFT JOIN tbl_renters r ON r.id = pk.renter_id
+       LEFT JOIN tbl_properties p ON p.id = pk.property_id
+       ORDER BY pk.payment_date DESC`,
+    );
+  }
+  async payParking(id: number) {
+    await this.ds.query(`UPDATE parkings SET payment_status = '1' WHERE id = ?`, [id]);
+    return { ok: true };
+  }
+  async removeParking(id: number) {
+    await this.ds.query(`DELETE FROM parkings WHERE id = ?`, [id]);
+    return { ok: true };
   }
 }

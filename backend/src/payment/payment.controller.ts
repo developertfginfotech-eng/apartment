@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 
@@ -6,6 +6,22 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 export class PaymentController {
   constructor(private readonly svc: PaymentService) {}
+
+  @Get('rent-summary')
+  rentSummary(@Query('from') from?: string, @Query('to') to?: string, @Query('search') search?: string) {
+    return this.svc.findRentSummary(from, to, search);
+  }
+
+  @Get('maintenance')       findMaintenance()                          { return this.svc.findMaintenance(); }
+  @Put('maintenance/:id/pay') payMaintenance(@Param('id') id: string)  { return this.svc.payMaintenance(+id); }
+
+  @Get('utility')       findUtility()                          { return this.svc.findUtility(); }
+  @Put('utility/:id/pay') payUtility(@Param('id') id: string)  { return this.svc.payUtility(+id); }
+
+  @Get('parking')          findParking()                           { return this.svc.findParking(); }
+  @Put('parking/:id/pay')  payParking(@Param('id') id: string)     { return this.svc.payParking(+id); }
+  @Delete('parking/:id')   removeParking(@Param('id') id: string)  { return this.svc.removeParking(+id); }
+
   @Get()         findAll()                                           { return this.svc.findAll(); }
   @Get(':id')    findOne(@Param('id') id: string)                    { return this.svc.findOne(+id); }
   @Post()        create(@Body() dto: any)                            { return this.svc.create(dto); }
