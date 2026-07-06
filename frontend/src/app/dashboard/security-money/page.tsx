@@ -293,34 +293,45 @@ export default function SecurityMoneyPage() {
 
             {historyLoading ? (
               <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>Loading…</p>
-            ) : history.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>No transactions found.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
-                {history.map(tx => (
-                  <div key={tx.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface2)', borderRadius: 10, padding: '12px 16px', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100,
-                        background: tx.type === 'add' ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
-                        color: tx.type === 'add' ? '#22c55e' : '#ef4444',
-                        textTransform: 'uppercase',
-                      }}>
-                        {tx.type}
-                      </span>
-                      <div>
-                        <div style={{ fontWeight: 650, fontSize: 13.5 }}>{tx.title}</div>
-                        {tx.reason && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{tx.reason}</div>}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: tx.type === 'add' ? '#22c55e' : '#ef4444' }}>
-                        {tx.type === 'add' ? '+' : '-'}{fmt(tx.amount)}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{tx.payment_date}</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="af-prop-table-wrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
+                <table className="af-prop-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Title</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Payment Date</th>
+                      <th>Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.length === 0 ? (
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No transactions found.</td></tr>
+                    ) : history.map((tx, i) => (
+                      <tr key={tx.id}>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
+                        <td style={{ fontWeight: 650 }}>{tx.title}</td>
+                        <td>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100,
+                            background: tx.type === 'add' ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
+                            color: tx.type === 'add' ? '#22c55e' : '#ef4444',
+                            textTransform: 'uppercase',
+                          }}>
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: tx.type === 'add' ? '#22c55e' : '#ef4444' }}>
+                          {tx.type === 'add' ? '+' : '-'}{fmt(tx.amount)}
+                        </td>
+                        <td style={{ fontSize: 13 }}>{tx.payment_date}</td>
+                        <td style={{ fontSize: 13, color: 'var(--muted)' }}>{tx.reason || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>

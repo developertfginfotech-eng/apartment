@@ -23,6 +23,8 @@ export default function TaxesPage() {
   const [modalMode, setModalMode] = useState<ModalMode>(null)
   const [editTarget, setEditTarget] = useState<TaxRate | null>(null)
   const [form, setForm] = useState({ key: '', value: '' })
+  const [limit, setLimit] = useState(50)
+  const [search, setSearch] = useState('')
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -55,6 +57,10 @@ export default function TaxesPage() {
 
   const closeModal = () => { setModalMode(null); setEditTarget(null) }
 
+  const filteredTaxes = taxes
+    .filter(tx => tx.key.toLowerCase().includes(search.toLowerCase()))
+    .slice(0, limit)
+
   const save = async () => {
     const val = parseFloat(form.value)
     if (!form.key || isNaN(val)) return
@@ -84,6 +90,21 @@ export default function TaxesPage() {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+          Show
+          <select value={limit} onChange={e => setLimit(Number(e.target.value))} style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 7, color: 'var(--text)', fontSize: 11.5, padding: '5px 8px', fontFamily: 'inherit', cursor: 'pointer', maxWidth: 70 }}>
+            {[10, 25, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+          entries
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--muted)' }}>
+          Search:
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tax name…"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '6px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 200 }} />
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading taxes…</div>
       ) : (
@@ -98,9 +119,9 @@ export default function TaxesPage() {
               </tr>
             </thead>
             <tbody>
-              {taxes.length === 0 ? (
+              {filteredTaxes.length === 0 ? (
                 <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No taxes found</td></tr>
-              ) : taxes.map((tx, i) => (
+              ) : filteredTaxes.map((tx, i) => (
                 <tr key={tx.id}>
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{tx.key}</td>
