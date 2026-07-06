@@ -193,7 +193,7 @@ export default function PayrollPage() {
     doc.save('payroll.pdf')
   }
 
-  const fmt = (v: number|string) => Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+  const fmt = (v: number|string) => `₱ ${Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
 
   const totalNet = payrolls.reduce((s,p) => s+Number(p.net_pay),0)
 
@@ -283,7 +283,7 @@ export default function PayrollPage() {
       {/* Summary */}
       <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
         {[
-          {label:'Total Net Payroll',value:`$${fmt(totalNet)}`,color:'var(--accent)'},
+          {label:'Total Net Payroll',value:fmt(totalNet),color:'var(--accent)'},
           {label:'Total Records',    value:String(total),       color:'#3b82f6'},
           {label:'Showing',          value:`${payrolls.length} entries`,color:'var(--muted)'},
         ].map(c=>(

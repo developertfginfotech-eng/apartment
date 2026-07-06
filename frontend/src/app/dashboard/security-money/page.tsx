@@ -73,7 +73,7 @@ export default function SecurityMoneyPage() {
 
   useEffect(() => { fetchLeases() }, [fetchLeases])
 
-  const fmt = (v: string | number | null) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const exportHeaders = ['#', 'Renter Name', 'Property Name', 'Floor', 'Units', 'Rent Amount', 'Deposit Amount']
   const exportRows = () => leases.map((l, i) => [i + 1, l.renter_name?.trim() || '-', l.property_name || '-', l.floor_name || '-', l.units || '-', fmt(l.rent_amount), fmt(l.rent_deposit)])

@@ -16,7 +16,7 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
 })
 
-const fmt = (v: number|string) => Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+const fmt = (v: number|string) => `₱ ${Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
 
 export default function ManagePayrollTab() {
   const [batches, setBatches] = useState<Batch[]>([])
@@ -96,7 +96,7 @@ export default function ManagePayrollTab() {
 
         <div style={{marginBottom:16,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:12,padding:'16px 22px',width:'fit-content'}}>
           <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:6}}>Total Net Pay</div>
-          <div style={{fontSize:22,fontWeight:800,color:'var(--accent)'}}>${fmt(totalNet)}</div>
+          <div style={{fontSize:22,fontWeight:800,color:'var(--accent)'}}>{fmt(totalNet)}</div>
         </div>
 
         {detailLoading ? (

@@ -86,7 +86,7 @@ export default function LeasesPage() {
   const activeCount = buckets.filter(b => b.bucket === 'active').length
   const expiringCount = buckets.filter(b => b.bucket === 'expiring').length
 
-  const fmt = (v: string | number | null) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const save = async () => {
     if (!form.renter_id || !form.property_id || !form.rent_amount || !form.start_date || !form.end_date) return

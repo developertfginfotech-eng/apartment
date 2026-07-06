@@ -66,7 +66,7 @@ export default function UtilitiesPage() {
 
   const filtered = filter === 'all' ? bills : bills.filter(b => filter === 'paid' ? b.payment_status === 1 : b.payment_status !== 1)
 
-  const fmt = (v: string | number) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const billTotal = (b: UtilityBill) => Number(b.total_rent) || bill(b)
   const totalAll = bills.reduce((s, b) => s + billTotal(b), 0)
   const paidCount = bills.filter(b => b.payment_status === 1).length

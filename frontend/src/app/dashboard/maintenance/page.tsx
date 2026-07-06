@@ -214,7 +214,7 @@ export default function MaintenancePage() {
                     <td>{r.type_name ?? '—'}</td>
                     <td>{r.property_name ?? r.property_id}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                      ${Number(r.amount).toLocaleString()}
+                      ₱ {Number(r.amount).toLocaleString()}
                     </td>
                     <td style={{ fontSize: 13 }}>{r.date ? r.date.slice(0, 10) : '—'}</td>
                     <td>

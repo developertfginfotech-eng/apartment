@@ -76,7 +76,7 @@ export default function LoanPage() {
       .then(r => r.json()).then(d => Array.isArray(d) && setEmployees(d)).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fmt = (v: string | number | null) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const filteredLoans = loans.filter(l =>
     !search || l.employee_name?.toLowerCase().includes(search.toLowerCase()) || String(l.amount_of_loan).includes(search)

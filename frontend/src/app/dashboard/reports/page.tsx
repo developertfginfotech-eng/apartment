@@ -35,7 +35,7 @@ const ROWS: ReportDef[][] = [
 const ALL_REPORTS = ROWS.flat()
 
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
-const fmt = (v: number|string|null|undefined) => Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+const fmt = (v: number|string|null|undefined) => `₱ ${Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
 
 export default function ReportsPage() {
   const router = useRouter()

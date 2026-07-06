@@ -244,9 +244,9 @@ export default function ExpensesPage() {
                     <span className="af-prop-badge type" style={{ marginRight: 4 }}>{e.type}</span>
                     <span style={{ fontSize: 11, color: 'var(--muted)' }}>{e.sub_category}</span>
                   </td>
-                  <td style={{ textAlign: 'right', fontSize: 13, color: 'var(--muted)' }}>${fmt(e.amount)}</td>
+                  <td style={{ textAlign: 'right', fontSize: 13, color: 'var(--muted)' }}>₱ {fmt(e.amount)}</td>
                   <td style={{ textAlign: 'right', fontSize: 13, color: 'var(--muted)' }}>{e.tax}%</td>
-                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--accent)' }}>${fmt(e.famount)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--accent)' }}>₱ {fmt(e.famount)}</td>
                   <td style={{ fontSize: 13, color: 'var(--muted)' }}>{e.date}</td>
                   <td>
                     <button
@@ -307,7 +307,7 @@ export default function ExpensesPage() {
           Total ({filtered.length} expense{filtered.length !== 1 ? 's' : ''})
         </span>
         <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.02em' }}>
-          ${fmt(totalFinal)}
+          ₱ {fmt(totalFinal)}
         </span>
       </div>
 
@@ -356,7 +356,7 @@ export default function ExpensesPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div className="af-field">
-                  <label>Amount ($)</label>
+                  <label>Amount (₱)</label>
                   <input
                     type="number"
                     min="0"
@@ -392,7 +392,7 @@ export default function ExpensesPage() {
               }}>
                 <span style={{ fontSize: 13, color: 'var(--muted)' }}>Final Amount (incl. tax)</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--accent)' }}>
-                  ${fmt(liveFinal)}
+                  ₱ {fmt(liveFinal)}
                 </span>
               </div>
 

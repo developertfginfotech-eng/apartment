@@ -77,7 +77,7 @@ export default function EmployeesPage() {
                 <td style={{fontSize:13}}>{e.position}</td>
                 <td><span className="af-prop-badge type">{e.department}</span></td>
                 <td style={{color:'var(--muted)',fontSize:13}}>{e.email}</td>
-                <td style={{fontVariantNumeric:'tabular-nums'}}>${e.salary.toLocaleString()}</td>
+                <td style={{fontVariantNumeric:'tabular-nums'}}>₱ {e.salary.toLocaleString()}</td>
                 <td style={{fontSize:12.5,color:'var(--muted)'}}>{e.joinDate}</td>
                 <td>
                   <button onClick={()=>toggle(e.id)} className={`af-prop-badge ${e.status}`} style={{cursor:'pointer',background:'none',border:'none',font:'inherit',padding:0}}>
@@ -111,7 +111,7 @@ export default function EmployeesPage() {
                 </div>
                 <div className="af-field"><label>Email</label><input type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="carlos@company.com"/></div>
                 <div className="af-field"><label>Phone</label><input value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="+1-555-0201"/></div>
-                <div className="af-field"><label>Monthly salary ($)</label><input type="number" value={form.salary} onChange={e=>setForm(f=>({...f,salary:e.target.value}))} placeholder="25000"/></div>
+                <div className="af-field"><label>Monthly salary (₱)</label><input type="number" value={form.salary} onChange={e=>setForm(f=>({...f,salary:e.target.value}))} placeholder="25000"/></div>
                 <div className="af-field"><label>Join date</label><input type="date" value={form.joinDate} onChange={e=>setForm(f=>({...f,joinDate:e.target.value}))}/></div>
               </div>
             </div>

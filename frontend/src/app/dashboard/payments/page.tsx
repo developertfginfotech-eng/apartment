@@ -56,13 +56,13 @@ function useCountUp(value: number, durationMs = 600) {
   return display
 }
 
-function StatCard({ label, value, color, delay = 0 }: { label: string; value: number; color: string; delay?: number }) {
+function StatCard({ label, value, color, delay = 0, isMoney = false }: { label: string; value: number; color: string; delay?: number; isMoney?: boolean }) {
   const shown = useCountUp(value)
   return (
     <div className="af-stat-card af-fade-in" style={{ animationDelay: `${delay}s`, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 22px' }}>
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 820, letterSpacing: '-0.03em', color, fontVariantNumeric: 'tabular-nums' }}>
-        {shown.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        {isMoney ? '₱ ' : ''}{shown.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </div>
     </div>
   )
@@ -112,7 +112,7 @@ export default function PaymentsPage() {
 
   useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
 
-  const fmt = (v: string | number | null) => Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const payMaintenance = async (id: number) => { await fetch(`${API}/payments/maintenance/${id}/pay`, { method: 'PUT', headers: authHeaders() }); fetchTab('maintenance') }
   const payUtility = async (id: number) => { await fetch(`${API}/payments/utility/${id}/pay`, { method: 'PUT', headers: authHeaders() }); fetchTab('utility') }
@@ -181,7 +181,7 @@ export default function PaymentsPage() {
 
       {(activeTab === 'rent' || activeTab === 'interest') && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 22 }}>
-          <StatCard label="Total Rent Roll" value={totalRent} color="var(--accent)" delay={0} />
+          <StatCard label="Total Rent Roll" value={totalRent} color="var(--accent)" delay={0} isMoney />
           <StatCard label="Paid This Month" value={collected} color="#22c55e" delay={0.05} />
           <StatCard label="Pending This Month" value={pending} color="#f97316" delay={0.1} />
         </div>
