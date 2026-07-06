@@ -10,7 +10,8 @@ export class SecurityMoneyService {
     const { page = 1, limit = 50, search } = params;
     const offset = (page - 1) * limit;
 
-    const conditions: string[] = ['l.status = 1'];
+    // Laravel's SecurityMoneyController@index does not filter leases by status
+    const conditions: string[] = [];
     const bindings: any[] = [];
 
     if (search) {
@@ -18,7 +19,7 @@ export class SecurityMoneyService {
       bindings.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    const where = `WHERE ${conditions.join(' AND ')}`;
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [countResult] = await this.ds.query(
       `SELECT COUNT(*) as total FROM tbl_leases l
