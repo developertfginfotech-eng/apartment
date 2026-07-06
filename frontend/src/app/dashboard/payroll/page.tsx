@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import SalaryStructureTab from './SalaryStructureTab'
+import EmployeeTab from './EmployeeTab'
+import ManagePayrollTab from './ManagePayrollTab'
+import PayslipTab from './PayslipTab'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -221,17 +225,19 @@ export default function PayrollPage() {
           <h1 className="af-db-greeting" style={{fontSize:26}}>Payroll</h1>
           <p className="af-db-subtitle">Employee salary and payroll management</p>
         </div>
-        <div style={{display:'flex',gap:10}}>
-          <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-            ↓ Export CSV
-          </button>
-          <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-            ↓ Export PDF
-          </button>
-          <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
-            + Add New
-          </button>
-        </div>
+        {activeTab==='Payroll' && (
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
+              ↓ Export CSV
+            </button>
+            <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
+              ↓ Export PDF
+            </button>
+            <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
+              + Add New
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tab pills */}
@@ -247,6 +253,12 @@ export default function PayrollPage() {
         ))}
       </div>
 
+      {activeTab==='Manage Payroll' && <ManagePayrollTab/>}
+      {activeTab==='Payslip' && <PayslipTab/>}
+      {activeTab==='Employee' && <EmployeeTab/>}
+      {activeTab==='Salary Structure' && <SalaryStructureTab/>}
+
+      {activeTab==='Payroll' && <>
       {/* Filters */}
       <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
         <div className="af-field" style={{margin:0,minWidth:160}}>
@@ -501,6 +513,7 @@ export default function PayrollPage() {
           </div>
         </div>
       )}
+      </>}
     </main>
   )
 }

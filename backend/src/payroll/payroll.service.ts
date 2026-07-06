@@ -122,6 +122,64 @@ export class PayrollService {
     return { ok: true };
   }
 
+  async findPayslipList(params: { from?: string; to?: string; search?: string }) {
+    const { from, to, search } = params;
+    const conditions: string[] = ['p.status = 0'];
+    const bindings: any[] = [];
+
+    // start_date/end_date/payment_date are varchar in mixed formats (MM-DD-YYYY legacy, YYYY-MM-DD new)
+    const startDate = `COALESCE(STR_TO_DATE(p.start_date, '%m-%d-%Y'), STR_TO_DATE(p.start_date, '%Y-%m-%d'))`;
+    const endDate   = `COALESCE(STR_TO_DATE(p.end_date, '%m-%d-%Y'), STR_TO_DATE(p.end_date, '%Y-%m-%d'))`;
+
+    if (from) {
+      conditions.push(`${startDate} >= ?`);
+      bindings.push(from);
+    }
+    if (to) {
+      conditions.push(`${endDate} <= ?`);
+      bindings.push(to);
+    }
+    if (search) {
+      conditions.push('(p.basic LIKE ? OR p.payment_date LIKE ? OR e.name LIKE ?)');
+      bindings.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    return this.ds.query(
+      `SELECT
+         p.id, p.start_date, p.end_date, p.payment_date,
+         p.basic, p.cash_advance, p.net_pay,
+         e.name AS employee_name
+       FROM payrolls p
+       LEFT JOIN employees e ON e.id = p.employee_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY p.id DESC`,
+      bindings,
+    );
+  }
+
+  async findOne(id: number) {
+    const [row] = await this.ds.query(
+      `SELECT
+         p.id, p.start_date, p.end_date, p.payment_date,
+         p.basic, p.ot_pay, p.allowance, p.absences, p.late, p.rental,
+         p.gross_pay, p.sss, p.phic, p.hdmf, p.gross_pay_net,
+         p.sss_loan, p.hdmf_loan, p.cash_advance, p.adjustment,
+         p.net_pay, p.checked_by, p.approved_by, p.prepared_by, p.status,
+         e.name AS employee_name,
+         CONCAT(pb.first_name, ' ', COALESCE(pb.last_name,'')) AS prepared_by_name,
+         CONCAT(cb.first_name, ' ', COALESCE(cb.last_name,'')) AS checked_by_name,
+         CONCAT(ab.first_name, ' ', COALESCE(ab.last_name,'')) AS approved_by_name
+       FROM payrolls p
+       LEFT JOIN employees e  ON e.id = p.employee_id
+       LEFT JOIN users    pb  ON pb.id = p.prepared_by
+       LEFT JOIN users    cb  ON cb.id = p.checked_by
+       LEFT JOIN users    ab  ON ab.id = p.approved_by
+       WHERE p.id = ?`,
+      [id],
+    );
+    return row ?? null;
+  }
+
   async debug() {
     const tables  = await this.ds.query(`SHOW TABLES`).catch(e => ({ error: String(e) }));
     const counts  = await this.ds.query(`SELECT COUNT(*) as total FROM payrolls`).catch(e => ({ error: String(e) }));

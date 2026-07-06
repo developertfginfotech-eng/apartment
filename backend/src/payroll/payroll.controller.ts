@@ -36,6 +36,20 @@ export class PayrollController {
     return this.svc.getSignatories();
   }
 
+  @Get('payslip')
+  findPayslipList(
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.svc.findPayslipList({ from, to, search });
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.svc.findOne(parseInt(id, 10));
+  }
+
   @Post()
   create(@Body() body: any, @Request() req: any) {
     return this.svc.create({ ...body, user_id: req.user?.id });
