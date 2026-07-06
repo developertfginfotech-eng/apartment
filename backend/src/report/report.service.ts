@@ -41,7 +41,7 @@ export class ReportService {
         tl.id AS lease_id, tl.lease_no, tl.amount, tl.lastbill_date, tl.total_rent AS lease_total_rent,
         tp.property_name, tr.first_name AS renter_name, tr.id AS renter_id, tpf.name AS floor_name,
         GROUP_CONCAT(DISTINCT tpu.name SEPARATOR ', ') AS unit_name,
-        tpr.paid_amount
+        MAX(tpr.paid_amount) AS paid_amount
       FROM tbl_leases tl
       JOIN tbl_properties tp ON tp.id = tl.property_id
       JOIN tbl_renters tr ON tr.id = tl.renter_id

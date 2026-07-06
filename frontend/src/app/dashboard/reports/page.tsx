@@ -59,8 +59,9 @@ export default function ReportsPage() {
       if (report.search && search) params.set('search', search)
       const res  = await fetch(`${API}/report/${report.endpoint}?${params}`, { headers: authHeaders() })
       const data = await res.json()
+      if (!res.ok) throw new Error(data?.message ?? `Request failed: ${res.status}`)
       setRows(Array.isArray(data) ? data : [])
-    } catch { setError('Failed to load report data'); setRows([]) }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load report data'); setRows([]) }
     finally { setLoading(false) }
   }, [report, from, to, search])
 

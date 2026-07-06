@@ -3,6 +3,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { uploadDir } from './document/upload-dir';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
@@ -49,6 +51,7 @@ import { TaxModule } from './tax/tax.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({ rootPath: uploadDir, serveRoot: '/uploads' }),
     JwtModule.register({ global: true, secret: process.env.JWT_SECRET ?? 'apartment-dev-secret-2024', signOptions: { expiresIn: '7d' } }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
