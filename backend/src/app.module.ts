@@ -44,6 +44,7 @@ import { TodoModule } from './todo/todo.module';
 import { MessageModule } from './message/message.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { WtaxModule } from './wtax/wtax.module';
+import { TaxModule } from './tax/tax.module';
 
 @Module({
   imports: [
@@ -73,7 +74,7 @@ import { WtaxModule } from './wtax/wtax.module';
     PayrollModule, SalaryStructureModule, ManagePayrollModule, DocumentModule,
     UtilityModule, NoticeBoardModule, ParkingModule, LoanModule, SecurityMoneyModule,
     SettingModule, ReportModule, ActivityLogModule, TodoModule, MessageModule,
-    CalendarModule, WtaxModule,
+    CalendarModule, WtaxModule, TaxModule,
   ],
   controllers: [AppController],
   providers: [
