@@ -7,18 +7,20 @@ import autoTable from 'jspdf-autotable'
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
 type ReportKey =
-  | 'property' | 'outstanding' | 'financial' | 'collection' | 'utility' | 'expenses'
+  | 'property' | 'outstanding' | 'ledger' | 'financial' | 'collection' | 'utility' | 'expenses'
   | 'wtax-expenses' | 'vat' | 'wtax-income' | 'parking' | 'refund-deposit'
 
 interface ReportDef {
   key: ReportKey; icon: string; label: string; desc: string
   endpoint: string; dateFilter: boolean; search: boolean
+  paginated?: boolean; totalColumn?: string
 }
 
 const ROWS: ReportDef[][] = [
   [
     { key:'property',    icon:'🏢', label:'Property Report',     desc:'Floors, units, and renters per property',      endpoint:'property',    dateFilter:false, search:false },
     { key:'outstanding', icon:'⚠️', label:'Property Outstanding', desc:'Amounts owed vs paid per lease',               endpoint:'outstanding', dateFilter:true,  search:true },
+    { key:'ledger',      icon:'📒', label:'Ledger',               desc:'Net outstanding per lease with payments recorded', endpoint:'outstanding', dateFilter:true, search:true, paginated:true, totalColumn:'Outstanding' },
     { key:'financial',   icon:'📈', label:'Financial Report',    desc:'Revenue, costs, and profit per property',      endpoint:'financial',   dateFilter:true,  search:false },
     { key:'collection',  icon:'💳', label:'Collection Report',   desc:'Rent payments collected per lease',            endpoint:'collection',  dateFilter:true,  search:true },
     { key:'utility',     icon:'⚡', label:'Utility Report',      desc:'Utility bills summary per property',           endpoint:'utility',     dateFilter:true,  search:false },
@@ -33,6 +35,7 @@ const ROWS: ReportDef[][] = [
   ],
 ]
 const ALL_REPORTS = ROWS.flat()
+const PAGE_SIZE = 50
 
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
 const fmt = (v: number|string|null|undefined) => `₱ ${Number(v ?? 0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
@@ -50,6 +53,7 @@ export default function ReportsPage() {
   const [from, setFrom]       = useState('')
   const [to, setTo]           = useState('')
   const [search, setSearch]   = useState('')
+  const [page, setPage]       = useState(1)
 
   const fetchReport = useCallback(async () => {
     setLoading(true); setError('')
@@ -67,10 +71,10 @@ export default function ReportsPage() {
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
-  const switchTab = (key: ReportKey) => { setActive(key); setFrom(''); setTo(''); setSearch('') }
+  const switchTab = (key: ReportKey) => { setActive(key); setFrom(''); setTo(''); setSearch(''); setPage(1) }
 
   // column definitions per report, kept declarative so export + render share one source of truth
-  const columns: Record<ReportKey, { label:string; get:(r:any)=>string|number }[]> = {
+  const columns: Record<ReportKey, { label:string; get:(r:any)=>string|number; raw?:(r:any)=>number }[]> = {
     property: [
       { label:'Name', get:r=>r.property_name },
       { label:'Total Floor', get:r=>r.total_floor },
@@ -88,6 +92,14 @@ export default function ReportsPage() {
       { label:'Total Rent', get:r=>fmt(r.lease_total_rent) },
       { label:'Paid', get:r=>fmt(r.paid_amount) },
       { label:'Balance', get:r=>fmt(Number(r.lease_total_rent??0)-Number(r.paid_amount??0)) },
+    ],
+    ledger: [
+      { label:'Property', get:r=>r.property_name },
+      { label:'Floor', get:r=>r.floor_name??'—' },
+      { label:'Unit', get:r=>r.unit_name??'—' },
+      { label:'Renter', get:r=>r.renter_name },
+      { label:'Last Pay', get:r=>r.lastbill_date??'—' },
+      { label:'Outstanding', get:r=>fmt(Number(r.lease_total_rent??0)-Number(r.paid_amount??0)), raw:r=>Number(r.lease_total_rent??0)-Number(r.paid_amount??0) },
     ],
     financial: [
       { label:'Property', get:r=>r.property_name },
@@ -167,10 +179,18 @@ export default function ReportsPage() {
   }
 
   const cols = columns[active]
-  const numericCols = new Set(['Total Rent','Paid','Balance','Rent Collected','Owner Maintenance','Renter Maintenance','Expenses','Deposit','Net Profit','Amount','VAT Amount','WHT Amount','MCWD (Water)','VECO (Gas)','Security','Telephone','Other','Total'])
+  const numericCols = new Set(['Total Rent','Paid','Balance','Outstanding','Rent Collected','Owner Maintenance','Renter Maintenance','Expenses','Deposit','Net Profit','Amount','VAT Amount','WHT Amount','MCWD (Water)','VECO (Gas)','Security','Telephone','Other','Total'])
+
+  // Ledger mirrors Laravel's ledger.blade.php: only leases with at least one recorded
+  // payment, paginated 50/page, with a Total Amount footer summed across all matching rows
+  const visibleRows = active === 'ledger' ? rows.filter(r => Number(r.paid_amount) > 0) : rows
+  const totalPages = report.paginated ? Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE)) : 1
+  const pagedRows = report.paginated ? visibleRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : visibleRows
+  const totalCol = cols.find(c => c.label === report.totalColumn)
+  const grandTotal = totalCol?.raw ? visibleRows.reduce((s, r) => s + totalCol.raw!(r), 0) : null
 
   const exportCSV = () => {
-    const csv = [cols.map(c=>c.label), ...rows.map(r=>cols.map(c=>c.get(r)))].map(r=>r.join(',')).join('\n')
+    const csv = [cols.map(c=>c.label), ...visibleRows.map(r=>cols.map(c=>c.get(r)))].map(r=>r.join(',')).join('\n')
     const a = Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:`${report.endpoint}.csv`})
     a.click()
   }
@@ -181,7 +201,7 @@ export default function ReportsPage() {
     doc.text(report.label, 14, 14)
     autoTable(doc, {
       head: [cols.map(c=>c.label)],
-      body: rows.map(r=>cols.map(c=>String(c.get(r)))),
+      body: visibleRows.map(r=>cols.map(c=>String(c.get(r)))),
       startY: 20,
       styles: { fontSize: 7 },
       headStyles: { fillColor: [249,115,22] },
@@ -246,12 +266,18 @@ export default function ReportsPage() {
       ) : (
         <div className="af-prop-table-wrap">
           <table className="af-prop-table">
-            <thead><tr>{cols.map(c=><th key={c.label}>{c.label}</th>)}</tr></thead>
+            <thead>
+              <tr>
+                {report.paginated && <th>#</th>}
+                {cols.map(c=><th key={c.label}>{c.label}</th>)}
+              </tr>
+            </thead>
             <tbody>
-              {rows.length===0 ? (
-                <tr><td colSpan={cols.length} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No data available</td></tr>
-              ) : rows.map((r,i) => (
+              {pagedRows.length===0 ? (
+                <tr><td colSpan={cols.length + (report.paginated?1:0)} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No data available</td></tr>
+              ) : pagedRows.map((r,i) => (
                 <tr key={i}>
+                  {report.paginated && <td style={{color:'var(--muted)',fontSize:12}}>{(page-1)*PAGE_SIZE+i+1}</td>}
                   {cols.map(c => (
                     <td key={c.label} style={{fontVariantNumeric:numericCols.has(c.label)?'tabular-nums':undefined,fontWeight:numericCols.has(c.label)?700:undefined}}>
                       {c.get(r)}
@@ -260,7 +286,29 @@ export default function ReportsPage() {
                 </tr>
               ))}
             </tbody>
+            {grandTotal !== null && pagedRows.length > 0 && (
+              <tfoot>
+                <tr>
+                  <td colSpan={cols.length + (report.paginated?1:0) - 1} style={{textAlign:'right',fontWeight:700}}>Total Amount:</td>
+                  <td style={{fontWeight:800,fontVariantNumeric:'tabular-nums',color:'var(--accent)'}}>{fmt(grandTotal)}</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
+        </div>
+      )}
+
+      {report.paginated && totalPages > 1 && (
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:16,flexWrap:'wrap'}}>
+          <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
+            style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:'var(--surface2)',color:'var(--text)',cursor:page===1?'not-allowed':'pointer',opacity:page===1?0.4:1,fontFamily:'inherit',fontSize:13}}>‹</button>
+          {Array.from({length:totalPages},(_,i)=>i+1).map(n=>(
+            <button key={n} onClick={()=>setPage(n)}
+              style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:page===n?'var(--accent)':'var(--surface2)',color:page===n?'#fff':'var(--text)',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:page===n?700:500}}>{n}</button>
+          ))}
+          <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}
+            style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:'var(--surface2)',color:'var(--text)',cursor:page===totalPages?'not-allowed':'pointer',opacity:page===totalPages?0.4:1,fontFamily:'inherit',fontSize:13}}>›</button>
+          <span style={{fontSize:12,color:'var(--muted)',marginLeft:8}}>Showing {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE,visibleRows.length)} of {visibleRows.length} entries</span>
         </div>
       )}
     </main>

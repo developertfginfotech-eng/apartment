@@ -101,6 +101,30 @@ export class PaymentService {
     });
   }
 
+  // ── Rent tab row action: per-lease payment/transaction history ──
+  async findLeaseHistory(leaseId: number) {
+    return this.ds.query(
+      `SELECT pr.id, pr.renter_id, pr.month, pr.payment_month, pr.year, pr.amount,
+              pr.deposit_amount, pr.total_amount, pr.payment_type, pr.payment_date,
+              CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS renter_name
+       FROM tbl_pay_rents pr
+       LEFT JOIN tbl_renters r ON r.id = pr.renter_id
+       WHERE pr.lease_id = ?
+       ORDER BY pr.payment_date DESC, pr.id DESC`,
+      [leaseId],
+    );
+  }
+
+  async updateLeaseHistory(id: number, body: any) {
+    const allowed = ['amount', 'payment_month', 'payment_date', 'payment_type', 'deposit_amount', 'total_amount'];
+    const keys = Object.keys(body).filter(k => allowed.includes(k));
+    if (!keys.length) return { ok: true };
+    const fields = keys.map(k => `\`${k}\` = ?`).join(', ');
+    const values = keys.map(k => body[k]);
+    await this.ds.query(`UPDATE tbl_pay_rents SET ${fields} WHERE id = ?`, [...values, id]);
+    return { ok: true };
+  }
+
   // ── Maintenances tab ──
   async findMaintenance() {
     return this.ds.query(

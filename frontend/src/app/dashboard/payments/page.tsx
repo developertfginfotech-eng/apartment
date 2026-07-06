@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -23,6 +24,9 @@ interface RentRow {
 interface MaintenanceRow { id: number; title: string; amount: string | number; date: string; description: string | null; payment_type: string; payment_status: number; property_name: string | null }
 interface UtilityRow { id: number; total_rent: string | number; issue_date: string; payment_type: string; payment_status: number; property_name: string | null }
 interface ParkingRow { id: number; renter_name: string | null; property_name: string | null; price: string | number; payment_date: string; payment_type: string; payment_status: string }
+interface HistoryRow { id: number; renter_name: string | null; month: string | null; payment_month: string | null; amount: string | number; deposit_amount: string | number | null; payment_type: string | null; payment_date: string | null }
+
+const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 
 const TABS = [
   { key: 'rent', label: 'Rent' },
@@ -85,6 +89,12 @@ export default function PaymentsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
 
+  const [historyLease, setHistoryLease] = useState<RentRow | null>(null)
+  const [history, setHistory] = useState<HistoryRow[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [editingHistory, setEditingHistory] = useState<HistoryRow | null>(null)
+  const [historyForm, setHistoryForm] = useState({ amount: '', payment_date: '', payment_type: 'Cash', deposit_amount: '' })
+
   const authHeaders = () => ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
@@ -113,6 +123,48 @@ export default function PaymentsPage() {
   useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
 
   const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const openHistory = async (lease: RentRow) => {
+    setHistoryLease(lease)
+    setHistoryLoading(true)
+    try {
+      const res = await fetch(`${API}/payments/lease/${lease.id}/history`, { headers: authHeaders() })
+      setHistory(await res.json())
+    } catch { setHistory([]) }
+    finally { setHistoryLoading(false) }
+  }
+  const closeHistory = () => { setHistoryLease(null); setHistory([]); setEditingHistory(null) }
+
+  const openEditHistory = (h: HistoryRow) => {
+    setEditingHistory(h)
+    setHistoryForm({
+      amount: String(h.amount ?? ''), payment_date: h.payment_date?.slice(0, 10) ?? '',
+      payment_type: h.payment_type ?? 'Cash', deposit_amount: h.deposit_amount != null ? String(h.deposit_amount) : '',
+    })
+  }
+  const saveEditHistory = async () => {
+    if (!editingHistory) return
+    try {
+      await fetch(`${API}/payments/history/${editingHistory.id}`, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({
+          amount: parseFloat(historyForm.amount) || 0,
+          payment_date: historyForm.payment_date,
+          payment_type: historyForm.payment_type,
+          deposit_amount: parseFloat(historyForm.deposit_amount) || 0,
+        }),
+      })
+      setEditingHistory(null)
+      if (historyLease) await openHistory(historyLease)
+    } catch { setError('Failed to save transaction') }
+  }
+  const deleteHistory = async (id: number) => {
+    if (!confirm('Delete this payment record?')) return
+    try {
+      await fetch(`${API}/payments/${id}`, { method: 'DELETE', headers: authHeaders() })
+      if (historyLease) await openHistory(historyLease)
+    } catch { setError('Failed to delete record') }
+  }
 
   const payMaintenance = async (id: number) => { await fetch(`${API}/payments/maintenance/${id}/pay`, { method: 'PUT', headers: authHeaders() }); fetchTab('maintenance') }
   const payUtility = async (id: number) => { await fetch(`${API}/payments/utility/${id}/pay`, { method: 'PUT', headers: authHeaders() }); fetchTab('utility') }
@@ -205,12 +257,12 @@ export default function PaymentsPage() {
               <thead>
                 <tr>
                   <th>Renter</th><th>Property</th><th>Floor</th><th>Units</th><th>Rent Amount</th>
-                  <th>Start Date</th><th>Last Billing</th><th>Overdue</th><th>Payment Status</th><th>Payment Method</th>
+                  <th>Start Date</th><th>Last Billing</th><th>Overdue</th><th>Payment Status</th><th>Payment Method</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {rent.length === 0 ? (
-                  <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No leases found</td></tr>
+                  <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No leases found</td></tr>
                 ) : rent.map((r, i) => (
                   <tr key={r.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{r.renter_name?.trim() || '—'}</td>
@@ -225,6 +277,7 @@ export default function PaymentsPage() {
                       <span className={`af-status-pill ${r.payment_status === 'Pending' ? 'af-pulse' : ''}`} style={{ background: r.payment_status === 'Paid' ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: r.payment_status === 'Paid' ? '#22c55e' : '#f97316' }}>{r.payment_status}</span>
                     </td>
                     <td style={{ fontSize: 13 }}>{r.payment_method || '—'}</td>
+                    <td><button className="af-prop-act edit" onClick={() => openHistory(r)}>Edit</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -328,6 +381,90 @@ export default function PaymentsPage() {
             <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
               <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
               <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: saving ? 0.7 : 1 }} onClick={savePayment} disabled={saving}>{saving ? 'Saving…' : 'Create payment'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Transactions (per-lease history) */}
+      {historyLease && (
+        <div className="af-modal-overlay" onClick={closeHistory}>
+          <div className="af-modal af-modal-in" style={{ maxWidth: 680 }} onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Payment Transactions</h2>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+              {historyLease.renter_name?.trim()} · {historyLease.property_name}
+            </p>
+            {historyLoading ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>Loading…</p>
+            ) : (
+              <div className="af-prop-table-wrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
+                <table className="af-prop-table">
+                  <thead>
+                    <tr>
+                      <th>#</th><th>Payment Month</th><th>Rent Amount</th><th>Deposit Amount</th>
+                      <th>Payment Type</th><th>Payment Date</th><th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.length === 0 ? (
+                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No transactions found.</td></tr>
+                    ) : history.map((h, i) => (
+                      <tr key={h.id}>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
+                        <td style={{ fontSize: 13 }}>{h.month || h.payment_month || '—'}</td>
+                        <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(h.amount)}</td>
+                        <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(h.deposit_amount)}</td>
+                        <td style={{ fontSize: 13 }}>{h.payment_type || '—'}</td>
+                        <td style={{ fontSize: 13 }}>{h.payment_date?.slice(0, 10) || '—'}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="af-prop-act edit" onClick={() => openEditHistory(h)}>Edit</button>
+                            <button className="af-prop-act del" onClick={() => deleteHistory(h.id)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={closeHistory}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Payment History */}
+      {editingHistory && (
+        <div className="af-modal-overlay" onClick={() => setEditingHistory(null)}>
+          <div className="af-modal af-modal-in" onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Edit Payment History</h2>
+            <div className="af-modal-form">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="af-field">
+                  <label>Rent Amount</label>
+                  <input type="number" step="0.01" value={historyForm.amount} onChange={e => setHistoryForm(f => ({ ...f, amount: e.target.value }))} />
+                </div>
+                <div className="af-field">
+                  <label>Deposit Amount</label>
+                  <input type="number" step="0.01" value={historyForm.deposit_amount} onChange={e => setHistoryForm(f => ({ ...f, deposit_amount: e.target.value }))} />
+                </div>
+                <div className="af-field">
+                  <label>Payment Date</label>
+                  <DatePicker value={historyForm.payment_date} onChange={v => setHistoryForm(f => ({ ...f, payment_date: v }))} />
+                </div>
+                <div className="af-field">
+                  <label>Payment Type</label>
+                  <select className="af-select" value={historyForm.payment_type} onChange={e => setHistoryForm(f => ({ ...f, payment_type: e.target.value }))}>
+                    {PAYMENT_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setEditingHistory(null)}>Cancel</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={saveEditHistory}>Save changes</button>
             </div>
           </div>
         </div>

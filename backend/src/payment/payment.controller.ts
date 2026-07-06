@@ -12,6 +12,16 @@ export class PaymentController {
     return this.svc.findRentSummary(from, to, search);
   }
 
+  @Get('lease/:leaseId/history')
+  leaseHistory(@Param('leaseId') leaseId: string) {
+    return this.svc.findLeaseHistory(+leaseId);
+  }
+
+  @Put('history/:id')
+  updateHistory(@Param('id') id: string, @Body() body: any) {
+    return this.svc.updateLeaseHistory(+id, body);
+  }
+
   @Get('maintenance')       findMaintenance()                          { return this.svc.findMaintenance(); }
   @Put('maintenance/:id/pay') payMaintenance(@Param('id') id: string)  { return this.svc.payMaintenance(+id); }
 
