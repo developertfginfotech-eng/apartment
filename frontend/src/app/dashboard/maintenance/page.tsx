@@ -8,17 +8,17 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 interface Maintenance {
   id: number
   property_id: number
-  type: string
+  property_name: string
+  type_id: number
+  type_name: string
   title: string
   amount: number
   date: string
-  month: number
-  year: number
   description: string
   status: number
 }
 
-const TYPE_OPTIONS = ['plumbing', 'electrical', 'aircon', 'painting', 'general']
+interface MaintenanceType { id: number; name: string }
 
 const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }> = {
   1: { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e', label: 'Active' },
@@ -26,7 +26,7 @@ const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }>
 }
 
 const EMPTY_FORM = {
-  type: 'plumbing',
+  type: '',
   title: '',
   amount: '',
   date: '',
@@ -38,6 +38,8 @@ export default function MaintenancePage() {
   const router = useRouter()
 
   const [records, setRecords]     = useState<Maintenance[]>([])
+  const [types, setTypes]         = useState<MaintenanceType[]>([])
+  const [search, setSearch]       = useState('')
   const [loading, setLoading]     = useState(true)
   const [showForm, setShowForm]   = useState(false)
   const [editTarget, setEditTarget] = useState<Maintenance | null>(null)
@@ -58,7 +60,9 @@ export default function MaintenancePage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API}/maintenance`, { headers: authHeaders() })
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      const res = await fetch(`${API}/maintenance?${params}`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
       setRecords(Array.isArray(data) ? data : data.data ?? [])
@@ -67,9 +71,14 @@ export default function MaintenancePage() {
     } finally {
       setLoading(false)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
+
+  useEffect(() => {
+    fetch(`${API}/maintenance-type`, { headers: authHeaders() })
+      .then(r => r.json()).then(d => Array.isArray(d) && setTypes(d)).catch(()=>{})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCreate = () => {
     setEditTarget(null)
@@ -80,7 +89,7 @@ export default function MaintenancePage() {
   const openEdit = (r: Maintenance) => {
     setEditTarget(r)
     setForm({
-      type: r.type,
+      type: String(r.type_id ?? ''),
       title: r.title,
       amount: String(r.amount),
       date: r.date ? r.date.slice(0, 10) : '',
@@ -103,7 +112,7 @@ export default function MaintenancePage() {
     try {
       const dateObj = new Date(form.date)
       const body = {
-        type: form.type,
+        type: form.type ? parseInt(form.type, 10) : null,
         title: form.title,
         amount: parseFloat(form.amount) || 0,
         date: form.date,
@@ -163,6 +172,11 @@ export default function MaintenancePage() {
         </button>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title, property, type…"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 260 }}/>
+      </div>
+
       {error && (
         <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 18, color: '#ef4444', fontSize: 13 }}>
           {error}
@@ -184,7 +198,7 @@ export default function MaintenancePage() {
               <tr>
                 <th>Title</th>
                 <th>Type</th>
-                <th>Property ID</th>
+                <th>Property</th>
                 <th>Amount</th>
                 <th>Date</th>
                 <th>Status</th>
@@ -197,8 +211,8 @@ export default function MaintenancePage() {
                 return (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 650 }}>{r.title}</td>
-                    <td style={{ textTransform: 'capitalize' }}>{r.type}</td>
-                    <td>{r.property_id}</td>
+                    <td>{r.type_name ?? '—'}</td>
+                    <td>{r.property_name ?? r.property_id}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                       ${Number(r.amount).toLocaleString()}
                     </td>
@@ -237,8 +251,9 @@ export default function MaintenancePage() {
                 <div className="af-field">
                   <label>Type</label>
                   <select className="af-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                    {TYPE_OPTIONS.map(t => (
-                      <option key={t} value={t} style={{ textTransform: 'capitalize' }}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                    <option value="">-- Select Type --</option>
+                    {types.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
