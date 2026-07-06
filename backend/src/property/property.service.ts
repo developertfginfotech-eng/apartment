@@ -1,20 +1,68 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Property } from './property.entity';
 
 @Injectable()
 export class PropertyService {
   constructor(
     @InjectRepository(Property) private repo: Repository<Property>,
+    @InjectDataSource() private readonly ds: DataSource,
   ) {}
 
   findAll() {
-    return this.repo.find({ where: { status: 1 }, order: { property_name: 'ASC' } });
+    return this.ds.query(`
+      SELECT
+        p.id, p.landlord_id, p.property_type, p.property_name, p.property_code,
+        p.ownership_percentage, p.address, p.status,
+        CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS owner_name,
+        COUNT(DISTINCT pf.id) AS total_floor,
+        COUNT(DISTINCT pu.id) AS total_unit
+      FROM tbl_properties p
+      LEFT JOIN tbl_landlords l ON l.id = p.landlord_id
+      LEFT JOIN tbl_property_floors pf ON pf.property_id = p.id AND pf.status = 1
+      LEFT JOIN tbl_property_units pu ON pu.property_id = p.id AND pu.status = 1
+      WHERE p.status = 1
+      GROUP BY p.id
+      ORDER BY p.property_name ASC
+    `);
   }
 
-  findOne(id: number) {
-    return this.repo.findOne({ where: { id } });
+  async findOne(id: number) {
+    const [property] = await this.ds.query(
+      `SELECT
+         p.id, p.landlord_id, p.property_type, p.property_name, p.property_code,
+         p.ownership_percentage, p.address, p.status,
+         CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS owner_name
+       FROM tbl_properties p
+       LEFT JOIN tbl_landlords l ON l.id = p.landlord_id
+       WHERE p.id = ?`,
+      [id],
+    );
+    if (!property) return null;
+
+    const floors = await this.ds.query(
+      `SELECT id, name, area FROM tbl_property_floors WHERE property_id = ? AND status = 1 ORDER BY id ASC`,
+      [id],
+    );
+    const units = await this.ds.query(
+      `SELECT id, floor_id, name, area FROM tbl_property_units WHERE property_id = ? AND status = 1 ORDER BY id ASC`,
+      [id],
+    );
+    const documents = await this.ds.query(
+      `SELECT pd.id, pd.document_type, pd.document, d.name AS document_type_name
+       FROM tbl_property_documents pd
+       LEFT JOIN tbl_documents d ON d.id = pd.document_type
+       WHERE pd.property_id = ? AND pd.status = 1
+       ORDER BY pd.id DESC`,
+      [id],
+    );
+
+    return {
+      ...property,
+      floors: floors.map((f: any) => ({ ...f, units: units.filter((u: any) => u.floor_id === f.id) })),
+      documents,
+    };
   }
 
   create(dto: Partial<Property>) {

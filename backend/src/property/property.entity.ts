@@ -8,6 +8,7 @@ export class Property {
   @Column({ nullable: true }) property_type: string;
   @Column({ nullable: true }) property_name: string;
   @Column({ nullable: true }) property_code: string;
+  @Column({ type: 'text', nullable: true }) ownership_percentage: string;
   @Column({ type: 'text', nullable: true }) address: string;
   @Column({ default: 1 }) status: number;
   @CreateDateColumn() created_at: Date;
