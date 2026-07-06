@@ -26,11 +26,12 @@ interface Transaction {
   type: 'add' | 'deduct'
   payment_date: string
   payment_type: string | null
+  receipt_image: string | null
 }
 
 const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 
-const EMPTY_FORM = { title: '', amount: '', type: 'add' as 'add' | 'deduct', payment_date: '', payment_type: 'Cash', reason: '' }
+const EMPTY_FORM = { title: '', amount: '', type: 'add' as 'add' | 'deduct', payment_date: '', payment_type: 'Cash', reason: '', receiptFile: null as File | null }
 
 export default function SecurityMoneyPage() {
   const router = useRouter()
@@ -136,24 +137,45 @@ export default function SecurityMoneyPage() {
 
   const openAdd = () => { setForm(EMPTY_FORM); setShowForm(true) }
 
+  const [uploading, setUploading] = useState(false)
+
+  const uploadReceipt = async (file: File): Promise<string | null> => {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url ?? null
+  }
+
   const submitTransaction = async () => {
     if (!selectedLease || !form.title || !form.amount || !form.payment_date) return
     const amt = parseFloat(form.amount)
     if (isNaN(amt) || amt <= 0) return
 
+    setUploading(true)
     try {
+      let receiptUrl: string | null = null
+      if (form.receiptFile) receiptUrl = await uploadReceipt(form.receiptFile)
+
       await fetch(`${API}/security-money/${selectedLease.id}/history`, {
         method: 'POST',
         headers: authHeaders(),
         body: JSON.stringify({
           title: form.title, amount: amt, type: form.type,
           payment_date: form.payment_date, payment_type: form.payment_type, reason: form.reason || null,
+          receipt_image: receiptUrl,
         }),
       })
       setShowForm(false)
       await fetchHistory(selectedLease.id)
       await fetchLeases()
     } catch { setError('Failed to save transaction') }
+    finally { setUploading(false) }
   }
 
   const getPageNums = () => {
@@ -304,11 +326,12 @@ export default function SecurityMoneyPage() {
                       <th>Amount</th>
                       <th>Payment Date</th>
                       <th>Reason</th>
+                      <th>Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.length === 0 ? (
-                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No transactions found.</td></tr>
+                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No transactions found.</td></tr>
                     ) : history.map((tx, i) => (
                       <tr key={tx.id}>
                         <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
@@ -328,6 +351,9 @@ export default function SecurityMoneyPage() {
                         </td>
                         <td style={{ fontSize: 13 }}>{tx.payment_date}</td>
                         <td style={{ fontSize: 13, color: 'var(--muted)' }}>{tx.reason || '—'}</td>
+                        <td style={{ fontSize: 13 }}>
+                          {tx.receipt_image ? <a href={`${API}${tx.receipt_image}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>View</a> : '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -380,11 +406,15 @@ export default function SecurityMoneyPage() {
                   <label>Reason (optional)</label>
                   <input value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Damage repair" />
                 </div>
+                <div className="af-field" style={{ gridColumn: 'span 2' }}>
+                  <label>Receipt Image</label>
+                  <input type="file" accept="image/*,.pdf" onChange={e => setForm(f => ({ ...f, receiptFile: e.target.files?.[0] ?? null }))} />
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={submitTransaction}>Save</button>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)} disabled={uploading}>Cancel</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: uploading ? 0.7 : 1 }} onClick={submitTransaction} disabled={uploading}>{uploading ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
         </div>

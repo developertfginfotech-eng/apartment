@@ -23,6 +23,7 @@ interface Loan {
   latest_payment_date: string | null
   latest_payment_amount: string | number | null
   available_balance: number | null
+  receipt_image: string | null
 }
 
 const LOAN_FROM_OPTIONS: { value: Loan['loan_from_company']; label: string }[] = [
@@ -39,6 +40,7 @@ const EMPTY_FORM = {
   employee_id: '', amount_of_loan: '', loan_from_company: '' as Loan['loan_from_company'] | '',
   name_of_bank: '', interest_of_bank: '', date_of_the_loan: '', payment_date: '',
   payment_type: 'Cash', payment_status: 'pending' as 'pending' | 'paid', status: 1,
+  receiptFile: null as File | null,
 }
 
 export default function LoanPage() {
@@ -53,6 +55,8 @@ export default function LoanPage() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Loan | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [viewing, setViewing] = useState<Loan | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -95,25 +99,45 @@ export default function LoanPage() {
       interest_of_bank: l.interest_of_bank ? String(l.interest_of_bank) : '',
       date_of_the_loan: l.date_of_the_loan?.slice(0, 10) ?? '', payment_date: l.payment_date?.slice(0, 10) ?? '',
       payment_type: l.payment_type ?? 'Cash', payment_status: l.payment_status ?? 'pending', status: l.status,
+      receiptFile: null,
     })
     setShowModal(true)
   }
 
+  const uploadReceipt = async (file: File): Promise<string | null> => {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url ?? null
+  }
+
   const save = async () => {
     if (!form.employee_id || !form.amount_of_loan || !form.loan_from_company || !form.date_of_the_loan || !form.payment_date) return
-    const body = {
-      employee_id: parseInt(form.employee_id, 10),
-      amount_of_loan: parseFloat(form.amount_of_loan) || 0,
-      loan_from_company: form.loan_from_company,
-      name_of_bank: form.loan_from_company === 'BANK' ? form.name_of_bank : null,
-      interest_of_bank: form.loan_from_company === 'BANK' ? (parseFloat(form.interest_of_bank) || 0) : null,
-      date_of_the_loan: form.date_of_the_loan,
-      payment_date: form.payment_date,
-      payment_type: form.payment_type,
-      payment_status: form.payment_status,
-      status: form.status,
-    }
+    setUploading(true)
     try {
+      let receiptUrl: string | null | undefined
+      if (form.receiptFile) receiptUrl = await uploadReceipt(form.receiptFile)
+
+      const body: Record<string, unknown> = {
+        employee_id: parseInt(form.employee_id, 10),
+        amount_of_loan: parseFloat(form.amount_of_loan) || 0,
+        loan_from_company: form.loan_from_company,
+        name_of_bank: form.loan_from_company === 'BANK' ? form.name_of_bank : null,
+        interest_of_bank: form.loan_from_company === 'BANK' ? (parseFloat(form.interest_of_bank) || 0) : null,
+        date_of_the_loan: form.date_of_the_loan,
+        payment_date: form.payment_date,
+        payment_type: form.payment_type,
+        payment_status: form.payment_status,
+        status: form.status,
+      }
+      if (receiptUrl) body.receipt_image = receiptUrl
+
       if (editing) {
         await fetch(`${API}/loan/${editing.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
       } else {
@@ -122,6 +146,7 @@ export default function LoanPage() {
       setShowModal(false)
       fetchLoans()
     } catch { setError('Failed to save loan') }
+    finally { setUploading(false) }
   }
 
   const del = async (id: number) => {
@@ -261,6 +286,7 @@ export default function LoanPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="af-prop-act edit" onClick={() => setViewing(l)}>View</button>
                       <button className="af-prop-act edit" onClick={() => openEdit(l)}>Edit</button>
                       <button className="af-prop-act del" onClick={() => del(l.id)}>Delete</button>
                     </div>
@@ -344,13 +370,53 @@ export default function LoanPage() {
                     ))}
                   </div>
                 </div>
+                <div className="af-field" style={{ gridColumn: '1/-1' }}>
+                  <label>Receipt Image</label>
+                  <input type="file" accept="image/*,.pdf" onChange={e => sf('receiptFile', e.target.files?.[0] ?? null)} />
+                  {editing?.receipt_image && !form.receiptFile && (
+                    <a href={`${API}${editing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'inline-block' }}>View current receipt</a>
+                  )}
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={save}>
-                {editing ? 'Save changes' : 'Add loan'}
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)} disabled={uploading}>Cancel</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: uploading ? 0.7 : 1 }} onClick={save} disabled={uploading}>
+                {uploading ? 'Saving…' : editing ? 'Save changes' : 'Add loan'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {viewing && (
+        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
+          <div className="af-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Loan Details</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {([
+                ['Employee', viewing.employee_name || '—'],
+                ['Amount of Loan', fmt(viewing.amount_of_loan)],
+                ['Loan From Company', viewing.loan_from_company],
+                ['Date of the Loan', viewing.date_of_the_loan?.slice(0, 10)],
+                ['Payment Date', viewing.payment_date?.slice(0, 10) || '—'],
+                ['Payment Type', viewing.payment_type || '—'],
+                ['Payment Status', viewing.payment_status],
+                ['Status', viewing.status === 1 ? 'Active' : 'Inactive'],
+                ...(viewing.loan_from_company === 'BANK' ? [['Name of Bank', viewing.name_of_bank || '—'], ['Interest of Bank', viewing.interest_of_bank ? `${viewing.interest_of_bank}%` : '—']] : []),
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {viewing.receipt_image && (
+              <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
             </div>
           </div>
         </div>

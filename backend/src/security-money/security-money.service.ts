@@ -60,7 +60,7 @@ export class SecurityMoneyService {
 
   async getHistory(leaseId: number) {
     return this.ds.query(
-      `SELECT id, lease_id, amount, title, reason, type, payment_date, payment_type, status
+      `SELECT id, lease_id, amount, title, reason, type, payment_date, payment_type, status, receipt_image
        FROM refund_security_money
        WHERE lease_id = ?
        ORDER BY payment_date DESC, id DESC`,
@@ -71,8 +71,8 @@ export class SecurityMoneyService {
   async addTransaction(leaseId: number, body: any, userId: number | null) {
     await this.ds.query(
       `INSERT INTO refund_security_money
-        (user_id, lease_id, amount, title, reason, type, status, payment_date, payment_type)
-       VALUES (?,?,?,?,?,?,1,?,?)`,
+        (user_id, lease_id, amount, title, reason, type, status, payment_date, payment_type, receipt_image)
+       VALUES (?,?,?,?,?,?,1,?,?,?)`,
       [
         userId,
         leaseId,
@@ -82,6 +82,7 @@ export class SecurityMoneyService {
         body.type,
         body.payment_date,
         body.payment_type ?? '',
+        body.receipt_image ?? null,
       ],
     );
 

@@ -11,6 +11,7 @@ export class LoanService {
       `SELECT
          l.id, l.employee_id, l.amount_of_loan, l.loan_from_company, l.date_of_the_loan,
          l.name_of_bank, l.interest_of_bank, l.status, l.payment_date, l.payment_status, l.payment_type,
+         l.receipt_image,
          e.name AS employee_name,
          (SELECT p.payment_date FROM payrolls p WHERE p.loan_id = l.id ORDER BY p.payment_date DESC LIMIT 1) AS latest_payment_date,
          (SELECT p.cash_advance FROM payrolls p WHERE p.loan_id = l.id ORDER BY p.payment_date DESC LIMIT 1) AS latest_payment_amount,
@@ -33,8 +34,8 @@ export class LoanService {
     const res = await this.ds.query(
       `INSERT INTO loans
         (user_id, employee_id, amount_of_loan, loan_from_company, date_of_the_loan,
-         name_of_bank, interest_of_bank, status, payment_date, payment_status, payment_type)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+         name_of_bank, interest_of_bank, status, payment_date, payment_status, payment_type, receipt_image)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         body.user_id ?? null,
         body.employee_id,
@@ -47,6 +48,7 @@ export class LoanService {
         body.payment_date,
         body.payment_status ?? 'pending',
         body.payment_type ?? 'Cash',
+        body.receipt_image ?? null,
       ],
     );
     return { id: res.insertId };

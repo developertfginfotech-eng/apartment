@@ -9,6 +9,9 @@ dist/
 out/
 build/
 
+# Runtime file uploads
+backend/uploads/
+
 # Environment & secrets
 .env
 .env.*
