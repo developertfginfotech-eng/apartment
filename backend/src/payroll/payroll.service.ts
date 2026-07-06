@@ -20,6 +20,22 @@ export class PayrollService {
     const conditions: string[] = ['p.status = 0'];
     const bindings: any[] = [];
 
+    // payment_date is stored as varchar in mixed formats (MM-DD-YYYY legacy, YYYY-MM-DD new)
+    const paymentDate = `COALESCE(STR_TO_DATE(p.payment_date, '%m-%d-%Y'), STR_TO_DATE(p.payment_date, '%Y-%m-%d'))`;
+
+    if (month) {
+      conditions.push(`MONTH(${paymentDate}) = ?`);
+      bindings.push(parseInt(month, 10));
+    }
+    if (from) {
+      conditions.push(`${paymentDate} >= ?`);
+      bindings.push(from);
+    }
+    if (to) {
+      conditions.push(`${paymentDate} <= ?`);
+      bindings.push(to);
+    }
+
     if (search) {
       conditions.push('e.name LIKE ?');
       bindings.push(`%${search}%`);

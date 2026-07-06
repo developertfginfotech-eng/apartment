@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -164,12 +166,27 @@ export default function PayrollPage() {
     } catch { setError('Failed to save') }
   }
 
+  const exportHeaders = ['#','Employee','Start Date','End Date','Pay Date','Basic','OT Pay','Allowance','Absences','Gross','SSS','PhilHealth','Pag-IBIG','SSS Loan','HDMF Loan','Cash Advance','Net Pay','Checked By','Approved By']
+  const exportRows = () => payrolls.map((p,i) => [i+1,p.employee_name,p.start_date,p.end_date,p.payment_date,p.basic,p.ot_pay,p.allowance,p.absences,p.gross_pay,p.sss,p.phic,p.hdmf,p.sss_loan,p.hdmf_loan,p.cash_advance,p.net_pay,p.checked_by_name??'',p.approved_by_name??''])
+
   const exportCSV = () => {
-    const headers = ['#','Employee','Start Date','End Date','Pay Date','Basic','OT Pay','Allowance','Absences','Gross','SSS','PhilHealth','Pag-IBIG','SSS Loan','HDMF Loan','Cash Advance','Net Pay','Checked By','Approved By']
-    const rows = payrolls.map((p,i) => [i+1,p.employee_name,p.start_date,p.end_date,p.payment_date,p.basic,p.ot_pay,p.allowance,p.absences,p.gross_pay,p.sss,p.phic,p.hdmf,p.sss_loan,p.hdmf_loan,p.cash_advance,p.net_pay,p.checked_by_name??'',p.approved_by_name??''])
-    const csv = [headers,...rows].map(r=>r.join(',')).join('\n')
+    const csv = [exportHeaders,...exportRows()].map(r=>r.join(',')).join('\n')
     const a = Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:'payroll.csv'})
     a.click()
+  }
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation:'landscape' })
+    doc.setFontSize(14)
+    doc.text('Payroll', 14, 14)
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: exportRows().map(r => r.map(String)),
+      startY: 20,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [34,197,94] },
+    })
+    doc.save('payroll.pdf')
   }
 
   const fmt = (v: number|string) => Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
@@ -181,7 +198,20 @@ export default function PayrollPage() {
     color:'var(--text)', fontSize:11.5, padding:'4px 6px', fontFamily:'inherit', cursor:'pointer', maxWidth:120,
   }
 
-  const pageNums = Array.from({length: Math.min(pages,7)}, (_,i) => i+1)
+  const getPageNums = () => {
+    if (pages <= 7) return Array.from({length: pages}, (_,i) => i+1)
+    const nums: (number|'...')[] = []
+    const delta = 2
+    const left = Math.max(2, page - delta)
+    const right = Math.min(pages - 1, page + delta)
+    nums.push(1)
+    if (left > 2) nums.push('...')
+    for (let i = left; i <= right; i++) nums.push(i)
+    if (right < pages - 1) nums.push('...')
+    nums.push(pages)
+    return nums
+  }
+  const pageNums = getPageNums()
 
   return (
     <main className="af-db-main">
@@ -193,7 +223,10 @@ export default function PayrollPage() {
         </div>
         <div style={{display:'flex',gap:10}}>
           <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-            ↓ Export
+            ↓ Export CSV
+          </button>
+          <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
+            ↓ Export PDF
           </button>
           <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
             + Add New
@@ -339,13 +372,14 @@ export default function PayrollPage() {
         <div style={{display:'flex',alignItems:'center',gap:6,marginTop:16,flexWrap:'wrap'}}>
           <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}
             style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:'var(--surface2)',color:'var(--text)',cursor:page===1?'not-allowed':'pointer',opacity:page===1?0.4:1,fontFamily:'inherit',fontSize:13}}>‹</button>
-          {pageNums.map(n=>(
-            <button key={n} onClick={()=>setPage(n)}
-              style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:page===n?'var(--accent)':'var(--surface2)',color:page===n?'#fff':'var(--text)',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:page===n?700:500}}>
-              {n}
-            </button>
-          ))}
-          {pages > 7 && <span style={{color:'var(--muted)',fontSize:13}}>… {pages}</span>}
+          {pageNums.map((n,i)=>
+            n === '...'
+              ? <span key={`e${i}`} style={{color:'var(--muted)',fontSize:13,padding:'0 4px'}}>…</span>
+              : <button key={n} onClick={()=>setPage(n as number)}
+                  style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:page===n?'var(--accent)':'var(--surface2)',color:page===n?'#fff':'var(--text)',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:page===n?700:500}}>
+                  {n}
+                </button>
+          )}
           <button onClick={()=>setPage(p=>Math.min(pages,p+1))} disabled={page===pages}
             style={{padding:'6px 12px',borderRadius:8,border:'1px solid var(--border2)',background:'var(--surface2)',color:'var(--text)',cursor:page===pages?'not-allowed':'pointer',opacity:page===pages?0.4:1,fontFamily:'inherit',fontSize:13}}>›</button>
           <span style={{fontSize:12,color:'var(--muted)',marginLeft:8}}>Showing {(page-1)*limit+1}–{Math.min(page*limit,total)} of {total} entries</span>
