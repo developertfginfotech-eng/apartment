@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -339,11 +340,11 @@ export default function LoanPage() {
 
                 <div className="af-field">
                   <label>Date of the Loan</label>
-                  <input type="date" value={form.date_of_the_loan} onChange={e => sf('date_of_the_loan', e.target.value)}/>
+                  <DatePicker value={form.date_of_the_loan} onChange={v => sf('date_of_the_loan', v)}/>
                 </div>
                 <div className="af-field">
                   <label>Payment Date</label>
-                  <input type="date" value={form.payment_date} onChange={e => sf('payment_date', e.target.value)}/>
+                  <DatePicker value={form.payment_date} onChange={v => sf('payment_date', v)}/>
                 </div>
                 <div className="af-field">
                   <label>Payment Status</label>

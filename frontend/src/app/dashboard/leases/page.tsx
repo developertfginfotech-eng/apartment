@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -196,8 +197,8 @@ export default function LeasesPage() {
                 </div>
                 <div className="af-field"><label>Floor</label><input value={form.floor_name} onChange={e => setForm(f => ({ ...f, floor_name: e.target.value }))} placeholder="4TH"/></div>
                 <div className="af-field"><label>Unit</label><input value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value }))} placeholder="4B"/></div>
-                <div className="af-field"><label>Start Date</label><input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}/></div>
-                <div className="af-field"><label>End Date</label><input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}/></div>
+                <div className="af-field"><label>Start Date</label><DatePicker value={form.start_date} onChange={v => setForm(f => ({ ...f, start_date: v }))}/></div>
+                <div className="af-field"><label>End Date</label><DatePicker value={form.end_date} onChange={v => setForm(f => ({ ...f, end_date: v }))}/></div>
                 <div className="af-field"><label>Monthly Rent</label><input type="number" min="0" step="0.01" value={form.rent_amount} onChange={e => setForm(f => ({ ...f, rent_amount: e.target.value }))} placeholder="2200"/></div>
                 <div className="af-field"><label>Rent Deposit</label><input type="number" min="0" step="0.01" value={form.rent_deposit} onChange={e => setForm(f => ({ ...f, rent_deposit: e.target.value }))} placeholder="4400"/></div>
                 <div className="af-field" style={{ gridColumn: 'span 2' }}><label>Maintenance (optional)</label><input value={form.maintenance} onChange={e => setForm(f => ({ ...f, maintenance: e.target.value }))} placeholder="0"/></div>

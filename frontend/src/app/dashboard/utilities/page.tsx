@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -225,7 +226,7 @@ export default function UtilitiesPage() {
                   </select>
                 </div>
                 <div className="af-field"><label>Month</label><input value={form.month} onChange={e => sf(e.target.value, 'month')} placeholder="June" /></div>
-                <div className="af-field"><label>Issue Date</label><input type="date" value={form.issue_date} onChange={e => sf(e.target.value, 'issue_date')} /></div>
+                <div className="af-field"><label>Issue Date</label><DatePicker value={form.issue_date} onChange={v => sf(v, 'issue_date')} /></div>
                 <div className="af-field"><label>Water Bill</label><input type="number" min="0" value={form.water_bill} onChange={e => sf(e.target.value, 'water_bill')} placeholder="0" /></div>
                 <div className="af-field"><label>Electric Bill</label><input type="number" min="0" value={form.electric_bill} onChange={e => sf(e.target.value, 'electric_bill')} placeholder="0" /></div>
                 <div className="af-field"><label>Gas Bill</label><input type="number" min="0" value={form.gas_bill} onChange={e => sf(e.target.value, 'gas_bill')} placeholder="0" /></div>
