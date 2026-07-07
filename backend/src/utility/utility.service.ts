@@ -11,7 +11,7 @@ export class UtilityService {
       `SELECT
          u.id, u.month, u.water_bill, u.water_bill_due_from, u.water_bill_due_to,
          u.electric_bill, u.electric_bill_due_from, u.electric_bill_due_to,
-         u.gas_bill, u.security_bill, u.cusa, u.other_bill, u.total_rent,
+         u.gas_bill, u.security_bill, u.cusa, u.other_bill, u.total_rent, u.interest,
          u.issue_date, u.payment_type, u.payment_mode, u.payment_status,
          CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS renter_name,
          p.property_name,
@@ -32,16 +32,17 @@ export class UtilityService {
         (renter_id, property_id, floor_id, unit_id, month,
          water_bill, water_bill_due_from, water_bill_due_to,
          electric_bill, electric_bill_due_from, electric_bill_due_to,
-         gas_bill, security_bill, cusa, other_bill, total_rent,
+         gas_bill, security_bill, cusa, other_bill, total_rent, interest,
          issue_date, payment_type, payment_mode, payment_status, status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
       [
         body.renter_id ?? null, body.property_id ?? null, body.floor_id ?? null, body.unit_id ?? null,
         body.month ?? null,
         body.water_bill ?? 0, body.water_bill_due_from ?? null, body.water_bill_due_to ?? null,
         body.electric_bill ?? 0, body.electric_bill_due_from ?? null, body.electric_bill_due_to ?? null,
         body.gas_bill ?? 0, body.security_bill ?? 0, body.cusa ?? 0, body.other_bill ?? 0,
-        body.total_rent ?? 0, body.issue_date ?? null, body.payment_type ?? '', body.payment_mode ?? null,
+        body.total_rent ?? 0, body.interest ?? null,
+        body.issue_date ?? null, body.payment_type ?? '', body.payment_mode ?? null,
         body.payment_status ?? 0,
       ],
     );
