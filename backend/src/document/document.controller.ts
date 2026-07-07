@@ -42,4 +42,34 @@ export class DocumentController {
   removePropertyDocument(@Param('id') id: string) {
     return this.svc.removePropertyDocument(parseInt(id, 10));
   }
+
+  @Get('landlord')
+  getLandlordDocuments(@Query('landlord_id') landlordId: string) {
+    return this.svc.getLandlordDocuments(parseInt(landlordId, 10));
+  }
+
+  @Post('landlord')
+  addLandlordDocument(@Body() body: { landlord_id: number; document_type: number; document: string }) {
+    return this.svc.addLandlordDocument(body);
+  }
+
+  @Delete('landlord/:id')
+  removeLandlordDocument(@Param('id') id: string) {
+    return this.svc.removeLandlordDocument(parseInt(id, 10));
+  }
+
+  @Get('renter')
+  getRenterDocuments(@Query('renter_id') renterId: string) {
+    return this.svc.getRenterDocuments(parseInt(renterId, 10));
+  }
+
+  @Post('renter')
+  addRenterDocument(@Body() body: { renter_id: number; document_type: number; document: string }) {
+    return this.svc.addRenterDocument(body);
+  }
+
+  @Delete('renter/:id')
+  removeRenterDocument(@Param('id') id: string) {
+    return this.svc.removeRenterDocument(parseInt(id, 10));
+  }
 }

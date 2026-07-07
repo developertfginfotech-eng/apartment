@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface Property {
   id: number
@@ -15,11 +17,15 @@ interface Property {
   status: number
   total_floor: number
   total_unit: number
+  total_renter: number
 }
 
 interface Floor { id: number; name: string; area: number; units: Unit[] }
 interface Unit { id: number; floor_id: number; name: string; area: number }
 interface Doc { id: number; document_type: number; document: string; document_type_name: string }
+interface ViewRenter { id: number; name: string; contact: string | null; email: string | null; floor_name: string | null; unit_name: string | null }
+interface Financial { pay_amount: string | number; expenses: string | number; owner_maintenance: string | number; renter_maintenance: string | number; deposit: string | number }
+interface PropertyDetail extends Property { floors: Floor[]; documents: Doc[]; renters: ViewRenter[]; financial: Financial }
 interface Owner { id: number; first_name: string; last_name: string | null }
 interface PropertyType { id: number; name: string }
 interface DocType { id: number; name: string }
@@ -43,6 +49,9 @@ const EMPTY_FORM: FormState = {
   address: '',
   status: 1,
 }
+
+const VIEW_TABS = ['Info', 'Renters', 'Floors', 'Units', 'Financial Report', 'Documents'] as const
+type ViewTab = typeof VIEW_TABS[number]
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
@@ -71,6 +80,10 @@ export default function PropertiesPage() {
   const [newDocType, setNewDocType] = useState('')
   const [newDocFile, setNewDocFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+
+  const [viewing, setViewing]   = useState<PropertyDetail | null>(null)
+  const [viewTab, setViewTab]   = useState<ViewTab>('Info')
+  const [viewLoading, setViewLoading] = useState(false)
 
   const fetchProperties = useCallback(async () => {
     setLoading(true)
@@ -119,6 +132,7 @@ export default function PropertiesPage() {
     const data = await res.json()
     setFloors(data.floors ?? [])
     setDocs(data.documents ?? [])
+    return data
   }
 
   const openEdit = async (p: Property) => {
@@ -136,6 +150,20 @@ export default function PropertiesPage() {
     await loadDetail(p.id)
   }
 
+  const openView = async (p: Property) => {
+    setViewTab('Info')
+    setViewLoading(true)
+    try {
+      const res = await fetch(`${API}/properties/${p.id}`, { headers: headers() })
+      const data = await res.json()
+      setViewing(data)
+    } catch {
+      setError('Failed to load property details')
+    } finally {
+      setViewLoading(false)
+    }
+  }
+
   const save = async () => {
     if (!form.property_name.trim() || !form.address.trim()) return
     setSaving(true)
@@ -149,7 +177,7 @@ export default function PropertiesPage() {
       if (!res.ok) throw new Error(`Save failed (${res.status})`)
       if (!editing) {
         const created = await res.json()
-        setEditing({ ...created, owner_name: null, total_floor: 0, total_unit: 0 })
+        setEditing({ ...created, owner_name: null, total_floor: 0, total_unit: 0, total_renter: 0 })
         await loadDetail(created.id)
       }
       await fetchProperties()
@@ -239,6 +267,31 @@ export default function PropertiesPage() {
   }
 
   const activeCount = properties.filter(p => p.status === 1).length
+  const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const exportHeaders = ['#', 'Name', 'Code', 'Location', 'No Floor', 'No Unit', 'No Renter', 'Status']
+  const exportRows = () => filtered.map((p, i) => [
+    i + 1, p.property_name, p.property_code, p.address, p.total_floor, p.total_unit, p.total_renter,
+    p.status === 1 ? 'Active' : 'Inactive',
+  ])
+  const exportExcel = () => {
+    const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'properties.csv' })
+    a.click()
+  }
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(14)
+    doc.text('Properties List', 14, 14)
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: exportRows().map(r => r.map(String)),
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 197, 94] },
+    })
+    doc.save('properties.pdf')
+  }
 
   return (
     <main className="af-db-main">
@@ -249,9 +302,17 @@ export default function PropertiesPage() {
             {loading ? 'Loading…' : `${properties.length} total · ${activeCount} active`}
           </p>
         </div>
-        <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }} disabled={loading}>
-          + Add Property
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Excel
+          </button>
+          <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Pdf
+          </button>
+          <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }} disabled={loading}>
+            + Add Property
+          </button>
+        </div>
       </div>
 
       {error && !showForm && (
@@ -272,12 +333,12 @@ export default function PropertiesPage() {
             <thead>
               <tr>
                 <th>Property Name</th><th>Code</th><th>Owner</th><th>Type</th>
-                <th>Floors</th><th>Units</th><th>Status</th><th>Actions</th>
+                <th>Floors</th><th>Units</th><th>Renters</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--muted)', padding: '32px' }}>No properties found</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--muted)', padding: '32px' }}>No properties found</td></tr>
               )}
               {filtered.map(p => (
                 <tr key={p.id}>
@@ -287,6 +348,7 @@ export default function PropertiesPage() {
                   <td><span className="af-prop-badge type">{p.property_type}</span></td>
                   <td>{p.total_floor}</td>
                   <td>{p.total_unit}</td>
+                  <td>{p.total_renter}</td>
                   <td>
                     <span className={`af-prop-badge ${p.status === 1 ? 'active' : 'inactive'}`}>
                       {p.status === 1 ? '● Active' : '○ Inactive'}
@@ -294,6 +356,7 @@ export default function PropertiesPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="af-prop-act edit" onClick={() => openView(p)}>View</button>
                       <button className="af-prop-act edit" onClick={() => openEdit(p)}>Edit</button>
                       <button className="af-prop-act del" onClick={() => del(p.id)}>Delete</button>
                     </div>
@@ -413,6 +476,142 @@ export default function PropertiesPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Property Details */}
+      {viewing && (
+        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
+          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 800, maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 className="af-modal-title">Property Details</h2>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -14, marginBottom: 16 }}>
+              {viewing.property_name} {viewing.property_code}
+            </p>
+
+            <div className="af-tab-bar" style={{ marginBottom: 18 }}>
+              {VIEW_TABS.map(t => (
+                <button key={t} onClick={() => setViewTab(t)} className={`af-tab-pill ${viewTab === t ? 'active' : ''}`}>{t}</button>
+              ))}
+            </div>
+
+            {viewLoading ? (
+              <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Loading…</div>
+            ) : (
+              <>
+                {viewTab === 'Info' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {([
+                      ['Owner', viewing.owner_name?.trim() || '—'],
+                      ['Ownership %', `${viewing.ownership_percentage ?? 0}%`],
+                      ['Property Type', viewing.property_type],
+                      ['Property Name', viewing.property_name],
+                      ['Property Code', viewing.property_code],
+                      ['Location', viewing.address],
+                      ['Status', viewing.status === 1 ? 'Active' : 'Inactive'],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {viewTab === 'Renters' && (
+                  <div className="af-prop-table-wrap">
+                    <table className="af-prop-table">
+                      <thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Floor</th><th>Unit</th></tr></thead>
+                      <tbody>
+                        {viewing.renters.length === 0 ? (
+                          <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No renters found</td></tr>
+                        ) : viewing.renters.map(r => (
+                          <tr key={r.id}>
+                            <td style={{ fontWeight: 600 }}>{r.name?.trim() || '—'}</td>
+                            <td style={{ fontSize: 13 }}>{r.contact || '—'}</td>
+                            <td style={{ fontSize: 13 }}>{r.email || '—'}</td>
+                            <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
+                            <td style={{ fontSize: 13 }}>{r.unit_name || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {viewTab === 'Floors' && (
+                  <div className="af-prop-table-wrap">
+                    <table className="af-prop-table">
+                      <thead><tr><th>Floor</th><th>Area (m²)</th><th>Units</th></tr></thead>
+                      <tbody>
+                        {viewing.floors.length === 0 ? (
+                          <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No floors found</td></tr>
+                        ) : viewing.floors.map(f => (
+                          <tr key={f.id}>
+                            <td style={{ fontWeight: 600 }}>{f.name}</td>
+                            <td style={{ fontSize: 13 }}>{f.area}</td>
+                            <td style={{ fontSize: 13 }}>{f.units.length}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {viewTab === 'Units' && (
+                  <div className="af-prop-table-wrap">
+                    <table className="af-prop-table">
+                      <thead><tr><th>Unit</th><th>Floor</th><th>Area (m²)</th></tr></thead>
+                      <tbody>
+                        {viewing.floors.flatMap(f => f.units).length === 0 ? (
+                          <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No units found</td></tr>
+                        ) : viewing.floors.flatMap(f => f.units.map(u => (
+                          <tr key={u.id}>
+                            <td style={{ fontWeight: 600 }}>{u.name}</td>
+                            <td style={{ fontSize: 13 }}>{f.name}</td>
+                            <td style={{ fontSize: 13 }}>{u.area}</td>
+                          </tr>
+                        )))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {viewTab === 'Financial Report' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {([
+                      ['Rent Collected', fmt(viewing.financial.pay_amount)],
+                      ['Expenses', fmt(viewing.financial.expenses)],
+                      ['Owner Maintenance', fmt(viewing.financial.owner_maintenance)],
+                      ['Renter Maintenance', fmt(viewing.financial.renter_maintenance)],
+                      ['Deposits', fmt(viewing.financial.deposit)],
+                    ] as [string, string][]).map(([k, v]) => (
+                      <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {viewTab === 'Documents' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {viewing.documents.length === 0 ? (
+                      <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
+                    ) : viewing.documents.map(d => (
+                      <a key={d.id} href={`${API}${d.document}`} target="_blank" rel="noreferrer"
+                        style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--accent)' }}>
+                        {d.document_type_name ?? 'Document'}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
             </div>
           </div>
         </div>

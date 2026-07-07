@@ -17,11 +17,13 @@ export class PropertyService {
         p.ownership_percentage, p.address, p.status,
         CONCAT(l.first_name, ' ', COALESCE(l.last_name,'')) AS owner_name,
         COUNT(DISTINCT pf.id) AS total_floor,
-        COUNT(DISTINCT pu.id) AS total_unit
+        COUNT(DISTINCT pu.id) AS total_unit,
+        COUNT(DISTINCT r.id)  AS total_renter
       FROM tbl_properties p
       LEFT JOIN tbl_landlords l ON l.id = p.landlord_id
       LEFT JOIN tbl_property_floors pf ON pf.property_id = p.id AND pf.status = 1
       LEFT JOIN tbl_property_units pu ON pu.property_id = p.id AND pu.status = 1
+      LEFT JOIN tbl_renters r ON r.property_id = p.id AND r.status = 1
       WHERE p.status = 1
       GROUP BY p.id
       ORDER BY p.property_name ASC
@@ -57,11 +59,32 @@ export class PropertyService {
        ORDER BY pd.id DESC`,
       [id],
     );
+    const renters = await this.ds.query(
+      `SELECT r.id, CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS name, r.contact, r.email,
+              pf.name AS floor_name, pu.name AS unit_name
+       FROM tbl_renters r
+       LEFT JOIN tbl_property_floors pf ON pf.id = r.floor_id
+       LEFT JOIN tbl_property_units pu ON pu.id = r.unit_id
+       WHERE r.property_id = ? AND r.status = 1
+       ORDER BY r.id DESC`,
+      [id],
+    );
+    const [financial] = await this.ds.query(
+      `SELECT
+         COALESCE((SELECT SUM(amount) FROM tbl_pay_rents WHERE property_id = ?), 0) AS pay_amount,
+         COALESCE((SELECT SUM(amount) FROM tbl_expenses WHERE property_id = ?), 0) AS expenses,
+         COALESCE((SELECT SUM(amount) FROM tbl_maintenances WHERE property_id = ? AND maintenance_by = 0), 0) AS owner_maintenance,
+         COALESCE((SELECT SUM(amount) FROM tbl_maintenances WHERE property_id = ? AND maintenance_by = 1), 0) AS renter_maintenance,
+         COALESCE((SELECT SUM(rent_deposit) FROM tbl_leases WHERE property_id = ?), 0) AS deposit`,
+      [id, id, id, id, id],
+    );
 
     return {
       ...property,
-      floors: floors.map((f: any) => ({ ...f, units: units.filter((u: any) => u.floor_id === f.id) })),
+      floors: floors.map((f: any) => ({ ...f, units: units.filter((u: any) => String(u.floor_id) === String(f.id)) })),
       documents,
+      renters,
+      financial,
     };
   }
 
