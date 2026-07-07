@@ -23,10 +23,10 @@ export class PaymentController {
   }
 
   @Get('maintenance')       findMaintenance()                          { return this.svc.findMaintenance(); }
-  @Put('maintenance/:id/pay') payMaintenance(@Param('id') id: string)  { return this.svc.payMaintenance(+id); }
+  @Put('maintenance/:id/pay') payMaintenance(@Param('id') id: string, @Body() body: any)  { return this.svc.payMaintenance(+id, body); }
 
   @Get('utility')       findUtility()                          { return this.svc.findUtility(); }
-  @Put('utility/:id/pay') payUtility(@Param('id') id: string)  { return this.svc.payUtility(+id); }
+  @Put('utility/:id/pay') payUtility(@Param('id') id: string, @Body() body: any)  { return this.svc.payUtility(+id, body); }
 
   @Get('parking')          findParking()                           { return this.svc.findParking(); }
   @Put('parking/:id/pay')  payParking(@Param('id') id: string)     { return this.svc.payParking(+id); }

@@ -129,14 +129,31 @@ export class PaymentService {
   async findMaintenance() {
     return this.ds.query(
       `SELECT m.id, m.title, m.amount, m.date, m.description, m.payment_type, m.payment_status,
+              m.receipt_image, m.cheque_details, m.cheque_image, m.online_details, m.online_image,
+              m.pdc_cheque_details, m.pdc_cheque_image, m.pdc_cheque_date,
               p.property_name
        FROM tbl_maintenances m
        LEFT JOIN tbl_properties p ON p.id = m.property_id
        ORDER BY m.date DESC`,
     );
   }
-  async payMaintenance(id: number) {
-    await this.ds.query(`UPDATE tbl_maintenances SET payment_status = 1 WHERE id = ?`, [id]);
+  async payMaintenance(id: number, body: any) {
+    const payment_status = body.payment_type === 'Pdc Cheque' ? 0 : 1;
+    await this.ds.query(
+      `UPDATE tbl_maintenances SET
+         payment_type = ?, payment_status = ?, receipt_image = ?,
+         cheque_details = ?, cheque_image = ?,
+         online_details = ?, online_image = ?,
+         pdc_cheque_details = ?, pdc_cheque_image = ?, pdc_cheque_date = ?
+       WHERE id = ?`,
+      [
+        body.payment_type ?? null, payment_status, body.receipt_image ?? null,
+        body.cheque_details ?? null, body.cheque_image ?? null,
+        body.online_details ?? null, body.online_image ?? null,
+        body.pdc_cheque_details ?? null, body.pdc_cheque_image ?? null, body.pdc_cheque_date ?? null,
+        id,
+      ],
+    );
     return { ok: true };
   }
 
@@ -144,14 +161,31 @@ export class PaymentService {
   async findUtility() {
     return this.ds.query(
       `SELECT u.id, u.total_rent, u.issue_date, u.payment_type, u.payment_status,
+              u.receipt_image, u.cheque_details, u.cheque_image, u.online_details, u.online_image,
+              u.pdc_cheque_details, u.pdc_cheque_image, u.pdc_cheque_date,
               p.property_name
        FROM tbl_utilities u
        LEFT JOIN tbl_properties p ON p.id = u.property_id
        ORDER BY u.issue_date DESC`,
     );
   }
-  async payUtility(id: number) {
-    await this.ds.query(`UPDATE tbl_utilities SET payment_status = 1 WHERE id = ?`, [id]);
+  async payUtility(id: number, body: any) {
+    const payment_status = body.payment_type === 'Pdc Cheque' ? 0 : 1;
+    await this.ds.query(
+      `UPDATE tbl_utilities SET
+         payment_type = ?, payment_status = ?, receipt_image = ?,
+         cheque_details = ?, cheque_image = ?,
+         online_details = ?, online_image = ?,
+         pdc_cheque_details = ?, pdc_cheque_image = ?, pdc_cheque_date = ?
+       WHERE id = ?`,
+      [
+        body.payment_type ?? null, payment_status, body.receipt_image ?? null,
+        body.cheque_details ?? null, body.cheque_image ?? null,
+        body.online_details ?? null, body.online_image ?? null,
+        body.pdc_cheque_details ?? null, body.pdc_cheque_image ?? null, body.pdc_cheque_date ?? null,
+        id,
+      ],
+    );
     return { ok: true };
   }
 
