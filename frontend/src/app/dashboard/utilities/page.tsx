@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -85,6 +87,34 @@ export default function UtilitiesPage() {
   const paidAmount = bills.filter(b => b.payment_status === 1).reduce((s, b) => s + billTotal(b), 0)
   const unpaidAmount = bills.filter(b => b.payment_status !== 1).reduce((s, b) => s + billTotal(b), 0)
 
+  const exportHeaders = ['#', 'Renter', 'Property', 'Floor', 'Unit', 'Month', 'Water Bill', 'Electric Bill', 'Cusa', 'Other', 'Total', 'Interest', 'Status', 'Pay Date']
+  const exportRows = () => filtered.map((b, i) => [
+    i + 1, b.renter_name?.trim() || '—', b.property_name || '—', b.floor_name || '—', b.unit_name || '—',
+    b.month || '—', fmt(b.water_bill), fmt(b.electric_bill), fmt(b.cusa), fmt(b.other_bill),
+    fmt(billTotal(b)), b.interest ? fmt(b.interest) : '—', b.payment_status === 1 ? 'paid' : 'unpaid',
+    b.issue_date?.slice(0, 10) || '—',
+  ])
+
+  const exportExcel = () => {
+    const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'utility-bills.csv' })
+    a.click()
+  }
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(14)
+    doc.text('Utility Bills', 14, 14)
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: exportRows().map(r => r.map(String)),
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 197, 94] },
+    })
+    doc.save('utility-bills.pdf')
+  }
+
   const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true) }
   const openEdit = (b: UtilityBill) => {
     setEditing(b)
@@ -142,7 +172,15 @@ export default function UtilitiesPage() {
           <h1 className="af-db-greeting" style={{ fontSize: 26 }}>Utility Bills</h1>
           <p className="af-db-subtitle">Water, electricity &amp; other billing per unit</p>
         </div>
-        <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }}>+ Add Bill</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Excel
+          </button>
+          <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Pdf
+          </button>
+          <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }}>+ Add Bill</button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 28 }}>

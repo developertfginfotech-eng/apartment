@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -109,6 +111,34 @@ export default function MaintenancePage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const exportHeaders = ['#', 'Maintenance Title', 'Property', 'Date', 'Amount', 'Details', 'Requested By', 'Maintenances Status', 'Payment Status', 'Status']
+  const exportRows = () => records.map((r, i) => [
+    i + 1, r.title, r.property_name ?? String(r.property_id), r.date ? r.date.slice(0, 10) : '—',
+    fmt(r.amount), r.description || '—', REQUESTED_BY[r.maintenance_by ?? ''] ?? '—',
+    MAINTENANCE_STATUS[r.maintenances_status]?.label ?? '—', r.payment_status === 1 ? 'Paid' : 'Pending',
+    r.status === 1 ? 'Active' : 'Inactive',
+  ])
+
+  const exportExcel = () => {
+    const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'maintenances.csv' })
+    a.click()
+  }
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(14)
+    doc.text('Maintenances List', 14, 14)
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: exportRows().map(r => r.map(String)),
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 197, 94] },
+    })
+    doc.save('maintenances.pdf')
+  }
 
   const openCreate = () => {
     setEditTarget(null)
@@ -268,9 +298,17 @@ export default function MaintenancePage() {
             {loading ? 'Loading…' : `${records.filter(r => r.status === 1).length} active record${records.filter(r => r.status === 1).length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button className="af-btn-primary" onClick={openCreate} style={{ cursor: 'pointer', border: 'none' }}>
-          + New Record
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Excel
+          </button>
+          <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Pdf
+          </button>
+          <button className="af-btn-primary" onClick={openCreate} style={{ cursor: 'pointer', border: 'none' }}>
+            + New Record
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
