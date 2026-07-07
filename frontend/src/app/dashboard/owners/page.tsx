@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
@@ -130,6 +131,7 @@ export default function OwnersPage() {
       (o.phone ?? '').includes(q)
     )
   })
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   function openAdd() {
     setEditTarget(null)
@@ -386,7 +388,7 @@ export default function OwnersPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map(o => (
+                pageItems.map(o => (
                   <tr key={o.id}>
                     <td style={{ fontWeight: 600 }}>
                       {[o.first_name, o.middle_name, o.last_name].filter(Boolean).join(' ')}
@@ -444,6 +446,7 @@ export default function OwnersPage() {
           </table>
         )}
       </div>
+      {!loading && <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />}
 
       {/* ── Add / Edit Modal ── */}
       {modalOpen && (

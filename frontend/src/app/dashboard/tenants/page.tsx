@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 interface Renter {
   id: number
@@ -147,6 +148,7 @@ export default function TenantsPage() {
       (filter === 'inactive' && r.renter_status === 0)
     return matchSearch && matchFilter
   })
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const counts = {
     active:   renters.filter(r => r.renter_status === 1).length,
@@ -382,9 +384,9 @@ export default function TenantsPage() {
                   </td>
                 </tr>
               )}
-              {filtered.map((r, i) => (
+              {pageItems.map((r, i) => (
                 <tr key={r.id}>
-                  <td style={{ color: 'var(--muted)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{i + 1}</td>
+                  <td style={{ color: 'var(--muted)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{(page - 1) * pageSize + i + 1}</td>
                   <td>
                     <div style={{ fontWeight: 650 }}>{r.name || '—'}</div>
                     <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{r.email}</div>
@@ -425,6 +427,7 @@ export default function TenantsPage() {
           </table>
         )}
       </div>
+      {!loading && <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />}
 
       {showForm && (
         <div className="af-modal-overlay" onClick={() => setShowForm(false)}>

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 interface Property {
   id: number
@@ -118,6 +119,7 @@ export default function PropertiesPage() {
     p.property_code.toLowerCase().includes(search.toLowerCase()) ||
     p.address?.toLowerCase().includes(search.toLowerCase())
   )
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const openNew = () => {
     setEditing(null)
@@ -340,7 +342,7 @@ export default function PropertiesPage() {
               {filtered.length === 0 && (
                 <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--muted)', padding: '32px' }}>No properties found</td></tr>
               )}
-              {filtered.map(p => (
+              {pageItems.map(p => (
                 <tr key={p.id}>
                   <td style={{ fontWeight: 650 }}>{p.property_name}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
@@ -365,6 +367,7 @@ export default function PropertiesPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
         </div>
       )}
 
