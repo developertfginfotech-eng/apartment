@@ -24,7 +24,8 @@ export class MaintenanceService {
          m.id, m.title, m.amount, m.date, m.description, m.status,
          m.property_id, p.property_name,
          m.type AS type_id, mt.name AS type_name,
-         m.maintenance_by, m.maintenances_status, m.payment_status
+         m.maintenance_by, m.maintenances_status, m.reject_details,
+         m.payment_status, m.payment_type, m.receipt_image
        FROM tbl_maintenances m
        LEFT JOIN tbl_properties p ON p.id = m.property_id
        LEFT JOIN tbl_maintenance_types mt ON mt.id = m.type

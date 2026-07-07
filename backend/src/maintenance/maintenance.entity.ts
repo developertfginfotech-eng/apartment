@@ -13,6 +13,19 @@ export class Maintenance {
   @Column({ nullable: true }) year: string;
   @Column({ type: 'text', nullable: true }) description: string;
   @Column({ default: 1 }) status: number;
+  @Column({ nullable: true }) maintenance_by: string;
+  @Column({ default: 0 }) maintenances_status: number;
+  @Column({ nullable: true }) reject_details: string;
+  @Column({ nullable: true }) payment_type: string;
+  @Column({ default: 0 }) payment_status: number;
+  @Column({ nullable: true }) receipt_image: string;
+  @Column({ type: 'text', nullable: true }) cheque_details: string;
+  @Column({ nullable: true }) cheque_image: string;
+  @Column({ nullable: true }) online_details: string;
+  @Column({ nullable: true }) online_image: string;
+  @Column({ type: 'text', nullable: true }) pdc_cheque_details: string;
+  @Column({ nullable: true }) pdc_cheque_image: string;
+  @Column({ type: 'date', nullable: true }) pdc_cheque_date: string;
   @CreateDateColumn() created_at: Date;
   @UpdateDateColumn() updated_at: Date;
 }

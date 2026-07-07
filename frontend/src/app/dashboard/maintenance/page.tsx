@@ -16,6 +16,12 @@ interface Maintenance {
   date: string
   description: string
   status: number
+  maintenance_by: string | null
+  maintenances_status: number
+  reject_details: string | null
+  payment_status: number
+  payment_type: string | null
+  receipt_image: string | null
 }
 
 interface MaintenanceType { id: number; name: string }
@@ -24,6 +30,17 @@ const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }>
   1: { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e', label: 'Active' },
   0: { bg: 'rgba(100,116,139,0.12)', color: '#64748b', label: 'Inactive' },
 }
+
+const REQUESTED_BY: Record<string, string> = { '0': 'Owner', '1': 'Renter', '2': 'Admin', '3': 'Maintenance' }
+
+const MAINTENANCE_STATUS: Record<number, { label: string; color: string }> = {
+  0: { label: 'Under Process', color: '#f97316' },
+  1: { label: 'Open', color: '#3b82f6' },
+  2: { label: 'Completed', color: '#22c55e' },
+  3: { label: 'Rejected', color: '#ef4444' },
+}
+
+const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 
 const EMPTY_FORM = {
   type: '',
@@ -46,6 +63,17 @@ export default function MaintenancePage() {
   const [form, setForm]           = useState(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState('')
+
+  const [viewing, setViewing] = useState<Maintenance | null>(null)
+
+  const [collecting, setCollecting] = useState<Maintenance | null>(null)
+  const [collectForm, setCollectForm] = useState({
+    payment_type: '', cheque_details: '', cheque_image: null as File | null,
+    online_details: '', online_image: null as File | null,
+    pdc_cheque_details: '', pdc_cheque_image: null as File | null, pdc_cheque_date: '',
+    receipt_image: null as File | null,
+  })
+  const [collectSaving, setCollectSaving] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('apt_token')) router.push('/login')
@@ -79,6 +107,8 @@ export default function MaintenancePage() {
     fetch(`${API}/maintenance-type`, { headers: authHeaders() })
       .then(r => r.json()).then(d => Array.isArray(d) && setTypes(d)).catch(()=>{})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const openCreate = () => {
     setEditTarget(null)
@@ -158,6 +188,77 @@ export default function MaintenancePage() {
     }
   }
 
+  const changeMaintenanceStatus = async (r: Maintenance, status: number) => {
+    if (status === 2 && !r.amount) { alert('Please add maintenance amount first!'); return }
+    if (status === 3) {
+      const reject_details = window.prompt('Rejected Reasons')
+      if (reject_details === null) return
+      await fetch(`${API}/maintenance/${r.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ maintenances_status: 3, reject_details }) })
+      fetchRecords()
+      return
+    }
+    const label = MAINTENANCE_STATUS[status]?.label ?? ''
+    if (!confirm(`Are you sure you want to ${label} this?`)) return
+    await fetch(`${API}/maintenance/${r.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ maintenances_status: status }) })
+    fetchRecords()
+  }
+
+  const confirmPdcCheque = async (r: Maintenance) => {
+    await fetch(`${API}/maintenance/${r.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ payment_status: 1 }) })
+    fetchRecords()
+  }
+
+  const uploadFile = async (file: File): Promise<string | null> => {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url ?? null
+  }
+
+  const openCollect = (r: Maintenance) => {
+    setCollecting(r)
+    setCollectForm({
+      payment_type: '', cheque_details: '', cheque_image: null,
+      online_details: '', online_image: null,
+      pdc_cheque_details: '', pdc_cheque_image: null, pdc_cheque_date: '',
+      receipt_image: null,
+    })
+  }
+  const closeCollect = () => setCollecting(null)
+
+  const saveCollect = async () => {
+    if (!collecting || !collectForm.payment_type) return
+    setCollectSaving(true); setError('')
+    try {
+      const body: Record<string, unknown> = {
+        payment_type: collectForm.payment_type,
+        payment_status: collectForm.payment_type === 'Pdc Cheque' ? 0 : 1,
+      }
+      if (collectForm.receipt_image) body.receipt_image = await uploadFile(collectForm.receipt_image)
+      if (collectForm.payment_type === 'Cheque') {
+        body.cheque_details = collectForm.cheque_details
+        if (collectForm.cheque_image) body.cheque_image = await uploadFile(collectForm.cheque_image)
+      } else if (collectForm.payment_type === 'Pdc Cheque') {
+        body.pdc_cheque_details = collectForm.pdc_cheque_details
+        body.pdc_cheque_date = collectForm.pdc_cheque_date
+        if (collectForm.pdc_cheque_image) body.pdc_cheque_image = await uploadFile(collectForm.pdc_cheque_image)
+      } else if (collectForm.payment_type === 'Online') {
+        body.online_details = collectForm.online_details
+        if (collectForm.online_image) body.online_image = await uploadFile(collectForm.online_image)
+      }
+      await fetch(`${API}/maintenance/${collecting.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
+      closeCollect()
+      fetchRecords()
+    } catch { setError('Failed to collect payment') }
+    finally { setCollectSaving(false) }
+  }
+
   return (
     <main className="af-db-main">
       <div className="af-db-topbar">
@@ -192,39 +293,85 @@ export default function MaintenancePage() {
           No maintenance records found.
         </div>
       ) : (
-        <div className="af-prop-table-wrap">
-          <table className="af-prop-table">
+        <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
+          <table className="af-prop-table" style={{ minWidth: 1400 }}>
             <thead>
               <tr>
                 <th>Title</th>
                 <th>Type</th>
                 <th>Property</th>
-                <th>Amount</th>
                 <th>Date</th>
+                <th>Amount</th>
+                <th>Details</th>
+                <th>Requested By</th>
+                <th>Maintenances Status</th>
+                <th>Payment Status</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th>Action</th>
+                <th>Pay Now</th>
               </tr>
             </thead>
             <tbody>
               {records.map(r => {
                 const st = STATUS_STYLE[r.status] ?? STATUS_STYLE[0]
+                const ms = MAINTENANCE_STATUS[r.maintenances_status] ?? MAINTENANCE_STATUS[0]
+                const editableStatus = r.maintenances_status !== 2 && r.maintenances_status !== 3
+                const showPayNow = r.payment_status === 0 && !!r.amount && r.maintenances_status === 2
                 return (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 650 }}>{r.title}</td>
                     <td>{r.type_name ?? '—'}</td>
                     <td>{r.property_name ?? r.property_id}</td>
+                    <td style={{ fontSize: 13 }}>{r.date ? r.date.slice(0, 10) : '—'}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                       ₱ {Number(r.amount).toLocaleString()}
                     </td>
-                    <td style={{ fontSize: 13 }}>{r.date ? r.date.slice(0, 10) : '—'}</td>
+                    <td style={{ fontSize: 13, color: 'var(--muted)', maxWidth: 200 }}>{r.description || '—'}</td>
+                    <td style={{ fontSize: 13 }}>{REQUESTED_BY[r.maintenance_by ?? ''] ?? '—'}</td>
+                    <td>
+                      {editableStatus ? (
+                        <select
+                          className="af-select"
+                          style={{ fontSize: 12, padding: '4px 8px' }}
+                          value={r.maintenances_status}
+                          onChange={e => changeMaintenanceStatus(r, Number(e.target.value))}
+                        >
+                          <option value={0}>Under Process</option>
+                          <option value={1}>Open</option>
+                          <option value={2}>Completed</option>
+                          <option value={3}>Rejected</option>
+                        </select>
+                      ) : r.maintenances_status === 3 ? (
+                        <a role="button" onClick={() => setViewing(r)} style={{ color: ms.color, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Rejected</a>
+                      ) : (
+                        <span style={{ color: ms.color, fontSize: 12, fontWeight: 600 }}>{ms.label}</span>
+                      )}
+                    </td>
+                    <td>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: r.payment_status === 1 ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: r.payment_status === 1 ? '#22c55e' : '#f97316' }}>
+                        {r.payment_status === 1 ? 'Paid' : 'Pending'}
+                      </span>
+                    </td>
                     <td>
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: st.bg, color: st.color }}>
                         {st.label}
                       </span>
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
+                      <button className="af-prop-act edit" onClick={() => setViewing(r)}>View</button>
                       <button className="af-prop-act edit" onClick={() => openEdit(r)}>Edit</button>
                       <button className="af-prop-act delete" onClick={() => deleteRecord(r.id)}>Delete</button>
+                    </td>
+                    <td>
+                      {showPayNow
+                        ? (r.payment_type === 'Pdc Cheque'
+                            ? <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none', padding: '6px 14px', fontSize: 12 }} onClick={() => confirmPdcCheque(r)}>Confirm</button>
+                            : <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none', padding: '6px 14px', fontSize: 12 }} onClick={() => openCollect(r)}>Pay Now</button>)
+                        : r.payment_status === 1
+                          ? (r.receipt_image
+                              ? <a href={`${API}${r.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)' }}>Receipt</a>
+                              : <span style={{ fontSize: 12, color: 'var(--muted)' }}>—</span>)
+                          : <span style={{ fontSize: 12, color: 'var(--muted)' }}>—</span>}
                     </td>
                   </tr>
                 )
@@ -307,6 +454,131 @@ export default function MaintenancePage() {
                 disabled={saving}
               >
                 {saving ? 'Saving…' : editTarget ? 'Save changes' : 'Create record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Details */}
+      {viewing && (
+        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
+          <div className="af-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Maintenance Details</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              {([
+                ['Title', viewing.title],
+                ['Type', viewing.type_name ?? '—'],
+                ['Property', viewing.property_name ?? String(viewing.property_id)],
+                ['Date', viewing.date ? viewing.date.slice(0, 10) : '—'],
+                ['Amount', fmt(viewing.amount)],
+                ['Requested By', REQUESTED_BY[viewing.maintenance_by ?? ''] ?? '—'],
+                ['Maintenances Status', MAINTENANCE_STATUS[viewing.maintenances_status]?.label ?? '—'],
+                ['Payment Status', viewing.payment_status === 1 ? 'Paid' : 'Pending'],
+                ['Payment Type', viewing.payment_type || '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
+              <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Details</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.description || '—'}</div>
+              </div>
+              {viewing.maintenances_status === 3 && (
+                <div style={{ background: 'rgba(239,68,68,0.08)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
+                  <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Rejected Reason</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.reject_details || '—'}</div>
+                </div>
+              )}
+            </div>
+            {viewing.receipt_image && (
+              <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Maintenance Collect */}
+      {collecting && (
+        <div className="af-modal-overlay" onClick={closeCollect}>
+          <div className="af-modal" onClick={e => e.stopPropagation()}>
+            <h2 className="af-modal-title">Maintenance Collect</h2>
+            <div className="af-modal-form">
+              <div className="af-field" style={{ marginBottom: 4 }}>
+                <label>Select Mode</label>
+                <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+                  {PAYMENT_TYPES.map(pt => (
+                    <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="radio" name="collect_payment_type" checked={collectForm.payment_type === pt} onChange={() => setCollectForm(f => ({ ...f, payment_type: pt }))} />
+                      {pt}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {collectForm.payment_type === 'Cheque' && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+                  <div className="af-field">
+                    <label>Cheque Details</label>
+                    <textarea rows={3} value={collectForm.cheque_details} onChange={e => setCollectForm(f => ({ ...f, cheque_details: e.target.value }))} />
+                  </div>
+                  <div className="af-field">
+                    <label>Cheque Image</label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, cheque_image: e.target.files?.[0] ?? null }))} />
+                  </div>
+                </div>
+              )}
+
+              {collectForm.payment_type === 'Pdc Cheque' && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+                  <div className="af-field">
+                    <label>Pdc Cheque Details</label>
+                    <textarea rows={3} value={collectForm.pdc_cheque_details} onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_details: e.target.value }))} />
+                  </div>
+                  <div className="af-field">
+                    <label>Pdc Cheque Image</label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_image: e.target.files?.[0] ?? null }))} />
+                  </div>
+                  <div className="af-field">
+                    <label>Pdc Cheque Date</label>
+                    <input type="date" value={collectForm.pdc_cheque_date} onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_date: e.target.value }))} />
+                  </div>
+                </div>
+              )}
+
+              {collectForm.payment_type === 'Online' && (
+                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+                  <div className="af-field">
+                    <label>Online Details</label>
+                    <textarea rows={3} value={collectForm.online_details} onChange={e => setCollectForm(f => ({ ...f, online_details: e.target.value }))} />
+                  </div>
+                  <div className="af-field">
+                    <label>Online Image</label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, online_image: e.target.files?.[0] ?? null }))} />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+                <div className="af-field">
+                  <label>Total Maintenance</label>
+                  <input value={fmt(collecting.amount)} readOnly disabled />
+                </div>
+                <div className="af-field">
+                  <label>Receipt Image</label>
+                  <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, receipt_image: e.target.files?.[0] ?? null }))} />
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={closeCollect} disabled={collectSaving}>Close</button>
+              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: collectSaving ? 0.7 : 1 }} onClick={saveCollect} disabled={collectSaving || !collectForm.payment_type}>
+                {collectSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
