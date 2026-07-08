@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import FileDropInput from '@/components/FileDropInput'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -409,7 +410,7 @@ export default function SecurityMoneyPage() {
                 </div>
                 <div className="af-field" style={{ gridColumn: 'span 2' }}>
                   <label>Receipt Image</label>
-                  <input type="file" accept="image/*,.pdf" onChange={e => setForm(f => ({ ...f, receiptFile: e.target.files?.[0] ?? null }))} />
+                  <FileDropInput accept="image/*,.pdf" value={form.receiptFile} onChange={file => setForm(f => ({ ...f, receiptFile: file }))} />
                 </div>
               </div>
             </div>

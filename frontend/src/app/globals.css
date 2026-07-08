@@ -770,7 +770,7 @@ body {
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: #07060f;
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -912,15 +912,15 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 32px;
-  border-bottom: 1px solid rgba(255,255,255,0.055);
-  background: rgba(10,9,20,0.85);
+  border-bottom: 1px solid var(--border);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 .af-db-breadcrumb {
   font-size: 13.5px;
   font-weight: 700;
-  color: rgba(220,222,240,0.9);
+  color: var(--text);
   letter-spacing: -0.01em;
 }
 .af-db-user-chip {
@@ -929,8 +929,8 @@ body {
   gap: 8px;
   padding: 5px 12px;
   border-radius: 100px;
-  background: rgba(255,255,255,0.055);
-  border: 1px solid rgba(255,255,255,0.09);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
 }
 
 .af-db-sidebar-footer {
@@ -1026,7 +1026,7 @@ body {
   flex: 1;
   padding: 40px 48px;
   overflow-y: auto;
-  background: #07060f;
+  background: var(--bg);
   min-height: 100vh;
   position: relative;
   isolation: isolate;
@@ -1037,7 +1037,7 @@ body {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(200,210,255,0.55) 1px, transparent 1px);
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
   background-size: 28px 28px;
   animation: af-grid-fade 8s ease-in-out infinite;
   pointer-events: none;

@@ -316,8 +316,8 @@ export default function DashboardHome() {
         <>
           {/* Stat Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
-            {statCards.map(c => (
-              <div key={c.label} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px', borderTop: `3px solid ${c.color}` }}>
+            {statCards.map((c, i) => (
+              <div key={c.label} className="af-stat-card" style={{ animationDelay: `${i * 0.05}s`, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px', borderTop: `3px solid ${c.color}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: `${c.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{c.icon}</div>
                   <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>{c.label}</span>

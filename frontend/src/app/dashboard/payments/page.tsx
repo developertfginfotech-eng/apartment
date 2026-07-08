@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -464,7 +465,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="af-field">
                     <label>Cheque Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, cheque_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={collectForm.cheque_image} onChange={file => setCollectForm(f => ({ ...f, cheque_image: file }))} />
                   </div>
                 </div>
               )}
@@ -477,7 +478,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="af-field">
                     <label>Pdc Cheque Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={collectForm.pdc_cheque_image} onChange={file => setCollectForm(f => ({ ...f, pdc_cheque_image: file }))} />
                   </div>
                   <div className="af-field">
                     <label>Pdc Cheque Date</label>
@@ -494,7 +495,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="af-field">
                     <label>Online Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, online_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={collectForm.online_image} onChange={file => setCollectForm(f => ({ ...f, online_image: file }))} />
                   </div>
                 </div>
               )}
@@ -506,7 +507,7 @@ export default function PaymentsPage() {
                 </div>
                 <div className="af-field">
                   <label>Receipt Image</label>
-                  <input type="file" accept="image/*,.pdf" onChange={e => setCollectForm(f => ({ ...f, receipt_image: e.target.files?.[0] ?? null }))} />
+                  <FileDropInput accept="image/*,.pdf" value={collectForm.receipt_image} onChange={file => setCollectForm(f => ({ ...f, receipt_image: file }))} />
                 </div>
               </div>
             </div>

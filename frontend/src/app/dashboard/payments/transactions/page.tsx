@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -374,7 +375,7 @@ function PaymentTransactionsContent() {
                   </div>
                   <div className="af-field">
                     <label>Cheque Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setHistoryForm(f => ({ ...f, cheque_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={historyForm.cheque_image} onChange={file => setHistoryForm(f => ({ ...f, cheque_image: file }))} />
                   </div>
                 </div>
               )}
@@ -387,7 +388,7 @@ function PaymentTransactionsContent() {
                   </div>
                   <div className="af-field">
                     <label>Pdc Cheque Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setHistoryForm(f => ({ ...f, pdc_cheque_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={historyForm.pdc_cheque_image} onChange={file => setHistoryForm(f => ({ ...f, pdc_cheque_image: file }))} />
                   </div>
                   <div className="af-field">
                     <label>Pdc Cheque Date</label>
@@ -404,7 +405,7 @@ function PaymentTransactionsContent() {
                   </div>
                   <div className="af-field">
                     <label>Online Image</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setHistoryForm(f => ({ ...f, online_image: e.target.files?.[0] ?? null }))} />
+                    <FileDropInput accept="image/*,.pdf" value={historyForm.online_image} onChange={file => setHistoryForm(f => ({ ...f, online_image: file }))} />
                   </div>
                 </div>
               )}
@@ -412,7 +413,7 @@ function PaymentTransactionsContent() {
               <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
                 <div className="af-field">
                   <label>Receipt Image</label>
-                  <input type="file" accept="image/*,.pdf" onChange={e => setHistoryForm(f => ({ ...f, receipt_image: e.target.files?.[0] ?? null }))} />
+                  <FileDropInput accept="image/*,.pdf" value={historyForm.receipt_image} onChange={file => setHistoryForm(f => ({ ...f, receipt_image: file }))} />
                   {editingHistory.receipt_image && !historyForm.receipt_image && (
                     <a href={`${API}${editingHistory.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'inline-block' }}>View current receipt</a>
                   )}

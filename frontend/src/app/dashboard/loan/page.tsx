@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -376,7 +377,7 @@ export default function LoanPage() {
                 </div>
                 <div className="af-field" style={{ gridColumn: '1/-1' }}>
                   <label>Receipt Image</label>
-                  <input type="file" accept="image/*,.pdf" onChange={e => sf('receiptFile', e.target.files?.[0] ?? null)} />
+                  <FileDropInput accept="image/*,.pdf" value={form.receiptFile} onChange={file => sf('receiptFile', file)} />
                   {editing?.receipt_image && !form.receiptFile && (
                     <a href={`${API}${editing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'inline-block' }}>View current receipt</a>
                   )}

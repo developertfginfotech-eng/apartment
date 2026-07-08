@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
+import FileDropInput from '@/components/FileDropInput'
 
 interface Renter {
   id: number
@@ -520,7 +521,9 @@ export default function TenantsPage() {
                       <option value="">-- Select Type --</option>
                       {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
-                    <input type="file" onChange={e => setNewDocFile(e.target.files?.[0] ?? null)} style={{ flex: '1 1 160px', fontSize: 12 }} />
+                    <div style={{ flex: '1 1 160px' }}>
+                      <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
+                    </div>
                     <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
                       {uploading ? 'Uploading…' : 'Upload'}
                     </button>
