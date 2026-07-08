@@ -33,7 +33,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const [user, setUser]         = useState<UserInfo | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const { dark, toggle: toggleTheme } = useTheme()
+
+  useEffect(() => { setMobileOpen(false) }, [pathname])
 
   useEffect(() => {
     const token  = localStorage.getItem('apt_token')
@@ -53,8 +56,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="af-db-page">
+      {/* ── Mobile backdrop ── */}
+      <div className={`af-db-mobile-backdrop ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(false)} />
+
       {/* ── Sidebar ── */}
-      <aside className={`af-db-sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <aside className={`af-db-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="af-db-sidebar-head">
           <Link className="af-nav-logo" href="/" style={{textDecoration:'none',gap:collapsed?0:9}}>
             <div className="af-nav-icon">AP</div>
@@ -102,8 +108,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         {/* Top bar */}
         <header className="af-db-topnav">
-          <div className="af-db-breadcrumb">
-            {NAV.find(n => isActive(n.href))?.label ?? 'Dashboard'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button className="af-db-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Toggle menu">☰</button>
+            <div className="af-db-breadcrumb">
+              {NAV.find(n => isActive(n.href))?.label ?? 'Dashboard'}
+            </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
             <button

@@ -106,6 +106,9 @@ export class PaymentService {
     return this.ds.query(
       `SELECT pr.id, pr.renter_id, pr.month, pr.payment_month, pr.year, pr.amount,
               pr.deposit_amount, pr.total_amount, pr.payment_type, pr.payment_date,
+              pr.receipt_image, pr.remark,
+              pr.cheque_details, pr.cheque_image, pr.online_details, pr.online_image,
+              pr.pdc_cheque_details, pr.pdc_cheque_image, pr.pdc_cheque_date,
               CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS renter_name
        FROM tbl_pay_rents pr
        LEFT JOIN tbl_renters r ON r.id = pr.renter_id
@@ -116,7 +119,11 @@ export class PaymentService {
   }
 
   async updateLeaseHistory(id: number, body: any) {
-    const allowed = ['amount', 'payment_month', 'payment_date', 'payment_type', 'deposit_amount', 'total_amount'];
+    const allowed = [
+      'amount', 'payment_month', 'payment_date', 'payment_type', 'deposit_amount', 'total_amount',
+      'receipt_image', 'remark', 'cheque_details', 'cheque_image', 'online_details', 'online_image',
+      'pdc_cheque_details', 'pdc_cheque_image', 'pdc_cheque_date',
+    ];
     const keys = Object.keys(body).filter(k => allowed.includes(k));
     if (!keys.length) return { ok: true };
     const fields = keys.map(k => `\`${k}\` = ?`).join(', ');

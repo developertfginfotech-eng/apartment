@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -137,6 +138,11 @@ export default function PaymentsPage() {
   useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
 
   const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const rentPage = usePagination(rent, 10)
+  const maintenancePage = usePagination(maintenance, 10)
+  const utilityPage = usePagination(utility, 10)
+  const parkingPage = usePagination(parking, 10)
 
   const openHistory = (lease: RentRow) => {
     const params = new URLSearchParams({ leaseId: String(lease.id), renter: lease.renter_name?.trim() || '', property: lease.property_name || '' })
@@ -285,7 +291,7 @@ export default function PaymentsPage() {
               <tbody>
                 {rent.length === 0 ? (
                   <tr><td colSpan={11} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No leases found</td></tr>
-                ) : rent.map((r, i) => (
+                ) : rentPage.pageItems.map((r, i) => (
                   <tr key={r.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{r.renter_name?.trim() || '—'}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.property_name || '—'}</td>
@@ -305,6 +311,9 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           )}
+          {(activeTab === 'rent' || activeTab === 'interest') && (
+            <Pagination page={rentPage.page} pageSize={rentPage.pageSize} totalItems={rent.length} onPageChange={rentPage.setPage} />
+          )}
 
           {activeTab === 'maintenance' && (
             <table className="af-prop-table">
@@ -312,7 +321,7 @@ export default function PaymentsPage() {
               <tbody>
                 {maintenance.length === 0 ? (
                   <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No maintenance bills found</td></tr>
-                ) : maintenance.map((m, i) => (
+                ) : maintenancePage.pageItems.map((m, i) => (
                   <tr key={m.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{m.title}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{m.property_name || '—'}</td>
@@ -333,6 +342,9 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           )}
+          {activeTab === 'maintenance' && (
+            <Pagination page={maintenancePage.page} pageSize={maintenancePage.pageSize} totalItems={maintenance.length} onPageChange={maintenancePage.setPage} />
+          )}
 
           {activeTab === 'utility' && (
             <table className="af-prop-table">
@@ -340,7 +352,7 @@ export default function PaymentsPage() {
               <tbody>
                 {utility.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No utility bills found</td></tr>
-                ) : utility.map((u, i) => (
+                ) : utilityPage.pageItems.map((u, i) => (
                   <tr key={u.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{u.property_name || '—'}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(u.total_rent)}</td>
@@ -359,6 +371,9 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           )}
+          {activeTab === 'utility' && (
+            <Pagination page={utilityPage.page} pageSize={utilityPage.pageSize} totalItems={utility.length} onPageChange={utilityPage.setPage} />
+          )}
 
           {activeTab === 'parking' && (
             <table className="af-prop-table">
@@ -366,7 +381,7 @@ export default function PaymentsPage() {
               <tbody>
                 {parking.length === 0 ? (
                   <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No parking bills found</td></tr>
-                ) : parking.map((p, i) => (
+                ) : parkingPage.pageItems.map((p, i) => (
                   <tr key={p.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{p.renter_name?.trim() || '—'}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{p.property_name || '—'}</td>
@@ -380,6 +395,9 @@ export default function PaymentsPage() {
                 ))}
               </tbody>
             </table>
+          )}
+          {activeTab === 'parking' && (
+            <Pagination page={parkingPage.page} pageSize={parkingPage.pageSize} totalItems={parking.length} onPageChange={parkingPage.setPage} />
           )}
         </div>
       )}
