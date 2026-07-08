@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 interface Notice {
   id: string
@@ -39,6 +40,7 @@ export default function NoticeBoardPage() {
   const [form, setForm]         = useState(EMPTY_FORM)
 
   const filtered = filter === 'All Types' ? notices : notices.filter(n => n.recipient === filter)
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const openNew  = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true) }
   const openEdit = (n: Notice) => { setEditing(n); setForm({ title:n.title, desc:n.desc, recipient:n.recipient, status:n.status }); setShowModal(true) }
@@ -86,7 +88,7 @@ export default function NoticeBoardPage() {
         </div>
       ) : (
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-          {filtered.map(n => {
+          {pageItems.map(n => {
             const rc = RECIPIENT_COLORS[n.recipient] ?? RECIPIENT_COLORS['All']
             return (
               <div key={n.id} style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:14,padding:'20px 22px',display:'flex',flexDirection:'column',gap:10}}>
@@ -116,6 +118,9 @@ export default function NoticeBoardPage() {
             )
           })}
         </div>
+      )}
+      {filtered.length > 0 && (
+        <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
       )}
 
       {/* Post / Edit Notice Modal */}

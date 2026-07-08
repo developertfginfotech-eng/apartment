@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import DatePicker from '@/components/DatePicker'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -84,6 +85,7 @@ export default function LeasesPage() {
   const buckets = useMemo(() => leases.map(l => ({ lease: l, bucket: bucketOf(l) })), [leases]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = filter === 'all' ? buckets : buckets.filter(b => b.bucket === filter)
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
   const activeCount = buckets.filter(b => b.bucket === 'active').length
   const expiringCount = buckets.filter(b => b.bucket === 'expiring').length
 
@@ -147,7 +149,7 @@ export default function LeasesPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr><td colSpan={10} style={{ textAlign: 'center', padding: 32, color: 'var(--muted)' }}>No leases found</td></tr>
-              ) : filtered.map(({ lease: l, bucket }, i) => {
+              ) : pageItems.map(({ lease: l, bucket }, i) => {
                 const days = daysLeft(l.end_date)
                 return (
                   <tr key={l.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
@@ -172,6 +174,7 @@ export default function LeasesPage() {
               })}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
         </div>
       )}
 

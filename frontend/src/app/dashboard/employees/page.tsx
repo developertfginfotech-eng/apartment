@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 interface Employee {
   id: string; name: string; position: string; department: string
@@ -32,6 +33,7 @@ export default function EmployeesPage() {
     const q = search.toLowerCase()
     return !q || e.name.toLowerCase().includes(q) || e.position.toLowerCase().includes(q) || e.department.toLowerCase().includes(q)
   })
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const openNew = () => { setEditing(null); setForm({ name:'', position:'', department:DEPARTMENTS[0], email:'', phone:'', salary:'', joinDate:'' }); setShowForm(true) }
   const openEdit = (e: Employee) => { setEditing(e); setForm({ name:e.name, position:e.position, department:e.department, email:e.email, phone:e.phone, salary:String(e.salary), joinDate:e.joinDate }); setShowForm(true) }
@@ -71,7 +73,7 @@ export default function EmployeesPage() {
           </thead>
           <tbody>
             {filtered.length===0 && <tr><td colSpan={8} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No employees found</td></tr>}
-            {filtered.map(e => (
+            {pageItems.map(e => (
               <tr key={e.id}>
                 <td style={{fontWeight:650}}>{e.name}</td>
                 <td style={{fontSize:13}}>{e.position}</td>
@@ -94,6 +96,7 @@ export default function EmployeesPage() {
             ))}
           </tbody>
         </table>
+        <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
       </div>
 
       {showForm && (

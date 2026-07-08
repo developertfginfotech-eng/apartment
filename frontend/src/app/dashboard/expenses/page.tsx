@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 type ExpenseStatus = 'active' | 'inactive'
 type ExpenseCategory = 'Repairs' | 'Utilities' | 'Administration' | 'Cleaning' | 'Other'
@@ -91,6 +92,8 @@ export default function ExpensesPage() {
     const matchFilter = filter === 'All' || e.type === filter
     return matchSearch && matchFilter
   })
+
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const totalFinal = filtered.reduce((sum, e) => sum + e.famount, 0)
 
@@ -234,7 +237,7 @@ export default function ExpensesPage() {
                 </td>
               </tr>
             ) : (
-              filtered.map(e => (
+              pageItems.map(e => (
                 <tr key={e.id}>
                   <td style={{ fontWeight: 600, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {e.title}
@@ -290,6 +293,7 @@ export default function ExpensesPage() {
             )}
           </tbody>
         </table>
+        <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
       </div>
 
       {/* ── Total Bar ── */}

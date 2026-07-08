@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -88,6 +89,8 @@ export default function EmployeeTab() {
     fetchRows()
   }
 
+  const { page, setPage, pageSize, pageItems } = usePagination(rows, 10)
+
   return (
     <>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
@@ -109,9 +112,9 @@ export default function EmployeeTab() {
             <tbody>
               {rows.length===0 ? (
                 <tr><td colSpan={6} style={{textAlign:'center',padding:'40px',color:'var(--muted)'}}>No records found</td></tr>
-              ) : rows.map((r,i)=>(
+              ) : pageItems.map((r,i)=>(
                 <tr key={r.id}>
-                  <td>{i+1}</td>
+                  <td>{(page-1)*pageSize+i+1}</td>
                   <td>{r.name}</td>
                   <td>{r.employment_status}</td>
                   <td>{r.payment_type_name || '—'}</td>
@@ -125,6 +128,7 @@ export default function EmployeeTab() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={rows.length} onPageChange={setPage} />
         </div>
       )}
 

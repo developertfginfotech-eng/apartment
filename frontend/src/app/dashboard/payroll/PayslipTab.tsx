@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -54,6 +55,8 @@ export default function PayslipTab() {
     setDetail(data)
   }
 
+  const { page, setPage, pageSize, pageItems } = usePagination(rows, 10)
+
   return (
     <>
       <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
@@ -79,7 +82,7 @@ export default function PayslipTab() {
             <tbody>
               {rows.length===0 ? (
                 <tr><td colSpan={6} style={{textAlign:'center',padding:'40px',color:'var(--muted)'}}>No data available in table</td></tr>
-              ) : rows.map(r=>(
+              ) : pageItems.map(r=>(
                 <tr key={r.id}>
                   <td>{r.employee_name}</td>
                   <td>{r.start_date} – {r.end_date}</td>
@@ -91,6 +94,7 @@ export default function PayslipTab() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={rows.length} onPageChange={setPage} />
         </div>
       )}
 

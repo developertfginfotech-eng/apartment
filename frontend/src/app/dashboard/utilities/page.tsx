@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -78,6 +79,7 @@ export default function UtilitiesPage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = filter === 'all' ? bills : bills.filter(b => filter === 'paid' ? b.payment_status === 1 : b.payment_status !== 1)
+  const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const billTotal = (b: UtilityBill) => Number(b.total_rent) || bill(b)
@@ -220,7 +222,7 @@ export default function UtilitiesPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr><td colSpan={14} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
-              ) : filtered.map((b, i) => (
+              ) : pageItems.map((b, i) => (
                 <tr key={b.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                   <td style={{ fontWeight: 650 }}>{b.renter_name?.trim() || '—'}</td>
                   <td style={{ fontSize: 13 }}>{b.property_name || '—'}</td>
@@ -264,6 +266,7 @@ export default function UtilitiesPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
         </div>
       )}
 

@@ -125,6 +125,21 @@ export class PaymentService {
     return { ok: true };
   }
 
+  async createLeaseHistory(leaseId: number, body: any) {
+    const [lease] = await this.ds.query(`SELECT renter_id, property_id FROM tbl_leases WHERE id = ?`, [leaseId]);
+    if (!lease) throw new NotFoundException('Lease not found');
+    await this.ds.query(
+      `INSERT INTO tbl_pay_rents (lease_id, renter_id, property_id, payment_month, amount, deposit_amount, payment_type, payment_date, status)
+       VALUES (?,?,?,?,?,?,?,?,1)`,
+      [
+        leaseId, lease.renter_id, lease.property_id,
+        body.payment_month ?? null, body.amount ?? 0, body.deposit_amount ?? 0,
+        body.payment_type ?? 'Cash', body.payment_date ?? null,
+      ],
+    );
+    return { ok: true };
+  }
+
   // ── Maintenances tab ──
   async findMaintenance() {
     return this.ds.query(

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -60,6 +61,7 @@ export default function TaxesPage() {
   const filteredTaxes = taxes
     .filter(tx => tx.key.toLowerCase().includes(search.toLowerCase()))
     .slice(0, limit)
+  const { page, setPage, pageSize, pageItems } = usePagination(filteredTaxes, 10)
 
   const save = async () => {
     const val = parseFloat(form.value)
@@ -121,9 +123,9 @@ export default function TaxesPage() {
             <tbody>
               {filteredTaxes.length === 0 ? (
                 <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No taxes found</td></tr>
-              ) : filteredTaxes.map((tx, i) => (
+              ) : pageItems.map((tx, i) => (
                 <tr key={tx.id}>
-                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
+                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{tx.key}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{Number(tx.value).toFixed(2)}</td>
                   <td>
@@ -139,6 +141,7 @@ export default function TaxesPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={filteredTaxes.length} onPageChange={setPage} />
         </div>
       )}
 

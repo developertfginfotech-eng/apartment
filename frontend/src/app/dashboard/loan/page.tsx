@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -86,6 +87,7 @@ export default function LoanPage() {
   const filteredLoans = loans.filter(l =>
     !search || l.employee_name?.toLowerCase().includes(search.toLowerCase()) || String(l.amount_of_loan).includes(search)
   )
+  const { page, setPage, pageSize, pageItems } = usePagination(filteredLoans, 10)
 
   const totalLoans = loans.reduce((s, l) => s + Number(l.amount_of_loan), 0)
   const outstanding = loans.filter(l => l.payment_status !== 'paid').reduce((s, l) => s + Number(l.amount_of_loan), 0)
@@ -259,9 +261,9 @@ export default function LoanPage() {
             <tbody>
               {filteredLoans.length === 0 ? (
                 <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No loans found</td></tr>
-              ) : filteredLoans.map((l, i) => (
+              ) : pageItems.map((l, i) => (
                 <tr key={l.id} style={{ opacity: l.status === 0 ? 0.6 : 1 }}>
-                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
+                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{l.employee_name || '—'}</td>
                   <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(l.amount_of_loan)}</td>
                   <td>
@@ -296,6 +298,7 @@ export default function LoanPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={filteredLoans.length} onPageChange={setPage} />
         </div>
       )}
 

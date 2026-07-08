@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -111,6 +112,8 @@ export default function MaintenancePage() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const { page, setPage, pageSize, pageItems } = usePagination(records, 10)
 
   const exportHeaders = ['#', 'Maintenance Title', 'Property', 'Date', 'Amount', 'Details', 'Requested By', 'Maintenances Status', 'Payment Status', 'Status']
   const exportRows = () => records.map((r, i) => [
@@ -350,7 +353,7 @@ export default function MaintenancePage() {
               </tr>
             </thead>
             <tbody>
-              {records.map(r => {
+              {pageItems.map(r => {
                 const st = STATUS_STYLE[r.status] ?? STATUS_STYLE[0]
                 const ms = MAINTENANCE_STATUS[r.maintenances_status] ?? MAINTENANCE_STATUS[0]
                 const editableStatus = r.maintenances_status !== 2 && r.maintenances_status !== 3
@@ -416,6 +419,7 @@ export default function MaintenancePage() {
               })}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={records.length} onPageChange={setPage} />
         </div>
       )}
 

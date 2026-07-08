@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const MODULES = ['properties','tenants','leases','payments','maintenance','expenses','employees','reports']
@@ -70,6 +71,8 @@ export default function AdminsPage() {
     finally { setSaving(false) }
   }
 
+  const { page, setPage, pageSize, pageItems } = usePagination(admins, 10)
+
   return (
     <main className="af-db-main">
       <div className="af-db-topbar">
@@ -100,7 +103,7 @@ export default function AdminsPage() {
               </tr>
             </thead>
             <tbody>
-              {admins.map(a => (
+              {pageItems.map(a => (
                 <tr key={a.id}>
                   <td style={{fontWeight:650}}>{a.name}</td>
                   <td style={{color:'var(--muted)',fontSize:13}}>{a.email}</td>
@@ -118,6 +121,7 @@ export default function AdminsPage() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={admins.length} onPageChange={setPage} />
         </div>
       )}
 

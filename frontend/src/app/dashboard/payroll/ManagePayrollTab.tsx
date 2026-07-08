@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -75,6 +76,8 @@ export default function ManagePayrollTab() {
 
   useEffect(() => { if (openBatch) fetchDetail(openBatch) }, [openBatch, fetchDetail])
 
+  const { page, setPage, pageSize, pageItems } = usePagination(rows, 10)
+
   if (openBatch) {
     const totalNet = rows.reduce((s,r)=>s+Number(r.net_pay),0)
     return (
@@ -108,9 +111,9 @@ export default function ManagePayrollTab() {
               <tbody>
                 {rows.length===0 ? (
                   <tr><td colSpan={8} style={{textAlign:'center',padding:'40px',color:'var(--muted)'}}>No approved payrolls in this period</td></tr>
-                ) : rows.map((r,i)=>(
+                ) : pageItems.map((r,i)=>(
                   <tr key={r.id}>
-                    <td>{i+1}</td>
+                    <td>{(page-1)*pageSize+i+1}</td>
                     <td>{r.employee_name}</td>
                     <td>{r.start_date} – {r.end_date}</td>
                     <td>{fmt(r.basic)}</td>
@@ -122,6 +125,7 @@ export default function ManagePayrollTab() {
                 ))}
               </tbody>
             </table>
+            <Pagination page={page} pageSize={pageSize} totalItems={rows.length} onPageChange={setPage} />
           </div>
         )}
       </>

@@ -17,6 +17,11 @@ export class PaymentController {
     return this.svc.findLeaseHistory(+leaseId);
   }
 
+  @Post('lease/:leaseId/history')
+  addLeaseHistory(@Param('leaseId') leaseId: string, @Body() body: any) {
+    return this.svc.createLeaseHistory(+leaseId, body);
+  }
+
   @Put('history/:id')
   updateHistory(@Param('id') id: string, @Body() body: any) {
     return this.svc.updateLeaseHistory(+id, body);

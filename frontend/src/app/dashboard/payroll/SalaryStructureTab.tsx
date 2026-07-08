@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -55,6 +56,8 @@ export default function SalaryStructureTab() {
     fetchRows()
   }
 
+  const { page, setPage, pageSize, pageItems } = usePagination(rows, 10)
+
   return (
     <>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
@@ -74,9 +77,9 @@ export default function SalaryStructureTab() {
             <tbody>
               {rows.length===0 ? (
                 <tr><td colSpan={3} style={{textAlign:'center',padding:'40px',color:'var(--muted)'}}>No records found</td></tr>
-              ) : rows.map((r,i)=>(
+              ) : pageItems.map((r,i)=>(
                 <tr key={r.id}>
-                  <td>{i+1}</td>
+                  <td>{(page-1)*pageSize+i+1}</td>
                   <td>{r.name}</td>
                   <td>
                     <button onClick={()=>openEdit(r)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',marginRight:10}}>✎</button>
@@ -86,6 +89,7 @@ export default function SalaryStructureTab() {
               ))}
             </tbody>
           </table>
+          <Pagination page={page} pageSize={pageSize} totalItems={rows.length} onPageChange={setPage} />
         </div>
       )}
 
