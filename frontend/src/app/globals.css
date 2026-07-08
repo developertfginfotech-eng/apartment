@@ -1521,7 +1521,42 @@ body {
   justify-content: center;
   padding: 40px 20px;
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
+
+/* dot-grid overlay, matches the dashboard shell and adapts with the theme */
+.af-auth-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--grid-dot) 1px, transparent 1px);
+  background-size: 28px 28px;
+  animation: af-grid-fade 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* drifting aurora blobs behind the login/signup card */
+.af-auth-page::after {
+  content: '';
+  position: fixed;
+  top: -20%; left: -15%;
+  width: 75vw; height: 75vh;
+  border-radius: 40% 60% 55% 45% / 45% 35% 65% 55%;
+  background: radial-gradient(ellipse at center,
+    rgba(220,80,10,0.20) 0%,
+    rgba(180,50,5,0.14) 35%,
+    rgba(100,20,60,0.08) 60%,
+    transparent 75%
+  );
+  filter: blur(48px);
+  animation: af-aurora-a 28s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.af-auth-card, .af-auth-back { position: relative; z-index: 1; }
 
 .af-auth-card {
   width: 100%;

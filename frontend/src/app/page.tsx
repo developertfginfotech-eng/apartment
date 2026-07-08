@@ -190,16 +190,16 @@ export default function Home() {
     let W = 0, H = 0, raf = 0
     const resize = () => { const h = canvas.parentElement!; W = canvas.width = h.offsetWidth; H = canvas.height = h.offsetHeight }
     resize(); window.addEventListener('resize', resize)
-    const marks = Array.from({ length: 44 }, () => ({ x: Math.random(), y: Math.random(), sz: Math.random()*5+2, phase: Math.random()*Math.PI*2, rate: Math.random()*0.35+0.15, cross: Math.random()>0.42 }))
+    const marks = Array.from({ length: 44 }, () => ({ x: Math.random(), y: Math.random(), sz: Math.random()*9+5, phase: Math.random()*Math.PI*2, rate: Math.random()*0.35+0.15, cross: Math.random()>0.42 }))
     let t = 0
     const tick = () => {
       t += 0.014; ctx.clearRect(0,0,W,H)
       for (const m of marks) {
         const a = (Math.sin(t*m.rate+m.phase)*0.5+0.5)*0.48+0.04
-        const px = m.x*W, py = m.y*H, s = m.sz*0.45
-        ctx.globalAlpha = a; ctx.strokeStyle='rgba(255,255,255,0.95)'; ctx.lineWidth=0.9
+        const px = m.x*W, py = m.y*H, s = m.sz*0.85
+        ctx.globalAlpha = a; ctx.strokeStyle='rgba(255,255,255,0.95)'; ctx.lineWidth=1.6
         if (m.cross) { ctx.beginPath(); ctx.moveTo(px-s,py); ctx.lineTo(px+s,py); ctx.moveTo(px,py-s); ctx.lineTo(px,py+s); ctx.stroke() }
-        else { ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(px,py,1.1,0,Math.PI*2); ctx.fill() }
+        else { ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(px,py,s*0.4,0,Math.PI*2); ctx.fill() }
       }
       ctx.globalAlpha=1; raf=requestAnimationFrame(tick)
     }
@@ -268,9 +268,6 @@ export default function Home() {
           ))}
         </ul>
         <div className="af-nav-right">
-          <a className="af-nav-badge" href="#">
-            <span className="af-star">★</span> 12,840
-          </a>
           {authedUser ? (
             <>
               <span style={{fontSize:12.5,color:'var(--muted)',fontWeight:500}}>
