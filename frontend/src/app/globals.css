@@ -821,10 +821,17 @@ body {
 }
 
 .af-db-collapse-btn {
+  /* Floating handle on the sidebar's edge — stays reachable regardless of
+     collapsed/expanded width, instead of competing for space in the header. */
+  position: absolute;
+  top: 24px;
+  right: -13px;
+  z-index: 15;
   width: 26px; height: 26px;
-  border-radius: 7px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
   color: var(--muted);
   font-size: 14px;
   cursor: pointer;
@@ -1653,13 +1660,17 @@ body {
     color: var(--text); font-size: 16px;
   }
   .af-db-sidebar {
-    position: fixed; top: 0; left: 0; z-index: 60;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+    width: 228px; min-width: 228px;
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(.2,.8,.2,1);
     box-shadow: 24px 0 60px rgba(0,0,0,0.45);
   }
   .af-db-sidebar.mobile-open { transform: translateX(0); }
-  .af-db-sidebar.collapsed { flex-basis: 228px; min-width: 228px; } /* ignore desktop-collapse while off-canvas */
+  /* position:fixed takes the sidebar out of flex flow, so flex-basis has no effect here —
+     an explicit width is required, and it must win regardless of the desktop .collapsed state. */
+  .af-db-sidebar.collapsed { width: 228px; min-width: 228px; }
+  .af-db-collapse-btn { display: none; } /* hamburger drives open/close on mobile instead */
   .af-db-mobile-backdrop.open {
     display: block; position: fixed; inset: 0; z-index: 55;
     background: rgba(0,0,0,0.5); backdrop-filter: blur(1px);

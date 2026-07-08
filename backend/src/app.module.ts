@@ -8,6 +8,7 @@ import { uploadDir } from './document/upload-dir';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
+import { ModulePermissionGuard } from './common/module-permission.guard';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
@@ -84,6 +85,8 @@ import { TaxModule } from './tax/tax.module';
     AppService,
     // Register JwtAuthGuard globally so all controllers are protected without importing JwtModule per-module
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Enforces per-module permissions for non-super-admin accounts (runs after JwtAuthGuard sets req.user)
+    { provide: APP_GUARD, useClass: ModulePermissionGuard },
   ],
 })
 export class AppModule {}

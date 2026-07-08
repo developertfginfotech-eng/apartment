@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Body, HttpCode, HttpStatus,
+  Controller, Post, Get, Put, Delete, Body, HttpCode, HttpStatus,
   UseGuards, Request, Param,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -78,5 +78,21 @@ export class AuthController {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   grantPermissions(@Request() req: any, @Param('id') id: string, @Body() body: { permissions: Permission[] }) {
     return this.authService.grantPermissions(req.user.sub, id, body.permissions);
+  }
+
+  @Put('admins/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  async updateAdmin(@Param('id') id: string, @Body() body: { name?: string; email?: string; permissions?: Permission[] }) {
+    if (body.permissions) await this.usersService.updatePermissions(id, body.permissions);
+    return this.usersService.updateAdmin(id, { name: body.name, email: body.email });
+  }
+
+  @Delete('admins/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  async removeAdmin(@Param('id') id: string) {
+    await this.usersService.deleteAdmin(id);
+    return { ok: true };
   }
 }

@@ -144,6 +144,25 @@ export class UsersService implements OnModuleInit {
     return safe;
   }
 
+  async updateAdmin(id: string, updates: { name?: string; email?: string }): Promise<SafeUser> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
+    if (updates.email !== undefined) { fields.push('email = ?'); values.push(updates.email.toLowerCase()); }
+    if (fields.length) {
+      await this.ds.query(`UPDATE app_users SET ${fields.join(', ')} WHERE id = ?`, [...values, id]);
+    }
+    const user = await this.findById(id);
+    if (!user) throw new Error('User not found');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _h, ...safe } = user;
+    return safe;
+  }
+
+  async deleteAdmin(id: string): Promise<void> {
+    await this.ds.query('DELETE FROM app_users WHERE id = ? AND role != ?', [id, UserRole.SUPER_ADMIN]);
+  }
+
   async updatePassword(id: string, newPassword: string): Promise<void> {
     const hash = await bcrypt.hash(newPassword, 10);
     await this.ds.query('UPDATE app_users SET password_hash = ? WHERE id = ?', [hash, id]);

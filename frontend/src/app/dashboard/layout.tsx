@@ -5,7 +5,11 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from '../../lib/useTheme'
 
-interface UserInfo { name: string; role: string }
+interface UserInfo {
+  name: string
+  role: string
+  permissions?: { module: string; actions: string[] }[]
+}
 
 const NAV = [
   { href: '/dashboard',              label: 'Dashboard',       icon: '⊞' },
@@ -28,15 +32,48 @@ const NAV = [
   { href: '/dashboard/settings',     label: 'Setting',         icon: '⚙️' },
 ]
 
+const ADMIN_NAV_ITEM = { href: '/dashboard/admins', label: 'Admin Management', icon: '🛡️' }
+
+// Mirrors backend/src/common/module-permission.guard.ts's MODULE_BY_PREFIX —
+// keep both in sync when adding new gated sections.
+const MODULE_BY_PATH: Record<string, string> = {
+  '/dashboard/properties': 'properties',
+  '/dashboard/owners': 'owners',
+  '/dashboard/tenants': 'tenants',
+  '/dashboard/leases': 'leases',
+  '/dashboard/payments': 'payments',
+  '/dashboard/maintenance': 'maintenance',
+  '/dashboard/expenses': 'expenses',
+  '/dashboard/utilities': 'utilities',
+  '/dashboard/messages': 'messages',
+  '/dashboard/notice-board': 'notice-board',
+  '/dashboard/reports': 'reports',
+  '/dashboard/activity-logs': 'activity-logs',
+  '/dashboard/loan': 'loan',
+  '/dashboard/security-money': 'security-money',
+  '/dashboard/payroll': 'payroll',
+  '/dashboard/taxes': 'taxes',
+  '/dashboard/settings': 'settings',
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter()
   const pathname = usePathname()
   const [user, setUser]         = useState<UserInfo | null>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { dark, toggle: toggleTheme } = useTheme()
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 860px)')
+    setIsMobile(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(() => {
     const token  = localStorage.getItem('apt_token')
@@ -54,6 +91,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
 
+  // On mobile the sidebar always opens at full width with labels — the desktop
+  // icon-rail "collapsed" mode only applies at wider viewports.
+  const showLabels = isMobile || !collapsed
+  const isSuperAdmin = user?.role === 'super_admin'
+  const navItems = isSuperAdmin ? [...NAV, ADMIN_NAV_ITEM] : NAV
+
+  const requiredModule = Object.keys(MODULE_BY_PATH).find(p => pathname.startsWith(p))
+  const authorized = !user || !requiredModule || isSuperAdmin ||
+    (user.permissions ?? []).some(p => p.module === MODULE_BY_PATH[requiredModule])
+
   return (
     <div className="af-db-page">
       {/* ── Mobile backdrop ── */}
@@ -62,32 +109,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Sidebar ── */}
       <aside className={`af-db-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="af-db-sidebar-head">
-          <Link className="af-nav-logo" href="/" style={{textDecoration:'none',gap:collapsed?0:9}}>
+          <Link className="af-nav-logo" href="/" style={{textDecoration:'none',gap:showLabels?9:0}}>
             <div className="af-nav-icon">AP</div>
-            {!collapsed && <span>Apartment</span>}
+            {showLabels && <span>Apartment</span>}
           </Link>
-          <button className="af-db-collapse-btn" onClick={() => setCollapsed(c => !c)} aria-label="Toggle sidebar">
-            {collapsed ? '›' : '‹'}
-          </button>
         </div>
+        <button className="af-db-collapse-btn" onClick={() => setCollapsed(c => !c)} aria-label="Toggle sidebar">
+          {collapsed ? '›' : '‹'}
+        </button>
 
         <nav className="af-db-nav">
-          {NAV.map(n => (
+          {navItems.map(n => (
             <Link
               key={n.href}
               href={n.href}
               className={`af-db-nav-item ${isActive(n.href) ? 'active' : ''}`}
-              title={collapsed ? n.label : undefined}
+              title={!showLabels ? n.label : undefined}
               style={{textDecoration:'none'}}
             >
               <span className="af-db-nav-icon">{n.icon}</span>
-              {!collapsed && <span className="af-db-nav-label">{n.label}</span>}
+              {showLabels && <span className="af-db-nav-label">{n.label}</span>}
             </Link>
           ))}
         </nav>
 
         <div className="af-db-sidebar-footer">
-          {!collapsed ? (
+          {showLabels ? (
             <>
               <div className="af-db-user-pill">
                 <div className="af-db-avatar">{user?.name?.[0]?.toUpperCase() ?? '?'}</div>
@@ -111,7 +158,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="af-db-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Toggle menu">☰</button>
             <div className="af-db-breadcrumb">
-              {NAV.find(n => isActive(n.href))?.label ?? 'Dashboard'}
+              {NAV.find(n => isActive(n.href))?.label ?? (isActive(ADMIN_NAV_ITEM.href) ? ADMIN_NAV_ITEM.label : 'Dashboard')}
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
@@ -138,7 +185,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Scrollable content */}
         <div style={{flex:1,overflowY:'auto'}}>
-          {children}
+          {authorized ? children : (
+            <main className="af-db-main">
+              <div style={{ textAlign: 'center', padding: '80px 20px', color: 'var(--muted)' }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>🚫</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>You are not authorized</div>
+                <div style={{ fontSize: 13.5 }}>You don&apos;t have access to this module. Contact your administrator if you need access.</div>
+              </div>
+            </main>
+          )}
         </div>
       </div>
     </div>

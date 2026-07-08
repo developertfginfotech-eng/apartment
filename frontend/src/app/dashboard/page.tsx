@@ -303,7 +303,9 @@ export default function DashboardHome() {
           </h1>
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>Here&apos;s what&apos;s happening with your properties today.</p>
         </div>
-        <Link className="af-btn-primary" href="/dashboard/admins" style={{ textDecoration: 'none', position: 'relative', zIndex: 1 }}>Manage Admins</Link>
+        {user?.role === 'super_admin' && (
+          <Link className="af-btn-primary" href="/dashboard/admins" style={{ textDecoration: 'none', position: 'relative', zIndex: 1 }}>Manage Admins</Link>
+        )}
       </div>
 
       {loading && (
