@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import Pagination, { usePagination } from '@/components/Pagination'
 
@@ -91,6 +93,34 @@ export default function LeasesPage() {
 
   const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+  const exportHeaders = ['#', 'Renter', 'Property', 'Floor', 'Units', 'Period', 'Monthly Rent', 'Deposit', 'Days Left', 'Payment', 'Status']
+  const exportRows = () => filtered.map(({ lease: l, bucket }, i) => {
+    const days = daysLeft(l.end_date)
+    return [
+      i + 1, l.renter_name?.trim() || '—', l.property_name || '—', l.floor_name || '—', l.units || '—',
+      `${l.start_date?.slice(0, 10)} - ${l.end_date?.slice(0, 10) || '—'}`, fmt(l.rent_amount), fmt(l.rent_deposit),
+      days === null ? '—' : days > 0 ? `${days}d` : 'Ended', l.payment_status, STA[bucket].label,
+    ]
+  })
+  const exportExcel = () => {
+    const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'leases.csv' })
+    a.click()
+  }
+  const exportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape' })
+    doc.setFontSize(14)
+    doc.text('Leases List', 14, 14)
+    autoTable(doc, {
+      head: [exportHeaders],
+      body: exportRows().map(r => r.map(String)),
+      startY: 20,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [34, 197, 94] },
+    })
+    doc.save('leases.pdf')
+  }
+
   const save = async () => {
     if (!form.renter_id || !form.property_id || !form.rent_amount || !form.start_date || !form.end_date) return
     try {
@@ -121,7 +151,15 @@ export default function LeasesPage() {
           <h1 className="af-db-greeting" style={{ fontSize: 26 }}>Leases</h1>
           <p className="af-db-subtitle">{activeCount} active · {expiringCount} expiring soon</p>
         </div>
-        <button className="af-btn-primary" onClick={() => setShowForm(true)} style={{ cursor: 'pointer', border: 'none' }}>+ New Lease</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Excel
+          </button>
+          <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ↓ Export To Pdf
+          </button>
+          <button className="af-btn-primary" onClick={() => setShowForm(true)} style={{ cursor: 'pointer', border: 'none' }}>+ New Lease</button>
+        </div>
       </div>
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
