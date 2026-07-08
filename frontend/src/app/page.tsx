@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../lib/useTheme'
+import SparkleField from '../components/SparkleField'
 
 /* ── SVG helpers ─────────────────────────────────────────────────────────── */
 type ArrProps = { x1:number; y1:number; x2:number; y2:number; dashed?:boolean }
@@ -174,7 +175,6 @@ function WfCard({ name, cat, Diagram }: DiagramCard) {
 export default function Home() {
   const { dark, toggle: setDark } = useTheme()
   const [authedUser, setAuthedUser] = useState<{name:string;role:string}|null>(null)
-  const sparksRef = useRef<HTMLCanvasElement>(null)
   const wrapRef   = useRef<HTMLDivElement>(null)
   const svgRef    = useRef<SVGSVGElement>(null)
   const layerRef  = useRef<HTMLDivElement>(null)
@@ -182,29 +182,6 @@ export default function Home() {
   useEffect(() => {
     const stored = localStorage.getItem('apt_user')
     if (stored) { try { setAuthedUser(JSON.parse(stored)) } catch { /* ignore */ } }
-  }, [])
-
-  useEffect(() => {
-    const canvas = sparksRef.current; if (!canvas) return
-    const ctx = canvas.getContext('2d'); if (!ctx) return
-    let W = 0, H = 0, raf = 0
-    const resize = () => { const h = canvas.parentElement!; W = canvas.width = h.offsetWidth; H = canvas.height = h.offsetHeight }
-    resize(); window.addEventListener('resize', resize)
-    const marks = Array.from({ length: 44 }, () => ({ x: Math.random(), y: Math.random(), sz: Math.random()*9+5, phase: Math.random()*Math.PI*2, rate: Math.random()*0.35+0.15, cross: Math.random()>0.42 }))
-    let t = 0
-    const tick = () => {
-      t += 0.014; ctx.clearRect(0,0,W,H)
-      for (const m of marks) {
-        const a = (Math.sin(t*m.rate+m.phase)*0.5+0.5)*0.48+0.04
-        const px = m.x*W, py = m.y*H, s = m.sz*0.85
-        ctx.globalAlpha = a; ctx.strokeStyle='rgba(255,255,255,0.95)'; ctx.lineWidth=1.6
-        if (m.cross) { ctx.beginPath(); ctx.moveTo(px-s,py); ctx.lineTo(px+s,py); ctx.moveTo(px,py-s); ctx.lineTo(px,py+s); ctx.stroke() }
-        else { ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(px,py,s*0.4,0,Math.PI*2); ctx.fill() }
-      }
-      ctx.globalAlpha=1; raf=requestAnimationFrame(tick)
-    }
-    raf=requestAnimationFrame(tick)
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize',resize) }
   }, [])
 
   useEffect(() => {
@@ -287,7 +264,7 @@ export default function Home() {
       {/* ── Hero ── */}
       <section className="af-hero">
         <div className="af-hero-bg" />
-        <canvas ref={sparksRef} className="af-sparks" />
+        <SparkleField className="af-sparks" />
         <div className="af-hero-inner">
           <div className="af-hero-text">
             <div className="af-pill">Property Management Platform</div>

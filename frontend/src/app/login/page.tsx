@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTheme } from '../../lib/useTheme'
+import SparkleField from '../../components/SparkleField'
 
 function newCaptcha() {
-  const ops = ['+', '-', '×'] as const
+  const ops = ['+', '-', '*'] as const
   const op  = ops[Math.floor(Math.random() * ops.length)]
   let a = Math.floor(Math.random() * 12) + 1
   let b = Math.floor(Math.random() * 12) + 1
@@ -16,6 +18,7 @@ function newCaptcha() {
 
 export default function LoginPage() {
   const router = useRouter()
+  useTheme() // syncs the persisted light/dark preference on load (this page has no toggle of its own)
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [showPwd, setShowPwd]   = useState(false)
@@ -72,6 +75,7 @@ export default function LoginPage() {
 
   return (
     <div className="af-auth-page">
+      <SparkleField themed />
       <Link className="af-auth-back" href="/">← Back to home</Link>
 
       <div className="af-auth-card">

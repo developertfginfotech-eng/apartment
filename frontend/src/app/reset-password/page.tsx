@@ -3,11 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTheme } from '../../lib/useTheme'
+import SparkleField from '../../components/SparkleField'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
+  useTheme() // syncs the persisted light/dark preference on load (this page has no toggle of its own)
   const [step, setStep]         = useState<'form' | 'done'>('form')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
@@ -41,6 +44,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="af-auth-page">
+      <SparkleField themed />
       <Link className="af-auth-back" href="/login">← Back to login</Link>
 
       <div className="af-auth-card">
