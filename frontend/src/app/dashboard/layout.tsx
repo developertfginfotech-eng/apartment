@@ -110,7 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className={`af-db-sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="af-db-sidebar-head">
           <Link className="af-nav-logo" href="/" style={{textDecoration:'none',gap:showLabels?9:0}}>
-            <div className="af-nav-icon">AP</div>
+            <img src="/logo.jpeg" alt="Apartment" className="af-nav-icon" />
             {showLabels && <span>Apartment</span>}
           </Link>
         </div>

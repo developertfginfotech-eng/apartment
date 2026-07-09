@@ -236,7 +236,7 @@ export default function Home() {
       {/* ── Nav ── */}
       <nav className="af-nav">
         <a className="af-nav-logo" href="/">
-          <div className="af-nav-icon">AP</div>
+          <img src="/logo.jpeg" alt="Apartment" className="af-nav-icon" />
           Apartment
         </a>
         <ul className="af-nav-links">

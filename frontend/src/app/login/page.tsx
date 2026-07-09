@@ -80,7 +80,7 @@ export default function LoginPage() {
 
       <div className="af-auth-card">
         <Link className="af-auth-logo" href="/">
-          <div className="af-nav-icon">AP</div>
+          <img src="/logo.jpeg" alt="Apartment" className="af-nav-icon" />
           Apartment
         </Link>
 

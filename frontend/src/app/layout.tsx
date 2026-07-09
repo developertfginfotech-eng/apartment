@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Apartment — Property Management Platform",
   description: "Visual workflow builder for apartment managers. Automate leases, payments, and maintenance.",
+  icons: { icon: "/logo.jpeg" },
 };
 
 export default function RootLayout({
