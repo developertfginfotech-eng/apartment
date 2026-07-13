@@ -2,6 +2,7 @@ import { Injectable, ConflictException, OnModuleInit } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { NotificationService } from '../notification/notification.service';
 
 export enum UserRole {
   SUPER_ADMIN = 'super_admin',
@@ -29,7 +30,10 @@ export type SafeUser = Omit<User, 'passwordHash'>;
 
 @Injectable()
 export class UsersService implements OnModuleInit {
-  constructor(@InjectDataSource() private readonly ds: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
+  ) {}
 
   async onModuleInit() {
     // Retry up to 5 times with backoff — remote DB (Aiven) may need a moment on cold start
@@ -110,6 +114,7 @@ export class UsersService implements OnModuleInit {
     const rows = await this.ds.query('SELECT * FROM app_users WHERE id = ?', [id]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...safe } = this.mapRow(rows[0]);
+    await this.notifications.notify('admin', 'New admin account created', `${name} (${lc}) was added as ${role}`);
     return safe;
   }
 
@@ -156,11 +161,14 @@ export class UsersService implements OnModuleInit {
     if (!user) throw new Error('User not found');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash: _h, ...safe } = user;
+    await this.notifications.notify('admin', 'Admin account updated', `${safe.name} (${safe.email}) was updated`);
     return safe;
   }
 
   async deleteAdmin(id: string): Promise<void> {
+    const user = await this.findById(id);
     await this.ds.query('DELETE FROM app_users WHERE id = ? AND role != ?', [id, UserRole.SUPER_ADMIN]);
+    if (user) await this.notifications.notify('admin', 'Admin account deleted', `${user.name} (${user.email}) was removed`);
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {

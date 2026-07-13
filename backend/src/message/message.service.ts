@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'crypto';
+import { NotificationService } from '../notification/notification.service';
 
 export interface MessageDto {
   from: string;
@@ -13,7 +14,10 @@ export interface MessageDto {
 
 @Injectable()
 export class MessageService implements OnModuleInit {
-  constructor(@InjectDataSource() private readonly ds: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
+  ) {}
 
   async onModuleInit() {
     await this.ds.query(`
@@ -60,6 +64,7 @@ export class MessageService implements OnModuleInit {
       [id, dto.from, dto.role, dto.to ?? null, dto.subject, dto.body],
     );
     const [row] = await this.ds.query('SELECT * FROM app_messages WHERE id = ?', [id]);
+    await this.notifications.notify('message', 'New message sent', `${dto.from} → ${dto.to || 'recipient'}: ${dto.subject}`);
     return this.mapRow(row);
   }
 

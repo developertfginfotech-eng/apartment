@@ -11,6 +11,10 @@ interface UserInfo {
   permissions?: { module: string; actions: string[] }[]
 }
 
+interface Notif { id:string; type:string; title:string; body:string; read:boolean; createdAt:string }
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+
 const NAV = [
   { href: '/dashboard',              label: 'Dashboard',       icon: '⊞' },
   { href: '/dashboard/owners',       label: 'Owners',          icon: '👤' },
@@ -64,6 +68,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { dark, toggle: toggleTheme } = useTheme()
+  const [notifs, setNotifs] = useState<Notif[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifs, setShowNotifs] = useState(false)
 
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
@@ -87,6 +94,37 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.removeItem('apt_user')
     router.push('/')
   }, [router])
+
+  const authHeaders = useCallback(() => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` }), [])
+
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/notifications/unread-count`, { headers: authHeaders() })
+      if (res.ok) setUnreadCount((await res.json()).count)
+    } catch { /* badge count is best-effort */ }
+  }, [authHeaders])
+
+  useEffect(() => {
+    if (user?.role !== 'super_admin') return
+    refreshUnreadCount()
+    const iv = setInterval(refreshUnreadCount, 30000)
+    return () => clearInterval(iv)
+  }, [user, refreshUnreadCount])
+
+  const openNotifs = async () => {
+    setShowNotifs(v => !v)
+    if (showNotifs) return
+    try {
+      const res = await fetch(`${API}/notifications`, { headers: authHeaders() })
+      if (res.ok) setNotifs(await res.json())
+    } catch { /* dropdown just stays empty on failure */ }
+  }
+
+  const markAllNotifsRead = async () => {
+    setNotifs(ns => ns.map(n => ({ ...n, read: true })))
+    setUnreadCount(0)
+    await fetch(`${API}/notifications/read-all`, { method: 'PATCH', headers: authHeaders() })
+  }
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href)
@@ -178,6 +216,64 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path d="m2 6 10 7 10-7" />
               </svg>
             </button>
+            {isSuperAdmin && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={openNotifs}
+                  onBlur={() => setTimeout(() => setShowNotifs(false), 150)}
+                  aria-label="Notifications"
+                  title="Notifications"
+                  style={{
+                    position: 'relative',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    width:36,height:36,borderRadius:10,cursor:'pointer',
+                    background:'var(--surface2)',border:'1px solid var(--border2)',
+                    color:'var(--text)',fontSize:16,
+                  }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span style={{
+                      position:'absolute', top:-4, right:-4, minWidth:16, height:16, padding:'0 4px',
+                      borderRadius:100, background:'#ef4444', color:'#fff', fontSize:9.5, fontWeight:700,
+                      display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1,
+                    }}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifs && (
+                  <div style={{
+                    position:'absolute', top:'calc(100% + 8px)', right:0, width:320, maxHeight:380,
+                    overflowY:'auto', background:'var(--surface)', border:'1px solid var(--border2)',
+                    borderRadius:12, boxShadow:'0 12px 32px rgba(0,0,0,0.3)', zIndex:20,
+                  }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid var(--border2)' }}>
+                      <span style={{ fontWeight:700, fontSize:13 }}>Notifications</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllNotifsRead} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--accent)', fontSize:11.5, fontWeight:600, padding:0 }}>
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    {notifs.length === 0 ? (
+                      <div style={{ padding:28, textAlign:'center', color:'var(--muted)', fontSize:13 }}>No notifications</div>
+                    ) : notifs.map(n => (
+                      <div key={n.id} style={{ padding:'10px 14px', borderBottom:'1px solid var(--border2)', background: n.read ? 'transparent' : 'rgba(249,115,22,0.06)' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
+                          <span style={{ fontWeight:700, fontSize:12.5 }}>{n.title}</span>
+                          {!n.read && <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--accent)', display:'inline-block', marginLeft:'auto' }} />}
+                        </div>
+                        <div style={{ fontSize:12, color:'var(--muted)' }}>{n.body}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <button
               onClick={toggleTheme}
               aria-label="Toggle theme"

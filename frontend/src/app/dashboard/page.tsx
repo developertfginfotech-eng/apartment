@@ -242,8 +242,8 @@ export default function DashboardHome() {
       label: 'Properties',
       value: stats.properties.total,
       subs: [
-        { label: 'On Rent', val: stats.renters.total },
-        { label: 'Available', val: Math.max(0, stats.properties.total - stats.renters.total) },
+        { label: 'On Rent', val: stats.properties.active },
+        { label: 'Available', val: Math.max(0, stats.properties.total - stats.properties.active) },
       ],
       color: '#3b82f6',
       icon: '🏢',
