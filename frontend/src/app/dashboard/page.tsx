@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
+import SparkleField from '../../components/SparkleField'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -78,28 +79,39 @@ function Calendar() {
 
   const dayEventsForDetail = detailDay ? eventsOnDay(detailDay) : []
 
+  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
+  const upcoming = events
+    .filter(e => e.start >= todayStr)
+    .sort((a, b) => a.start.localeCompare(b.start))
+    .slice(0, 5)
+
   return (
     <>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontWeight: 750, fontSize: 15 }}>{MONTHS[cur.m]} {cur.y}</span>
+      <div className="af-cal-card">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: -0.2 }}>
+            <span style={{ marginRight: 8 }}>📅</span>{MONTHS[cur.m]} {cur.y}
+          </span>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={prev} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-            <button onClick={() => setCur({ y: today.getFullYear(), m: today.getMonth() })} style={{ padding: '0 10px', height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Today</button>
-            <button onClick={next} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+            <button className="af-cal-nav-btn" onClick={prev} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <button className="af-cal-nav-btn" onClick={() => setCur({ y: today.getFullYear(), m: today.getMonth() })} style={{ padding: '0 10px', height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--muted)', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Today</button>
+            <button className="af-cal-nav-btn" onClick={next} style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, textAlign: 'center' }}>
-          {DAYS.map(d => (
-            <div key={d} style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', padding: '4px 0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>
+        <div key={`${cur.y}-${cur.m}`} className="af-cal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, textAlign: 'center' }}>
+          {DAYS.map((d, i) => (
+            <div key={d} style={{ fontSize: 10.5, fontWeight: 700, color: i === 0 || i === 6 ? 'var(--accent)' : 'var(--muted)', padding: '4px 0 8px', textTransform: 'uppercase', letterSpacing: 0.6 }}>{d}</div>
           ))}
           {cells.map((c, i) => {
             const dateStr = c.cur ? toDateStr(cur.y, cur.m, c.d) : ''
             const dayEvents = dateStr ? eventsOnDay(dateStr) : []
             const hasDot = dayEvents.length > 0
+            const today_ = isToday(c.d, c.cur)
+            const weekend = i % 7 === 0 || i % 7 === 6
             return (
               <div
                 key={i}
+                className={`af-cal-day ${c.cur ? 'is-current' : ''} ${today_ ? 'is-today' : ''}`}
                 onClick={() => {
                   if (!c.cur) return
                   if (dayEvents.length > 0) { setDetailDay(dateStr); setModal(false) }
@@ -107,10 +119,10 @@ function Calendar() {
                 }}
                 title={c.cur ? (hasDot ? `${dayEvents.length} event(s) — click to view` : 'Click to add event') : ''}
                 style={{
-                  fontSize: 13, padding: '7px 2px', borderRadius: 8,
-                  fontWeight: isToday(c.d, c.cur) ? 800 : 500,
-                  background: isToday(c.d, c.cur) ? 'var(--accent)' : 'transparent',
-                  color: isToday(c.d, c.cur) ? '#fff' : c.cur ? 'var(--text)' : 'var(--border2)',
+                  fontSize: 13, padding: '8px 2px', borderRadius: 9,
+                  fontWeight: today_ ? 800 : 500,
+                  background: 'transparent',
+                  color: today_ ? '#fff' : c.cur ? (weekend ? 'var(--accent)' : 'var(--text)') : 'var(--border2)',
                   cursor: c.cur ? 'pointer' : 'default',
                   position: 'relative',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
@@ -118,11 +130,34 @@ function Calendar() {
               >
                 {c.d}
                 {hasDot && (
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: isToday(c.d, c.cur) ? '#fff' : 'var(--accent)', display: 'block' }} />
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: today_ ? '#fff' : 'var(--accent)', display: 'block' }} />
                 )}
               </div>
             )
           })}
+        </div>
+
+        {/* Upcoming events — fills the calendar card's remaining height usefully */}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border2)', flex: 1 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 }}>Upcoming Events</div>
+          {upcoming.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12.5, padding: '18px 0' }}>No upcoming events</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {upcoming.map((e, i) => (
+                <div
+                  key={e.id}
+                  className="af-cal-event-row"
+                  style={{ animationDelay: `${i * 0.04}s`, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, cursor: 'pointer' }}
+                  onClick={() => { setDetailDay(e.start); setModal(false) }}
+                >
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', flexShrink: 0 }}>{e.start === todayStr ? 'Today' : e.start}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -336,23 +371,12 @@ export default function DashboardHome() {
   return (
     <main className="af-db-main">
       {/* Header */}
-      <div style={{
+      <div className="af-db-hero" style={{
         position: 'relative', overflow: 'hidden', borderRadius: 16, marginBottom: 24,
-        background: 'linear-gradient(135deg, #3d1206 0%, #1a0a04 35%, #0d1020 65%, #080d1a 100%)',
         padding: '32px 32px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        {/* sparkles */}
-        {[
-          [8,20],[18,70],[45,15],[55,80],[72,30],[80,60],[92,10],[88,85],[30,50],[63,45]
-        ].map(([top,left],i) => (
-          <div key={i} style={{
-            position:'absolute', top:`${top}%`, left:`${left}%`,
-            width: i%3===0?6:i%3===1?4:3, height: i%3===0?6:i%3===1?4:3,
-            color:'rgba(255,255,255,0.35)', fontSize: i%3===0?10:8,
-            pointerEvents:'none', userSelect:'none',
-          }}>{ i%2===0 ? '✦' : '+' }</div>
-        ))}
+        <SparkleField count={22} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h1 style={{ fontSize: 32, fontWeight: 800, margin: 0, marginBottom: 6, color: '#fff' }}>
             Welcome back, <span style={{ color: 'var(--accent)' }}>{user?.name?.split(' ')[0] ?? 'Admin'}</span>
@@ -397,30 +421,30 @@ export default function DashboardHome() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, marginBottom: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                <div className="af-db-card" style={{ animationDelay: '0.06s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Rent</div>
                   <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.rent)}</div>
                 </div>
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                <div className="af-db-card" style={{ animationDelay: '0.1s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Utility</div>
                   <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.utility)}</div>
                 </div>
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                <div className="af-db-card" style={{ animationDelay: '0.14s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Maintenance</div>
                   <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.maintenance)}</div>
                 </div>
               </div>
-              <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+              <div className="af-db-card" style={{ animationDelay: '0.18s', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14, padding: '20px 24px' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Total Amount Due</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', marginBottom: 8 }}>{fmt(stats.dueBreakdown.total)}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall payment due of rent, utilities and maintenance</div>
               </div>
-              <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+              <div className="af-db-card" style={{ animationDelay: '0.22s', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: '20px 24px' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Amount Received</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#22c55e', marginBottom: 8 }}>{fmt(stats.amountReceived)}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall payment received of rent, utilities and maintenance</div>
               </div>
-              <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+              <div className="af-db-card" style={{ animationDelay: '0.26s', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 14, padding: '20px 24px' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Total Expense</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#f97316', marginBottom: 8 }}>{fmt(stats.totalExpense)}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall expense</div>
@@ -432,7 +456,7 @@ export default function DashboardHome() {
           {/* Tables Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Active Renters */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+            <div className="af-db-card" style={{ animationDelay: '0.3s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>Active Renters</span>
                 <Link href="/dashboard/tenants" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
@@ -471,7 +495,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Expired Leases */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+            <div className="af-db-card" style={{ animationDelay: '0.34s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>Expired Lease Agreements</span>
                 <Link href="/dashboard/leases" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
@@ -511,7 +535,7 @@ export default function DashboardHome() {
           {/* Notice Board / Messages / To-do */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 320px', gap: 16, marginBottom: 20 }}>
             {/* Notice Board */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+            <div className="af-db-card" style={{ animationDelay: '0.38s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>Notice Board</span>
                 <Link href="/dashboard/notice-board" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
@@ -533,7 +557,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Messages */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+            <div className="af-db-card" style={{ animationDelay: '0.42s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 700, fontSize: 14 }}>Messages</span>
                 <Link href="/dashboard/messages" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
@@ -555,7 +579,7 @@ export default function DashboardHome() {
             </div>
 
             {/* To-do List */}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '14px 18px', display: 'flex', flexDirection: 'column' }}>
+            <div className="af-db-card" style={{ animationDelay: '0.46s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '14px 18px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>To-do List</div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <input
@@ -583,11 +607,16 @@ export default function DashboardHome() {
           </div>
 
           {/* Quick Access */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px' }}>
+          <div className="af-db-card" style={{ animationDelay: '0.5s', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '18px 20px' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.8 }}>Quick Access</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {QUICK.map(q => (
-                <Link key={q.label} href={q.href} style={{ textDecoration: 'none', padding: '8px 18px', borderRadius: 8, background: `${q.color}14`, color: q.color, fontSize: 13, fontWeight: 650, border: `1px solid ${q.color}30` }}>
+              {QUICK.map((q, i) => (
+                <Link
+                  key={q.label}
+                  href={q.href}
+                  className="af-db-chip af-row-in"
+                  style={{ animationDelay: `${0.55 + i * 0.04}s`, textDecoration: 'none', padding: '8px 18px', borderRadius: 8, background: `${q.color}14`, color: q.color, fontSize: 13, fontWeight: 650, border: `1px solid ${q.color}30` }}
+                >
                   {q.label}
                 </Link>
               ))}
