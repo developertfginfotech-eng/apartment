@@ -163,6 +163,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
             <button
+              onClick={() => router.push('/dashboard/messages')}
+              aria-label="Messages"
+              title="Messages"
+              style={{
+                display:'flex',alignItems:'center',justifyContent:'center',
+                width:36,height:36,borderRadius:10,cursor:'pointer',
+                background:'var(--surface2)',border:'1px solid var(--border2)',
+                color:'var(--text)',fontSize:16,
+              }}
+            >
+              ✉️
+            </button>
+            <button
               onClick={toggleTheme}
               aria-label="Toggle theme"
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
