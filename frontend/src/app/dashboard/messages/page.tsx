@@ -1,42 +1,61 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Msg { id:string; from:string; role:'tenant'|'owner'|'staff'; subject:string; body:string; date:string; read:boolean }
 
-const SEED: Msg[] = [
-  { id:'m1', from:'James Carter',  role:'tenant', subject:'AC not working in Unit 4B',  body:'Hello, the air conditioning unit in my apartment has stopped working. It has been 2 days and the heat is unbearable. Please arrange for maintenance as soon as possible. Thank you.',                 date:'2026-06-29', read:false },
-  { id:'m2', from:'Priya Sharma',  role:'tenant', subject:'Lease renewal inquiry',       body:'I would like to inquire about renewing my lease for Unit 2A. My current lease expires in September. Could you please let me know the updated rent amount and renewal terms?',                        date:'2026-06-28', read:false },
-  { id:'m3', from:'Robert Johnson',role:'owner',  subject:'Q2 income report request',   body:'Could you please send me the Q2 income report for Sunrise Towers? I need the figures for my accountant by end of month.',                                                                           date:'2026-06-27', read:true  },
-  { id:'m4', from:'Marco Rivera',  role:'tenant', subject:'Water pressure issue Unit 7C',body:'There is very low water pressure in Unit 7C especially in the mornings. I have tried the taps and the shower and both have the same issue. Could this please be checked?',                          date:'2026-06-26', read:true  },
-  { id:'m5', from:'Aisha Okonkwo', role:'tenant', subject:'Additional parking request',  body:'I recently purchased a second car and would like to request an additional parking space. Please let me know if there is availability and the monthly cost.',                                         date:'2026-06-24', read:true  },
-]
-
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const ROLE_COLOR: Record<string,string> = { tenant:'#3b82f6', owner:'#22c55e', staff:'#f97316' }
 
 export default function MessagesPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
 
-  const [messages, setMessages] = useState<Msg[]>(SEED)
+  const [messages, setMessages] = useState<Msg[]>([])
+  const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Msg|null>(null)
   const [showCompose, setShowCompose] = useState(false)
   const [filter, setFilter] = useState<'all'|'unread'|'read'>('all')
   const [form, setForm] = useState({ to:'', subject:'', body:'' })
 
+  const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/message`, { headers: authHeaders() })
+      if (res.ok) setMessages(await res.json())
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
   const unread = messages.filter(m => !m.read).length
   const filtered = messages.filter(m => filter==='all' ? true : filter==='unread' ? !m.read : m.read)
 
-  const open = (m: Msg) => {
+  const open = async (m: Msg) => {
     setSelected(m)
-    setMessages(ms => ms.map(x => x.id===m.id ? {...x, read:true} : x))
     setShowCompose(false)
     setForm({ to:'', subject:'', body:'' })
+    if (!m.read) {
+      setMessages(ms => ms.map(x => x.id===m.id ? {...x, read:true} : x))
+      await fetch(`${API}/message/${m.id}/read`, { method: 'PATCH', headers: authHeaders() })
+    }
   }
 
-  const send = () => {
+  const send = async () => {
     if (!form.to || !form.subject || !form.body) return
-    setMessages(ms => [{ id:`m${Date.now()}`, from:'You', role:'staff', subject:form.subject, body:form.body, date:new Date().toISOString().split('T')[0], read:true }, ...ms])
+    const res = await fetch(`${API}/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ from: 'You', role: 'staff', subject: form.subject, body: form.body }),
+    })
+    if (res.ok) {
+      const created = await res.json()
+      setMessages(ms => [created, ...ms])
+    }
     setShowCompose(false); setForm({ to:'', subject:'', body:'' })
   }
 
@@ -60,7 +79,7 @@ export default function MessagesPage() {
 
       <div style={{display:'flex',gap:16,height:480}}>
         <div style={{width:300,flexShrink:0,overflowY:'auto',background:'var(--surface)',borderRadius:12,border:'1px solid var(--border2)'}}>
-          {filtered.length===0 && <div style={{padding:32,textAlign:'center',color:'var(--muted)',fontSize:13}}>No messages</div>}
+          {filtered.length===0 && <div style={{padding:32,textAlign:'center',color:'var(--muted)',fontSize:13}}>{loading ? 'Loading…' : 'No messages'}</div>}
           {filtered.map(m => (
             <div key={m.id} onClick={()=>open(m)} style={{padding:'12px 14px',borderBottom:'1px solid var(--border2)',cursor:'pointer',background:selected?.id===m.id?'var(--surface2)':m.read?'transparent':'rgba(249,115,22,0.06)'}}>
               <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
