@@ -23,15 +23,17 @@ export class DashboardService {
          FROM tbl_maintenances`),
       q(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM tbl_pay_rents WHERE status=1`),
       q(`SELECT COUNT(*) as cnt, COALESCE(SUM(amount),0) as total FROM tbl_pay_rents WHERE status=0`),
-      q(`SELECT r.name, p.property_name, f.name as floor_name, u.name as unit_name, r.renter_status
+      q(`SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', r.first_name, r.last_name)), ''), r.name) as name,
+                p.property_name, f.name as floor_name, u.name as unit_name, r.renter_status
          FROM tbl_renters r
          LEFT JOIN tbl_properties p ON p.id = r.property_id
          LEFT JOIN tbl_property_floors f ON f.id = r.floor_id
          LEFT JOIN tbl_property_units u ON u.id = r.unit_id
          WHERE r.status=1 ORDER BY r.id DESC LIMIT 10`),
-      q(`SELECT r.name as renter_name, p.property_name, l.rent_amount, l.status
+      q(`SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', r.first_name, r.last_name)), ''), r.name) as renter_name,
+                p.property_name, l.rent_amount, l.status
          FROM tbl_leases l
-         LEFT JOIN tbl_renters r ON r.id = l.user_id
+         LEFT JOIN tbl_renters r ON r.id = l.renter_id
          LEFT JOIN tbl_properties p ON p.id = l.property_id
          WHERE l.status=0 ORDER BY l.id DESC LIMIT 10`),
       q(`SELECT COALESCE(SUM(amount),0) as total FROM tbl_pay_rents WHERE status=1`),
