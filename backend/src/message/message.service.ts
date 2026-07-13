@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 export interface MessageDto {
   from: string;
   role: 'tenant' | 'owner' | 'staff';
+  to?: string;
   subject: string;
   body: string;
 }
@@ -20,6 +21,7 @@ export class MessageService implements OnModuleInit {
         \`id\` varchar(64) NOT NULL,
         \`from_name\` varchar(255) NOT NULL,
         \`role\` varchar(20) NOT NULL DEFAULT 'staff',
+        \`to_name\` varchar(255) NULL,
         \`subject\` varchar(255) NOT NULL,
         \`body\` text NOT NULL,
         \`is_read\` tinyint(1) NOT NULL DEFAULT 0,
@@ -27,6 +29,10 @@ export class MessageService implements OnModuleInit {
         PRIMARY KEY (\`id\`)
       )
     `);
+    const cols = await this.ds.query('SHOW COLUMNS FROM app_messages LIKE ?', ['to_name']);
+    if (!cols.length) {
+      await this.ds.query('ALTER TABLE app_messages ADD COLUMN to_name varchar(255) NULL AFTER from_name');
+    }
   }
 
   private mapRow(row: any) {
@@ -34,6 +40,7 @@ export class MessageService implements OnModuleInit {
       id: row.id,
       from: row.from_name,
       role: row.role,
+      to: row.to_name,
       subject: row.subject,
       body: row.body,
       date: new Date(row.created_at).toISOString().split('T')[0],
@@ -49,8 +56,8 @@ export class MessageService implements OnModuleInit {
   async create(dto: MessageDto) {
     const id = randomUUID();
     await this.ds.query(
-      'INSERT INTO app_messages (id, from_name, role, subject, body, is_read) VALUES (?,?,?,?,?,1)',
-      [id, dto.from, dto.role, dto.subject, dto.body],
+      'INSERT INTO app_messages (id, from_name, role, to_name, subject, body, is_read) VALUES (?,?,?,?,?,?,1)',
+      [id, dto.from, dto.role, dto.to ?? null, dto.subject, dto.body],
     );
     const [row] = await this.ds.query('SELECT * FROM app_messages WHERE id = ?', [id]);
     return this.mapRow(row);
