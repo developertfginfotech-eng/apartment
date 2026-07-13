@@ -36,8 +36,8 @@ export default function MessagesPage() {
   const loadRecipients = useCallback(async () => {
     try {
       const [rentersRes, ownersRes] = await Promise.all([
-        fetch(`${API}/renter`, { headers: authHeaders() }),
-        fetch(`${API}/landlord`, { headers: authHeaders() }),
+        fetch(`${API}/renters`, { headers: authHeaders() }),
+        fetch(`${API}/landlords`, { headers: authHeaders() }),
       ])
       const renters = rentersRes.ok ? await rentersRes.json() : []
       const owners  = ownersRes.ok ? await ownersRes.json() : []
