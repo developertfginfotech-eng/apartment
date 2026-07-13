@@ -3,12 +3,14 @@ import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Landlord } from './landlord.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class LandlordService {
   constructor(
     @InjectRepository(Landlord) private repo: Repository<Landlord>,
     @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   findAll() {
@@ -50,7 +52,10 @@ export class LandlordService {
 
   async create(dto: Partial<Landlord> & { password?: string }) {
     const password = dto.password ? await bcrypt.hash(dto.password, 10) : null;
-    return this.repo.save(this.repo.create({ ...dto, password: password ?? undefined, status: 1 }));
+    const saved = await this.repo.save(this.repo.create({ ...dto, password: password ?? undefined, status: 1 }));
+    const name = `${saved.first_name ?? ''} ${saved.last_name ?? ''}`.trim() || 'A new owner';
+    await this.notifications.notify('owner', 'New owner added', `${name} was added`);
+    return saved;
   }
 
   async update(id: number, dto: Partial<Landlord> & { password?: string }) {

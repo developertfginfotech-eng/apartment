@@ -194,15 +194,23 @@ function Calendar() {
 }
 
 interface Stats {
-  properties: { total: number; active: number }
+  properties: { total: number; onRent: number; available: number }
   renters: { total: number }
   maintenance: { total: number; pending: number; completed: number }
   payments: { received: { count: number; amount: number }; pending: { count: number; amount: number } }
+  utilities: { due: { count: number; amount: number }; received: { count: number; amount: number } }
+  maintenanceCost: { due: { count: number; amount: number }; received: { count: number; amount: number } }
   amountReceived: number
   amountDue: number
+  dueBreakdown: { rent: number; utility: number; maintenance: number; total: number }
+  totalExpense: number
   recentRenters: { name: string; property_name: string; floor_name: string; unit_name: string; renter_status: number }[]
   expiredLeases: { renter_name: string; property_name: string; rent_amount: string; status: number }[]
 }
+
+interface NoticeItem { id: string; title: string; desc: string; recipient: string; date: string }
+interface MessageItem { id: string; from: string; to?: string; subject: string; read: boolean }
+interface TodoItem { id: string; text: string; done: boolean }
 
 const QUICK = [
   { label:'Properties', href:'/dashboard/properties', color:'#3b82f6' },
@@ -223,6 +231,12 @@ export default function DashboardHome() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ name: string; role: string } | null>(null)
+  const [notices, setNotices] = useState<NoticeItem[]>([])
+  const [messages, setMessages] = useState<MessageItem[]>([])
+  const [todos, setTodos] = useState<TodoItem[]>([])
+  const [todoInput, setTodoInput] = useState('')
+
+  const authHeaders = useCallback(() => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` }), [])
 
   useEffect(() => {
     const stored = localStorage.getItem('apt_user')
@@ -237,13 +251,53 @@ export default function DashboardHome() {
       .catch(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    fetch(`${API}/notice-board?limit=5`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => Array.isArray(d) && setNotices(d))
+      .catch(() => {})
+    fetch(`${API}/message`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => Array.isArray(d) && setMessages(d.slice(0, 5)))
+      .catch(() => {})
+    fetch(`${API}/todo`, { headers: authHeaders() })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => Array.isArray(d) && setTodos(d))
+      .catch(() => {})
+  }, [authHeaders])
+
+  const addTodo = async () => {
+    const text = todoInput.trim()
+    if (!text) return
+    setTodoInput('')
+    const res = await fetch(`${API}/todo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ text }),
+    })
+    if (res.ok) {
+      const created = await res.json()
+      setTodos(ts => [created, ...ts])
+    }
+  }
+
+  const toggleTodo = async (id: string) => {
+    setTodos(ts => ts.map(t => t.id === id ? { ...t, done: !t.done } : t))
+    await fetch(`${API}/todo/${id}/toggle`, { method: 'PATCH', headers: authHeaders() })
+  }
+
+  const removeTodo = async (id: string) => {
+    setTodos(ts => ts.filter(t => t.id !== id))
+    await fetch(`${API}/todo/${id}`, { method: 'DELETE', headers: authHeaders() })
+  }
+
   const statCards = stats ? [
     {
       label: 'Properties',
       value: stats.properties.total,
       subs: [
-        { label: 'On Rent', val: stats.properties.active },
-        { label: 'Available', val: Math.max(0, stats.properties.total - stats.properties.active) },
+        { label: 'On Rent', val: stats.properties.onRent },
+        { label: 'Available', val: stats.properties.available },
       ],
       color: '#3b82f6',
       icon: '🏢',
@@ -271,6 +325,8 @@ export default function DashboardHome() {
       subs: [
         { label: 'Rent Received', val: stats.payments.received.count },
         { label: 'Rent Pending', val: stats.payments.pending.count },
+        { label: 'Utilities Received', val: stats.utilities.received.count },
+        { label: 'Utilities Pending', val: stats.utilities.due.count },
       ],
       color: '#22c55e',
       icon: '💳',
@@ -340,15 +396,34 @@ export default function DashboardHome() {
           {/* Financial Summary + Calendar */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, marginBottom: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Rent</div>
+                  <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.rent)}</div>
+                </div>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Utility</div>
+                  <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.utility)}</div>
+                </div>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Due Maintenance</div>
+                  <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(stats.dueBreakdown.maintenance)}</div>
+                </div>
+              </div>
               <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14, padding: '20px 24px' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Total Amount Due</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', marginBottom: 8 }}>{fmt(stats.amountDue)}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Pending rent from {stats.payments.pending.count} payments</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', marginBottom: 8 }}>{fmt(stats.dueBreakdown.total)}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall payment due of rent, utilities and maintenance</div>
               </div>
               <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 14, padding: '20px 24px' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Amount Received</div>
                 <div style={{ fontSize: 28, fontWeight: 800, color: '#22c55e', marginBottom: 8 }}>{fmt(stats.amountReceived)}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Collected from {stats.payments.received.count} payments</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall payment received of rent, utilities and maintenance</div>
+              </div>
+              <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 14, padding: '20px 24px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f97316', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 }}>Total Expense</div>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#f97316', marginBottom: 8 }}>{fmt(stats.totalExpense)}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Overall expense</div>
               </div>
             </div>
             <Calendar />
@@ -429,6 +504,80 @@ export default function DashboardHome() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Notice Board / Messages / To-do */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 320px', gap: 16, marginBottom: 20 }}>
+            {/* Notice Board */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>Notice Board</span>
+                <Link href="/dashboard/notice-board" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
+              </div>
+              <div>
+                {notices.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No notices yet</div>
+                )}
+                {notices.map(n => (
+                  <div key={n.id} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border2)' }}>
+                    <div style={{ fontWeight: 650, fontSize: 13 }}>{n.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{n.desc}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{n.recipient}</span><span>{n.date}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>Messages</span>
+                <Link href="/dashboard/messages" style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none' }}>View all →</Link>
+              </div>
+              <div>
+                {messages.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No messages yet</div>
+                )}
+                {messages.map(m => (
+                  <div key={m.id} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border2)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontWeight: 650, fontSize: 13 }}>{m.from}{m.to ? ` → ${m.to}` : ''}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{m.subject}</div>
+                    </div>
+                    {!m.read && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, marginTop: 5 }} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* To-do List */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: '14px 18px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>To-do List</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <input
+                  value={todoInput}
+                  onChange={e => setTodoInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addTodo() }}
+                  placeholder="Add a task…"
+                  style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 12.5 }}
+                />
+                <button onClick={addTodo} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--accent)', cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>+</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 220 }}>
+                {todos.length === 0 && (
+                  <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12.5, padding: '10px 0' }}>No tasks yet</div>
+                )}
+                {todos.map(t => (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                    <input type="checkbox" checked={t.done} onChange={() => toggleTodo(t.id)} style={{ cursor: 'pointer' }} />
+                    <span style={{ flex: 1, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--muted)' : 'var(--text)' }}>{t.text}</span>
+                    <button onClick={() => removeTodo(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', fontSize: 13 }}>✕</button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

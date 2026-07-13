@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Payment } from './payment.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class PaymentService {
   constructor(
     @InjectRepository(Payment) private repo: Repository<Payment>,
     @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
@@ -144,6 +146,11 @@ export class PaymentService {
         body.payment_type ?? 'Cash', body.payment_date ?? null,
       ],
     );
+    const [renter] = await this.ds.query(
+      `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
+      [lease.renter_id],
+    );
+    await this.notifications.notify('payment', 'Rent payment received', `₱${Number(body.amount ?? 0).toLocaleString()} from ${renter?.name ?? 'a renter'}`);
     return { ok: true };
   }
 
@@ -176,6 +183,10 @@ export class PaymentService {
         id,
       ],
     );
+    if (payment_status === 1) {
+      const [m] = await this.ds.query(`SELECT title, amount FROM tbl_maintenances WHERE id = ?`, [id]);
+      await this.notifications.notify('payment', 'Maintenance payment received', `₱${Number(m?.amount ?? 0).toLocaleString()} for ${m?.title ?? 'a maintenance request'}`);
+    }
     return { ok: true };
   }
 
@@ -208,6 +219,10 @@ export class PaymentService {
         id,
       ],
     );
+    if (payment_status === 1) {
+      const [u] = await this.ds.query(`SELECT total_rent FROM tbl_utilities WHERE id = ?`, [id]);
+      await this.notifications.notify('payment', 'Utility payment received', `₱${Number(u?.total_rent ?? 0).toLocaleString()} utility bill paid`);
+    }
     return { ok: true };
   }
 

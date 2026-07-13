@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Property } from './property.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class PropertyService {
   constructor(
     @InjectRepository(Property) private repo: Repository<Property>,
     @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   findAll() {
@@ -88,9 +90,11 @@ export class PropertyService {
     };
   }
 
-  create(dto: Partial<Property>) {
+  async create(dto: Partial<Property>) {
     const p = this.repo.create({ ...dto, status: 1 });
-    return this.repo.save(p);
+    const saved = await this.repo.save(p);
+    await this.notifications.notify('property', 'New property added', `${saved.property_name ?? 'A property'} was added`);
+    return saved;
   }
 
   async update(id: number, dto: Partial<Property>) {

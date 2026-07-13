@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Renter } from './renter.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class RenterService {
   constructor(
     @InjectRepository(Renter) private repo: Repository<Renter>,
     private dataSource: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   async findAll() {
@@ -39,7 +41,12 @@ export class RenterService {
     }
   }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
-  create(dto: Partial<Renter>) { return this.repo.save(this.repo.create(dto)); }
+  async create(dto: Partial<Renter>) {
+    const saved = await this.repo.save(this.repo.create(dto));
+    const name = `${saved.first_name ?? ''} ${saved.last_name ?? ''}`.trim() || 'A renter';
+    await this.notifications.notify('renter', 'New renter added', `${name} was added`);
+    return saved;
+  }
   async update(id: number, dto: Partial<Renter>) {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException();

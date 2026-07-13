@@ -37,6 +37,7 @@ const NAV = [
 ]
 
 const ADMIN_NAV_ITEM = { href: '/dashboard/admins', label: 'Admin Management', icon: '🛡️' }
+const NOTIFICATIONS_NAV_ITEM = { href: '/dashboard/notifications', label: 'Notifications', icon: '🔔' }
 
 // Mirrors backend/src/common/module-permission.guard.ts's MODULE_BY_PREFIX —
 // keep both in sync when adding new gated sections.
@@ -133,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // icon-rail "collapsed" mode only applies at wider viewports.
   const showLabels = isMobile || !collapsed
   const isSuperAdmin = user?.role === 'super_admin'
-  const navItems = isSuperAdmin ? [...NAV, ADMIN_NAV_ITEM] : NAV
+  const navItems = isSuperAdmin ? [...NAV, NOTIFICATIONS_NAV_ITEM, ADMIN_NAV_ITEM] : NAV
 
   const requiredModule = Object.keys(MODULE_BY_PATH).find(p => pathname.startsWith(p))
   const authorized = !user || !requiredModule || isSuperAdmin ||
@@ -196,7 +197,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button className="af-db-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Toggle menu">☰</button>
             <div className="af-db-breadcrumb">
-              {NAV.find(n => isActive(n.href))?.label ?? (isActive(ADMIN_NAV_ITEM.href) ? ADMIN_NAV_ITEM.label : 'Dashboard')}
+              {NAV.find(n => isActive(n.href))?.label
+                ?? (isActive(ADMIN_NAV_ITEM.href) ? ADMIN_NAV_ITEM.label
+                : isActive(NOTIFICATIONS_NAV_ITEM.href) ? NOTIFICATIONS_NAV_ITEM.label
+                : 'Dashboard')}
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
@@ -270,6 +274,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <div style={{ fontSize:12, color:'var(--muted)' }}>{n.body}</div>
                       </div>
                     ))}
+                    <div
+                      onMouseDown={()=>{ setShowNotifs(false); router.push('/dashboard/notifications') }}
+                      style={{ padding:'10px 14px', textAlign:'center', cursor:'pointer', fontSize:12.5, fontWeight:600, color:'var(--accent)', borderTop:'1px solid var(--border2)' }}
+                    >
+                      View all →
+                    </div>
                   </div>
                 )}
               </div>

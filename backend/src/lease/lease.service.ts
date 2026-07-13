@@ -2,17 +2,27 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Lease } from './lease.entity';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class LeaseService {
   constructor(
     @InjectRepository(Lease) private repo: Repository<Lease>,
     @InjectDataSource() private readonly ds: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
-  create(dto: Partial<Lease>) { return this.repo.save(this.repo.create(dto)); }
+  async create(dto: Partial<Lease>) {
+    const saved = await this.repo.save(this.repo.create(dto));
+    const [renter] = await this.ds.query(
+      `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
+      [saved.renter_id],
+    );
+    await this.notifications.notify('lease', 'New lease created', `Lease for ${renter?.name ?? 'a renter'} was created`);
+    return saved;
+  }
   async update(id: number, dto: Partial<Lease>) {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException();
