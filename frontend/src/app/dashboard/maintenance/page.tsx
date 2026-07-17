@@ -29,8 +29,6 @@ interface Maintenance {
   receipt_image: string | null
 }
 
-interface MaintenanceType { id: number; name: string }
-
 const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }> = {
   1: { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e', label: 'Active' },
   0: { bg: 'rgba(100,116,139,0.12)', color: '#64748b', label: 'Inactive' },
@@ -47,26 +45,12 @@ const MAINTENANCE_STATUS: Record<number, { label: string; color: string }> = {
 
 const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 
-const EMPTY_FORM = {
-  type: '',
-  title: '',
-  amount: '',
-  date: '',
-  description: '',
-  property_id: '',
-}
-
 export default function MaintenancePage() {
   const router = useRouter()
 
   const [records, setRecords]     = useState<Maintenance[]>([])
-  const [types, setTypes]         = useState<MaintenanceType[]>([])
   const [search, setSearch]       = useState('')
   const [loading, setLoading]     = useState(true)
-  const [showForm, setShowForm]   = useState(false)
-  const [editTarget, setEditTarget] = useState<Maintenance | null>(null)
-  const [form, setForm]           = useState(EMPTY_FORM)
-  const [saving, setSaving]       = useState(false)
   const [error, setError]         = useState('')
 
   const [viewing, setViewing] = useState<Maintenance | null>(null)
@@ -108,11 +92,6 @@ export default function MaintenancePage() {
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
-  useEffect(() => {
-    fetch(`${API}/maintenance-type`, { headers: authHeaders() })
-      .then(r => r.json()).then(d => Array.isArray(d) && setTypes(d)).catch(()=>{})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const { page, setPage, pageSize, pageItems } = usePagination(records, 10)
@@ -143,69 +122,6 @@ export default function MaintenancePage() {
       headStyles: { fillColor: [34, 197, 94] },
     })
     doc.save('maintenances.pdf')
-  }
-
-  const openCreate = () => {
-    setEditTarget(null)
-    setForm(EMPTY_FORM)
-    setShowForm(true)
-  }
-
-  const openEdit = (r: Maintenance) => {
-    setEditTarget(r)
-    setForm({
-      type: String(r.type_id ?? ''),
-      title: r.title,
-      amount: String(r.amount),
-      date: r.date ? r.date.slice(0, 10) : '',
-      description: r.description ?? '',
-      property_id: String(r.property_id),
-    })
-    setShowForm(true)
-  }
-
-  const closeForm = () => {
-    setShowForm(false)
-    setEditTarget(null)
-    setForm(EMPTY_FORM)
-  }
-
-  const saveRecord = async () => {
-    if (!form.title || !form.property_id || !form.date) return
-    setSaving(true)
-    setError('')
-    try {
-      const dateObj = new Date(form.date)
-      const body = {
-        type: form.type ? parseInt(form.type, 10) : null,
-        title: form.title,
-        amount: parseFloat(form.amount) || 0,
-        date: form.date,
-        month: dateObj.getMonth() + 1,
-        year: dateObj.getFullYear(),
-        description: form.description,
-        property_id: parseInt(form.property_id, 10),
-        status: 1,
-      }
-
-      const url = editTarget
-        ? `${API}/maintenance/${editTarget.id}`
-        : `${API}/maintenance`
-      const method = editTarget ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: authHeaders(),
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) throw new Error(`Save failed: ${res.status}`)
-      closeForm()
-      await fetchRecords()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save record')
-    } finally {
-      setSaving(false)
-    }
   }
 
   const deleteRecord = async (id: number) => {
@@ -310,7 +226,7 @@ export default function MaintenancePage() {
           <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             ↓ Export To Pdf
           </button>
-          <button className="af-btn-primary" onClick={openCreate} style={{ cursor: 'pointer', border: 'none' }}>
+          <button className="af-btn-primary" onClick={() => router.push('/dashboard/maintenance/new')} style={{ cursor: 'pointer', border: 'none' }}>
             + New Record
           </button>
         </div>
@@ -402,7 +318,7 @@ export default function MaintenancePage() {
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
                       <button className="af-prop-act edit" title="View" onClick={() => setViewing(r)}>👁</button>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(r)}>✏️</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/maintenance/edit?id=${r.id}`)}>✏️</button>
                       <button className="af-prop-act delete" title="Delete" onClick={() => deleteRecord(r.id)}>🗑️</button>
                     </td>
                     <td>
@@ -422,85 +338,6 @@ export default function MaintenancePage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={records.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {showForm && (
-        <div className="af-modal-overlay" onClick={closeForm}>
-          <div className="af-modal" onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">{editTarget ? 'Edit Maintenance Record' : 'New Maintenance Record'}</h2>
-            <div className="af-modal-form">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="af-field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Title</label>
-                  <input
-                    value={form.title}
-                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="e.g. Replace kitchen faucet"
-                  />
-                </div>
-                <div className="af-field">
-                  <label>Type</label>
-                  <select className="af-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
-                    <option value="">-- Select Type --</option>
-                    {types.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="af-field">
-                  <label>Property ID</label>
-                  <input
-                    type="number"
-                    value={form.property_id}
-                    onChange={e => setForm(f => ({ ...f, property_id: e.target.value }))}
-                    placeholder="1"
-                  />
-                </div>
-                <div className="af-field">
-                  <label>Amount</label>
-                  <input
-                    type="number"
-                    value={form.amount}
-                    onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="af-field">
-                  <label>Date</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  />
-                </div>
-                <div className="af-field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Description</label>
-                  <input
-                    value={form.description}
-                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Optional details…"
-                  />
-                </div>
-              </div>
-            </div>
-            {error && (
-              <div style={{ color: '#ef4444', fontSize: 12.5, marginTop: 10 }}>{error}</div>
-            )}
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={closeForm} disabled={saving}>
-                Cancel
-              </button>
-              <button
-                className="af-auth-submit"
-                style={{ width: 'auto', padding: '10px 24px', opacity: saving ? 0.7 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}
-                onClick={saveRecord}
-                disabled={saving}
-              >
-                {saving ? 'Saving…' : editTarget ? 'Save changes' : 'Create record'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

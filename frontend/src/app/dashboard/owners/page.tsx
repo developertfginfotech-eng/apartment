@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
-import FileDropInput from '@/components/FileDropInput'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -37,41 +36,6 @@ interface Owner {
 interface OwnerProperty { id: number; property_name: string; property_code: string; address: string; total_floor: number; total_unit: number }
 interface OwnerDetail extends Owner { properties: OwnerProperty[] }
 interface Doc { id: number; document_type: number; document: string; document_type_name: string }
-interface DocType { id: number; name: string }
-interface Country { id: number; name: string }
-
-type FormState = {
-  owner_type: string
-  first_name: string
-  middle_name: string
-  last_name: string
-  company_type: string
-  phone: string
-  email: string
-  registration_date: string
-  id_number: string
-  country: string
-  state: string
-  city: string
-  physical_address: string
-}
-
-const BLANK_FORM: FormState = {
-  owner_type: 'individual',
-  first_name: '',
-  middle_name: '',
-  last_name: '',
-  company_type: '',
-  phone: '',
-  email: '',
-  registration_date: '',
-  id_number: '',
-  country: '',
-  state: '',
-  city: '',
-  physical_address: '',
-}
-
 const VIEW_TABS = ['Info', 'Properties', 'Documents'] as const
 type ViewTab = typeof VIEW_TABS[number]
 
@@ -80,22 +44,13 @@ export default function OwnersPage() {
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
 
   const [owners, setOwners]         = useState<Owner[]>([])
-  const [countries, setCountries]   = useState<Country[]>([])
-  const [docTypes, setDocTypes]     = useState<DocType[]>([])
   const [loading, setLoading]       = useState(true)
   const [search, setSearch]         = useState('')
-  const [modalOpen, setModalOpen]   = useState(false)
-  const [editTarget, setEditTarget] = useState<Owner | null>(null)
-  const [form, setForm]             = useState<FormState>(BLANK_FORM)
-  const [saving, setSaving]         = useState(false)
   const [deleteId, setDeleteId]     = useState<number | null>(null)
   const [deleting, setDeleting]     = useState(false)
   const [error, setError]           = useState<string | null>(null)
 
   const [docs, setDocs]             = useState<Doc[]>([])
-  const [newDocType, setNewDocType] = useState('')
-  const [newDocFile, setNewDocFile] = useState<File | null>(null)
-  const [uploading, setUploading]   = useState(false)
 
   const [viewing, setViewing]       = useState<OwnerDetail | null>(null)
   const [viewTab, setViewTab]       = useState<ViewTab>('Info')
@@ -118,11 +73,6 @@ export default function OwnersPage() {
 
   useEffect(() => { fetchOwners() }, [])
 
-  useEffect(() => {
-    fetch(`${API}/landlords/countries`, { headers: headers() }).then(r => r.json()).then(d => Array.isArray(d) && setCountries(d)).catch(() => {})
-    fetch(`${API}/document/types`, { headers: headers() }).then(r => r.json()).then(d => Array.isArray(d) && setDocTypes(d)).catch(() => {})
-  }, [])
-
   const filtered = owners.filter(o => {
     const q = search.toLowerCase().trim()
     if (!q) return true
@@ -134,38 +84,6 @@ export default function OwnersPage() {
     )
   })
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
-
-  function openAdd() {
-    setEditTarget(null)
-    setForm(BLANK_FORM)
-    setModalOpen(true)
-  }
-
-  const loadDocs = async (landlordId: number) => {
-    const res = await fetch(`${API}/document/landlord?landlord_id=${landlordId}`, { headers: headers() })
-    setDocs(await res.json())
-  }
-
-  function openEdit(o: Owner) {
-    setEditTarget(o)
-    setForm({
-      owner_type:        o.owner_type ?? 'individual',
-      first_name:        o.first_name ?? '',
-      middle_name:       o.middle_name ?? '',
-      last_name:         o.last_name ?? '',
-      company_type:      o.company_type ?? '',
-      phone:             o.phone ?? '',
-      email:             o.email ?? '',
-      registration_date: o.registration_date ? o.registration_date.slice(0, 10) : '',
-      id_number:         o.id_number ?? '',
-      country:           o.country ?? '',
-      state:             o.state ?? '',
-      city:              o.city ?? '',
-      physical_address:  o.physical_address ?? '',
-    })
-    setModalOpen(true)
-    loadDocs(o.id)
-  }
 
   const openView = async (o: Owner) => {
     setViewTab('Info')
@@ -183,80 +101,6 @@ export default function OwnersPage() {
     } finally {
       setViewLoading(false)
     }
-  }
-
-  async function saveOwner() {
-    const trimmed = {
-      owner_type:        form.owner_type,
-      first_name:        form.first_name.trim(),
-      middle_name:       form.middle_name.trim(),
-      last_name:         form.last_name.trim(),
-      company_type:      form.owner_type === 'company' ? form.company_type.trim() : null,
-      phone:             form.phone.trim(),
-      email:             form.email.trim(),
-      registration_date: form.registration_date || null,
-      id_number:         form.id_number.trim(),
-      country:           form.country.trim(),
-      state:             form.state.trim(),
-      city:              form.city.trim(),
-      physical_address:  form.physical_address.trim(),
-    }
-    if (!trimmed.first_name) return
-    setSaving(true)
-    try {
-      if (editTarget) {
-        const res = await fetch(`${API}/landlords/${editTarget.id}`, {
-          method: 'PUT',
-          headers: headers(),
-          body: JSON.stringify(trimmed),
-        })
-        if (!res.ok) throw new Error(`Failed to update owner (${res.status})`)
-      } else {
-        const res = await fetch(`${API}/landlords`, {
-          method: 'POST',
-          headers: headers(),
-          body: JSON.stringify({ ...trimmed, status: 1 }),
-        })
-        if (!res.ok) throw new Error(`Failed to create owner (${res.status})`)
-      }
-      setModalOpen(false)
-      await fetchOwners()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save owner')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const uploadDoc = async () => {
-    if (!editTarget || !newDocType || !newDocFile) return
-    setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', newDocFile)
-      const upRes = await fetch(`${API}/document/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-        body: fd,
-      })
-      const { url } = await upRes.json()
-      await fetch(`${API}/document/landlord`, {
-        method: 'POST', headers: headers(),
-        body: JSON.stringify({ landlord_id: editTarget.id, document_type: parseInt(newDocType, 10), document: url }),
-      })
-      setNewDocType(''); setNewDocFile(null)
-      await loadDocs(editTarget.id)
-    } catch {
-      setError('Failed to upload document')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const removeDoc = async (id: number) => {
-    if (!editTarget) return
-    await fetch(`${API}/document/landlord/${id}`, { method: 'DELETE', headers: headers() })
-    await loadDocs(editTarget.id)
   }
 
   async function toggleStatus(o: Owner) {
@@ -290,10 +134,6 @@ export default function OwnersPage() {
     } finally {
       setDeleting(false)
     }
-  }
-
-  function setField(key: keyof FormState, value: string) {
-    setForm(f => ({ ...f, [key]: value }))
   }
 
   const exportHeaders = ['#', 'First Name', 'Last Name', 'Phone', 'Email', 'Owner Type', 'No Property', 'No Renter', 'Status']
@@ -336,7 +176,7 @@ export default function OwnersPage() {
           <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             ↓ Export To Pdf
           </button>
-          <button className="af-btn-primary" onClick={openAdd}>+ Add Owner</button>
+          <button className="af-btn-primary" onClick={() => router.push('/dashboard/owners/new')}>+ Add Owner</button>
         </div>
       </div>
 
@@ -428,7 +268,7 @@ export default function OwnersPage() {
                         <button
                           className="af-prop-act edit"
                           title="Edit"
-                          onClick={() => openEdit(o)}
+                          onClick={() => router.push(`/dashboard/owners/edit?id=${o.id}`)}
                           style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}
                         >
                           ✏️
@@ -451,142 +291,6 @@ export default function OwnersPage() {
         )}
       </div>
       {!loading && <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />}
-
-      {/* ── Add / Edit Modal ── */}
-      {modalOpen && (
-        <div className="af-modal-overlay" onClick={() => setModalOpen(false)}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 900, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="af-modal-title">{editTarget ? 'Edit Owner' : 'Add Owner'}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: editTarget ? '1fr 1fr' : '1fr', gap: 24 }}>
-              <div className="af-modal-form">
-
-                <div className="af-field">
-                  <label>Owner Type</label>
-                  <select className="af-select" value={form.owner_type} onChange={e => setField('owner_type', e.target.value)}>
-                    <option value="individual">Individual</option>
-                    <option value="company">Company</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="af-field">
-                    <label>{form.owner_type === 'company' ? 'Company Name' : 'First Name'} <span style={{ color: '#f87171' }}>*</span></label>
-                    <input type="text" value={form.first_name} onChange={e => setField('first_name', e.target.value)} placeholder="First name" />
-                  </div>
-                  <div className="af-field">
-                    <label>Last Name</label>
-                    <input type="text" value={form.last_name} onChange={e => setField('last_name', e.target.value)} placeholder="Last name" disabled={form.owner_type === 'company'} />
-                  </div>
-                </div>
-
-                {form.owner_type === 'company' ? (
-                  <div className="af-field">
-                    <label>Company Type</label>
-                    <input type="text" value={form.company_type} onChange={e => setField('company_type', e.target.value)} placeholder="Corporation, LLC…" />
-                  </div>
-                ) : (
-                  <div className="af-field">
-                    <label>Middle Name</label>
-                    <input type="text" value={form.middle_name} onChange={e => setField('middle_name', e.target.value)} placeholder="Middle name (optional)" />
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="af-field">
-                    <label>Phone</label>
-                    <input type="tel" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="+1-555-0000" />
-                  </div>
-                  <div className="af-field">
-                    <label>Email</label>
-                    <input type="email" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="email@example.com" />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="af-field">
-                    <label>Registration Date</label>
-                    <input type="date" value={form.registration_date} onChange={e => setField('registration_date', e.target.value)} />
-                  </div>
-                  <div className="af-field">
-                    <label>National ID or Passport</label>
-                    <input type="text" value={form.id_number} onChange={e => setField('id_number', e.target.value)} placeholder="ID number" />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="af-field">
-                    <label>Country</label>
-                    {countries.length > 0 ? (
-                      <select className="af-select" value={form.country} onChange={e => setField('country', e.target.value)}>
-                        <option value="">-- Select Country --</option>
-                        {countries.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                      </select>
-                    ) : (
-                      <input type="text" value={form.country} onChange={e => setField('country', e.target.value)} placeholder="Country" />
-                    )}
-                  </div>
-                  <div className="af-field">
-                    <label>State</label>
-                    <input type="text" value={form.state} onChange={e => setField('state', e.target.value)} placeholder="State" />
-                  </div>
-                </div>
-
-                <div className="af-field">
-                  <label>City</label>
-                  <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="City" />
-                </div>
-
-                <div className="af-field">
-                  <label>Physical Address</label>
-                  <input type="text" value={form.physical_address} onChange={e => setField('physical_address', e.target.value)} placeholder="Street, City" />
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                  <button className="af-auth-submit" style={{ flex: 1, opacity: saving ? 0.7 : 1 }} onClick={saveOwner} disabled={saving}>
-                    {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Owner'}
-                  </button>
-                  <button
-                    className="af-btn-secondary"
-                    style={{ flex: 1 }}
-                    onClick={() => setModalOpen(false)}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-              </div>
-
-              {editTarget && (
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Documents</div>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                    <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
-                      <option value="">-- Select Type --</option>
-                      {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                    <div style={{ flex: '1 1 160px' }}>
-                      <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
-                    </div>
-                    <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
-                      {uploading ? 'Uploading…' : 'Upload'}
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {docs.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>}
-                    {docs.map(d => (
-                      <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
-                        <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{d.document_type_name ?? 'Document'}</a>
-                        <button onClick={() => removeDoc(d.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Delete Confirmation Modal ── */}
       {deleteId !== null && (
