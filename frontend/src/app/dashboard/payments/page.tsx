@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
+import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -91,6 +92,8 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -101,7 +104,11 @@ export default function PaymentsPage() {
     setLoading(true); setError('')
     try {
       if (tab === 'rent' || tab === 'interest') {
-        const res = await fetch(`${API}/payments/rent-summary${search ? `?search=${encodeURIComponent(search)}` : ''}`, { headers: authHeaders() })
+        const params = new URLSearchParams()
+        if (from) params.set('from', from)
+        if (to) params.set('to', to)
+        if (search) params.set('search', search)
+        const res = await fetch(`${API}/payments/rent-summary?${params}`, { headers: authHeaders() })
         setRent(await res.json())
       } else if (tab === 'maintenance') {
         const res = await fetch(`${API}/payments/maintenance`, { headers: authHeaders() })
@@ -115,7 +122,7 @@ export default function PaymentsPage() {
       }
     } catch { setError('Failed to load data') }
     finally { setLoading(false) }
-  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, from, to]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchTab(activeTab) }, [activeTab, fetchTab])
 
@@ -191,9 +198,17 @@ export default function PaymentsPage() {
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
       {(activeTab === 'rent' || activeTab === 'interest') && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <DatePicker value={from} onChange={setFrom} />
+            <span style={{ color: 'var(--muted)' }}>⇄</span>
+            <DatePicker value={to} onChange={setTo} />
+          </div>
           <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchTab(activeTab)} placeholder="Search renter, property, amount…"
             style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 14px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 260 }} />
+          {(from || to) && (
+            <button onClick={() => { setFrom(''); setTo('') }} style={{ padding: '7px 12px', borderRadius: 8, background: 'none', border: '1px solid var(--border2)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
+          )}
         </div>
       )}
 
