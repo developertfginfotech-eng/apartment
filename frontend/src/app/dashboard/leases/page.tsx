@@ -86,6 +86,7 @@ export default function LeasesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<Bucket>('all')
+  const [search, setSearch] = useState('')
 
   const [renters, setRenters] = useState<{ id: number; name: string }[]>([])
   const [properties, setProperties] = useState<{ id: number; property_name: string }[]>([])
@@ -170,7 +171,16 @@ export default function LeasesPage() {
 
   const buckets = useMemo(() => leases.map(l => ({ lease: l, bucket: bucketOf(l) })), [leases]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = filter === 'all' ? buckets : buckets.filter(b => b.bucket === filter)
+  const bucketFiltered = filter === 'all' ? buckets : buckets.filter(b => b.bucket === filter)
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return bucketFiltered
+    return bucketFiltered.filter(({ lease: l }) =>
+      (l.renter_name ?? '').toLowerCase().includes(q) ||
+      (l.property_name ?? '').toLowerCase().includes(q) ||
+      (l.floor_name ?? '').toLowerCase().includes(q) ||
+      (l.units ?? '').toLowerCase().includes(q))
+  }, [bucketFiltered, search])
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
   const activeCount = buckets.filter(b => b.bucket === 'active').length
   const expiringCount = buckets.filter(b => b.bucket === 'expiring').length
@@ -416,12 +426,20 @@ export default function LeasesPage() {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      <div className="af-tab-bar af-fade-in" style={{ animationDelay: '0.06s' }}>
-        {(['all', 'active', 'expiring', 'expired', 'inactive'] as const).map(s => (
-          <button key={s} onClick={() => setFilter(s)} className={`af-tab-pill ${filter === s ? 'active' : ''}`}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 4 }}>
+        <div className="af-tab-bar af-fade-in" style={{ animationDelay: '0.06s' }}>
+          {(['all', 'active', 'expiring', 'expired', 'inactive'] as const).map(s => (
+            <button key={s} onClick={() => setFilter(s)} className={`af-tab-pill ${filter === s ? 'active' : ''}`}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        <input
+          className="af-prop-search"
+          placeholder="Search renter, property, floor, unit…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
       </div>
 
       {loading ? (

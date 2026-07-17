@@ -180,7 +180,7 @@ export class LeaseService implements OnModuleInit {
        LEFT JOIN tbl_properties p ON p.id = l.property_id
        LEFT JOIN tbl_property_floors f ON f.id = l.floor_id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY l.lastbill_date ASC`,
+       ORDER BY renter_name ASC`,
       bindings,
     );
 
