@@ -55,7 +55,9 @@ export default function NoticeForm({ noticeId }: { noticeId?: string }) {
     try {
       const url = noticeId ? `${API}/notice-board/${noticeId}` : `${API}/notice-board`
       const method = noticeId ? 'PUT' : 'POST'
-      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(form) })
+      const currentUser = JSON.parse(localStorage.getItem('apt_user') ?? '{}')
+      const body = noticeId ? form : { ...form, sender: currentUser.name ?? 'Admin' }
+      const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) })
       if (!res.ok) throw new Error()
       router.push('/dashboard/notice-board')
     } catch { setError(noticeId ? 'Failed to update notice' : 'Failed to post notice') }

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
-import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -12,6 +11,7 @@ interface Notice {
   title: string
   desc: string
   recipient: 'All' | 'Tenants' | 'Owners' | 'Staff'
+  sender: string | null
   date: string
   status: 'active' | 'inactive'
 }
@@ -83,46 +83,42 @@ export default function NoticeBoardPage() {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      {/* Cards grid */}
+      {/* Table */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading notices…</div>
-      ) : filtered.length === 0 ? (
-        <div style={{textAlign:'center',padding:'60px 20px',color:'var(--muted)'}}>
-          <div style={{fontSize:32,marginBottom:12}}>📌</div>
-          <div style={{fontSize:15,fontWeight:600,marginBottom:6}}>No notices found</div>
-          <div style={{fontSize:13}}>Post a notice to get started</div>
-        </div>
       ) : (
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
-          {pageItems.map(n => {
-            const rc = RECIPIENT_COLORS[n.recipient] ?? RECIPIENT_COLORS['All']
-            return (
-              <div key={n.id} style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:14,padding:'20px 22px',display:'flex',flexDirection:'column',gap:10}}>
-                {/* Header row */}
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10}}>
-                  <div style={{fontWeight:720,fontSize:15,lineHeight:1.35,flex:1}}>{n.title}</div>
-                  <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:100,whiteSpace:'nowrap',flexShrink:0,background:n.status==='active'?'rgba(34,197,94,0.12)':'rgba(100,116,139,0.12)',color:n.status==='active'?'#22c55e':'#64748b'}}>
-                    {n.status}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p style={{fontSize:13,color:'var(--muted)',lineHeight:1.6,margin:0}}>{truncate(n.desc, 120)}</p>
-
-                {/* Footer row */}
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'auto',paddingTop:4}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:100,...rc}}>{n.recipient}</span>
-                    <span style={{fontSize:11,color:'var(--muted)'}}>{formatDate(n.date)}</span>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/notice-board/edit?id=${n.id}`)}>✏️</button>
-                    <button className="af-prop-act del"  title="Delete" onClick={() => del(n.id)}>🗑️</button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+        <div className="af-prop-table-wrap">
+          <table className="af-prop-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Title</th><th>Send User</th><th>Receive User</th>
+                <th>Messages</th><th>Attachment</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '36px 0' }}>No notices found</td></tr>
+              ) : pageItems.map((n, i) => {
+                const rc = RECIPIENT_COLORS[n.recipient] ?? RECIPIENT_COLORS['All']
+                return (
+                  <tr key={n.id}>
+                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
+                    <td style={{ fontWeight: 650 }}>{n.title}</td>
+                    <td style={{ fontSize: 13 }}>{n.sender || 'Admin'}</td>
+                    <td><span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, ...rc }}>{n.recipient}</span></td>
+                    <td style={{ fontSize: 13, color: 'var(--muted)', maxWidth: 260 }}>{truncate(n.desc, 80)}</td>
+                    <td style={{ fontSize: 13, color: 'var(--muted)' }}>—</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/notice-board/edit?id=${n.id}`)}>✏️</button>
+                        <button className="af-prop-act del" title="Delete" onClick={() => del(n.id)}>🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
       {filtered.length > 0 && (
