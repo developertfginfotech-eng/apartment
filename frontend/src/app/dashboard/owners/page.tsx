@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
+import ToggleSwitch from '@/components/ToggleSwitch'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -211,15 +212,15 @@ export default function OwnersPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th>First Name</th>
+                <th>Last Name</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>Country</th>
-                <th>City</th>
+                <th>Owner Type</th>
                 <th>No Property</th>
                 <th>No Renter</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Enable/Disable</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -232,33 +233,15 @@ export default function OwnersPage() {
               ) : (
                 pageItems.map(o => (
                   <tr key={o.id}>
-                    <td style={{ fontWeight: 600 }}>
-                      {[o.first_name, o.middle_name, o.last_name].filter(Boolean).join(' ')}
-                    </td>
+                    <td style={{ fontWeight: 600 }}>{o.first_name}</td>
+                    <td style={{ fontWeight: 600 }}>{o.last_name || '—'}</td>
                     <td style={{ color: 'var(--muted)', fontSize: 13 }}>{o.phone ?? '—'}</td>
                     <td style={{ color: 'var(--muted)', fontSize: 13 }}>{o.email ?? '—'}</td>
-                    <td style={{ fontSize: 13 }}>{o.country ?? '—'}</td>
-                    <td style={{ fontSize: 13 }}>{o.city ?? '—'}</td>
+                    <td style={{ fontSize: 13 }}>{o.owner_type || '—'}</td>
                     <td style={{ fontSize: 13 }}>{o.total_property}</td>
                     <td style={{ fontSize: 13 }}>{o.total_renter}</td>
                     <td>
-                      <button
-                        className={`af-prop-badge ${o.status === 1 ? 'active' : 'inactive'}`}
-                        onClick={() => toggleStatus(o)}
-                        style={{
-                          cursor: 'pointer',
-                          background: 'transparent',
-                          border: '1px solid var(--border2)',
-                          borderRadius: 6,
-                          padding: '3px 10px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          textTransform: 'capitalize',
-                        }}
-                        title="Click to toggle status"
-                      >
-                        {o.status === 1 ? 'active' : 'inactive'}
-                      </button>
+                      <ToggleSwitch checked={o.status === 1} onChange={() => toggleStatus(o)} />
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
