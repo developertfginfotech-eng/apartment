@@ -269,19 +269,23 @@ export default function ReportsPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
-                {report.paginated && <th>#</th>}
+                <th>#</th>
                 {cols.map(c=><th key={c.label}>{c.label}</th>)}
               </tr>
             </thead>
             <tbody>
               {pagedRows.length===0 ? (
-                <tr><td colSpan={cols.length + (report.paginated?1:0)} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No data available</td></tr>
+                <tr><td colSpan={cols.length + 1} style={{textAlign:'center',color:'var(--muted)',padding:32}}>No data available</td></tr>
               ) : pagedRows.map((r,i) => (
                 <tr key={i}>
-                  {report.paginated && <td style={{color:'var(--muted)',fontSize:12}}>{(page-1)*PAGE_SIZE+i+1}</td>}
+                  <td style={{color:'var(--muted)',fontSize:12}}>{(page-1)*PAGE_SIZE+i+1}</td>
                   {cols.map(c => (
                     <td key={c.label} style={{fontVariantNumeric:numericCols.has(c.label)?'tabular-nums':undefined,fontWeight:numericCols.has(c.label)?700:undefined}}>
-                      {c.get(r)}
+                      {active==='property' && c.label==='Status' ? (
+                        <span style={{fontSize:11,fontWeight:650,padding:'3px 10px',borderRadius:100,background:c.get(r)==='Available'?'rgba(34,197,94,0.12)':'rgba(249,115,22,0.12)',color:c.get(r)==='Available'?'#22c55e':'var(--accent)'}}>
+                          {c.get(r)}
+                        </span>
+                      ) : c.get(r)}
                     </td>
                   ))}
                 </tr>
@@ -290,7 +294,7 @@ export default function ReportsPage() {
             {grandTotal !== null && pagedRows.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={cols.length + (report.paginated?1:0) - 1} style={{textAlign:'right',fontWeight:700}}>Total Amount:</td>
+                  <td colSpan={cols.length} style={{textAlign:'right',fontWeight:700}}>Total Amount:</td>
                   <td style={{fontWeight:800,fontVariantNumeric:'tabular-nums',color:'var(--accent)'}}>{fmt(grandTotal)}</td>
                 </tr>
               </tfoot>
