@@ -18,7 +18,7 @@ export class LoanService {
          (SELECT SUM(p2.cash_advance) FROM payrolls p2 WHERE p2.loan_id = l.id) AS total_paid
        FROM loans l
        LEFT JOIN employees e ON e.id = l.employee_id
-       ORDER BY l.id DESC`,
+       ORDER BY l.id ASC`,
     );
 
     return rows.map((r: any) => ({
