@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
-import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 import { formatDate } from '@/lib/date'
 
@@ -31,8 +30,6 @@ interface HistoryRow {
   pdc_cheque_date: string | null
 }
 
-const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
-
 function PaymentTransactionsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -49,19 +46,6 @@ function PaymentTransactionsContent() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [search, setSearch] = useState('')
-
-  const [showForm, setShowForm] = useState(false)
-  const [newForm, setNewForm] = useState({ payment_month: '', amount: '', deposit_amount: '', payment_type: 'Cash', payment_date: '' })
-  const [saving, setSaving] = useState(false)
-
-  const [editingHistory, setEditingHistory] = useState<HistoryRow | null>(null)
-  const [historyForm, setHistoryForm] = useState({
-    amount: '', payment_date: '', payment_type: 'Cash', deposit_amount: '', remark: '',
-    cheque_details: '', cheque_image: null as File | null,
-    online_details: '', online_image: null as File | null,
-    pdc_cheque_details: '', pdc_cheque_image: null as File | null, pdc_cheque_date: '',
-    receipt_image: null as File | null,
-  })
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -137,83 +121,10 @@ function PaymentTransactionsContent() {
     doc.save(`receipt-${h.id}.pdf`)
   }
 
-  const openNew = () => { setNewForm({ payment_month: '', amount: '', deposit_amount: '', payment_type: 'Cash', payment_date: '' }); setShowForm(true) }
-  const saveNew = async () => {
-    if (!newForm.amount || !newForm.payment_date) return
-    setSaving(true); setError('')
-    try {
-      const res = await fetch(`${API}/payments/lease/${leaseId}/history`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({
-          payment_month: newForm.payment_month,
-          amount: parseFloat(newForm.amount) || 0,
-          deposit_amount: parseFloat(newForm.deposit_amount) || 0,
-          payment_type: newForm.payment_type,
-          payment_date: newForm.payment_date,
-        }),
-      })
-      if (!res.ok) throw new Error(`Save failed (${res.status})`)
-      setShowForm(false)
-      await fetchHistory()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add payment')
-    } finally { setSaving(false) }
-  }
+  const backParams = new URLSearchParams({ leaseId, renter: renterLabel, property: propertyLabel })
+  const openNew = () => router.push(`/dashboard/payments/transactions/new?${backParams}`)
+  const openEditHistory = (h: HistoryRow) => router.push(`/dashboard/payments/transactions/edit?${new URLSearchParams({ id: String(h.id), ...Object.fromEntries(backParams) })}`)
 
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const body = new FormData()
-    body.append('file', file)
-    const res = await fetch(`${API}/document/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-      body,
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.url ?? null
-  }
-
-  const openEditHistory = (h: HistoryRow) => {
-    setEditingHistory(h)
-    setHistoryForm({
-      amount: String(h.amount ?? ''), payment_date: h.payment_date?.slice(0, 10) ?? '',
-      payment_type: h.payment_type ?? 'Cash', deposit_amount: h.deposit_amount != null ? String(h.deposit_amount) : '',
-      remark: h.remark ?? '',
-      cheque_details: h.cheque_details ?? '', cheque_image: null,
-      online_details: h.online_details ?? '', online_image: null,
-      pdc_cheque_details: h.pdc_cheque_details ?? '', pdc_cheque_image: null, pdc_cheque_date: h.pdc_cheque_date?.slice(0, 10) ?? '',
-      receipt_image: null,
-    })
-  }
-  const saveEditHistory = async () => {
-    if (!editingHistory) return
-    try {
-      const body: Record<string, unknown> = {
-        amount: parseFloat(historyForm.amount) || 0,
-        payment_date: historyForm.payment_date,
-        payment_type: historyForm.payment_type,
-        deposit_amount: parseFloat(historyForm.deposit_amount) || 0,
-        remark: historyForm.remark,
-      }
-      if (historyForm.receipt_image) body.receipt_image = await uploadFile(historyForm.receipt_image)
-      if (historyForm.payment_type === 'Cheque') {
-        body.cheque_details = historyForm.cheque_details
-        if (historyForm.cheque_image) body.cheque_image = await uploadFile(historyForm.cheque_image)
-      } else if (historyForm.payment_type === 'Pdc Cheque') {
-        body.pdc_cheque_details = historyForm.pdc_cheque_details
-        body.pdc_cheque_date = historyForm.pdc_cheque_date
-        if (historyForm.pdc_cheque_image) body.pdc_cheque_image = await uploadFile(historyForm.pdc_cheque_image)
-      } else if (historyForm.payment_type === 'Online') {
-        body.online_details = historyForm.online_details
-        if (historyForm.online_image) body.online_image = await uploadFile(historyForm.online_image)
-      }
-      await fetch(`${API}/payments/history/${editingHistory.id}`, {
-        method: 'PUT', headers: authHeaders(), body: JSON.stringify(body),
-      })
-      setEditingHistory(null)
-      await fetchHistory()
-    } catch { setError('Failed to save transaction') }
-  }
   const deleteHistory = async (id: number) => {
     if (!confirm('Delete this payment record?')) return
     try {
@@ -248,11 +159,9 @@ function PaymentTransactionsContent() {
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }} />
-          <span style={{ color: 'var(--muted)' }}>→</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 10px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit' }} />
+          <DatePicker value={dateFrom} onChange={setDateFrom} />
+          <span style={{ color: 'var(--muted)' }}>⇄</span>
+          <DatePicker value={dateTo} onChange={setDateTo} />
         </div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search renter, month, payment type…"
           style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 14px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 260 }} />
@@ -296,142 +205,6 @@ function PaymentTransactionsContent() {
         </div>
       )}
 
-      {/* Add New Transaction */}
-      {showForm && (
-        <div className="af-modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="af-modal af-modal-in" onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">Add Payment</h2>
-            <div className="af-modal-form">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="af-field">
-                  <label>Payment Month</label>
-                  <input value={newForm.payment_month} onChange={e => setNewForm(f => ({ ...f, payment_month: e.target.value }))} placeholder="e.g. January 2026" />
-                </div>
-                <div className="af-field">
-                  <label>Payment Type</label>
-                  <select className="af-select" value={newForm.payment_type} onChange={e => setNewForm(f => ({ ...f, payment_type: e.target.value }))}>
-                    {PAYMENT_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
-                  </select>
-                </div>
-                <div className="af-field">
-                  <label>Rent Amount</label>
-                  <input type="number" step="0.01" value={newForm.amount} onChange={e => setNewForm(f => ({ ...f, amount: e.target.value }))} />
-                </div>
-                <div className="af-field">
-                  <label>Deposit Amount</label>
-                  <input type="number" step="0.01" value={newForm.deposit_amount} onChange={e => setNewForm(f => ({ ...f, deposit_amount: e.target.value }))} />
-                </div>
-                <div className="af-field">
-                  <label>Payment Date</label>
-                  <DatePicker value={newForm.payment_date} onChange={v => setNewForm(f => ({ ...f, payment_date: v }))} />
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={saveNew} disabled={saving}>{saving ? 'Saving…' : 'Add payment'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Payment History */}
-      {editingHistory && (
-        <div className="af-modal-overlay" onClick={() => setEditingHistory(null)}>
-          <div className="af-modal af-modal-in" style={{ maxWidth: 620, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">Edit Payment History</h2>
-            <div className="af-modal-form">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="af-field">
-                  <label>Rent Amount</label>
-                  <input type="number" step="0.01" value={historyForm.amount} onChange={e => setHistoryForm(f => ({ ...f, amount: e.target.value }))} />
-                </div>
-                <div className="af-field">
-                  <label>Deposit Amount</label>
-                  <input type="number" step="0.01" value={historyForm.deposit_amount} onChange={e => setHistoryForm(f => ({ ...f, deposit_amount: e.target.value }))} />
-                </div>
-                <div className="af-field">
-                  <label>Payment Date</label>
-                  <DatePicker value={historyForm.payment_date} onChange={v => setHistoryForm(f => ({ ...f, payment_date: v }))} />
-                </div>
-              </div>
-
-              <div className="af-field" style={{ marginTop: 4 }}>
-                <label>Select Mode</label>
-                <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
-                  {PAYMENT_TYPES.map(pt => (
-                    <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                      <input type="radio" name="history_payment_type" checked={historyForm.payment_type === pt} onChange={() => setHistoryForm(f => ({ ...f, payment_type: pt }))} />
-                      {pt}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {historyForm.payment_type === 'Cheque' && (
-                <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Cheque Details</label>
-                    <textarea rows={3} value={historyForm.cheque_details} onChange={e => setHistoryForm(f => ({ ...f, cheque_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Cheque Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={historyForm.cheque_image} onChange={file => setHistoryForm(f => ({ ...f, cheque_image: file }))} />
-                  </div>
-                </div>
-              )}
-
-              {historyForm.payment_type === 'Pdc Cheque' && (
-                <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Pdc Cheque Details</label>
-                    <textarea rows={3} value={historyForm.pdc_cheque_details} onChange={e => setHistoryForm(f => ({ ...f, pdc_cheque_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Pdc Cheque Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={historyForm.pdc_cheque_image} onChange={file => setHistoryForm(f => ({ ...f, pdc_cheque_image: file }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Pdc Cheque Date</label>
-                    <DatePicker value={historyForm.pdc_cheque_date} onChange={v => setHistoryForm(f => ({ ...f, pdc_cheque_date: v }))} />
-                  </div>
-                </div>
-              )}
-
-              {historyForm.payment_type === 'Online' && (
-                <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Online Details</label>
-                    <textarea rows={3} value={historyForm.online_details} onChange={e => setHistoryForm(f => ({ ...f, online_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Online Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={historyForm.online_image} onChange={file => setHistoryForm(f => ({ ...f, online_image: file }))} />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                <div className="af-field">
-                  <label>Receipt Image</label>
-                  <FileDropInput accept="image/*,.pdf" value={historyForm.receipt_image} onChange={file => setHistoryForm(f => ({ ...f, receipt_image: file }))} />
-                  {editingHistory.receipt_image && !historyForm.receipt_image && (
-                    <a href={`${API}${editingHistory.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'inline-block' }}>View current receipt</a>
-                  )}
-                </div>
-                <div className="af-field">
-                  <label>Remark</label>
-                  <textarea rows={2} value={historyForm.remark} onChange={e => setHistoryForm(f => ({ ...f, remark: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setEditingHistory(null)}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={saveEditHistory}>Save changes</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

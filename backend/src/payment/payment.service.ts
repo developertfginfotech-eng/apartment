@@ -120,6 +120,22 @@ export class PaymentService {
     );
   }
 
+  async findHistoryOne(id: number) {
+    const rows = await this.ds.query(
+      `SELECT pr.id, pr.lease_id, pr.renter_id, pr.month, pr.payment_month, pr.year, pr.amount,
+              pr.deposit_amount, pr.total_amount, pr.payment_type, pr.payment_date,
+              pr.receipt_image, pr.remark,
+              pr.cheque_details, pr.cheque_image, pr.online_details, pr.online_image,
+              pr.pdc_cheque_details, pr.pdc_cheque_image, pr.pdc_cheque_date,
+              CONCAT(r.first_name, ' ', COALESCE(r.last_name,'')) AS renter_name
+       FROM tbl_pay_rents pr
+       LEFT JOIN tbl_renters r ON r.id = pr.renter_id
+       WHERE pr.id = ?`,
+      [id],
+    );
+    return rows[0] ?? null;
+  }
+
   async updateLeaseHistory(id: number, body: any) {
     const allowed = [
       'amount', 'payment_month', 'payment_date', 'payment_type', 'deposit_amount', 'total_amount',
