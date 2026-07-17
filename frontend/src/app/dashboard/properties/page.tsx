@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
+import ToggleSwitch from '@/components/ToggleSwitch'
 
 interface Property {
   id: number
@@ -91,6 +92,18 @@ export default function PropertiesPage() {
     }
   }
 
+  const toggleStatus = async (p: Property) => {
+    const newStatus = p.status === 1 ? 0 : 1
+    setProperties(ps => ps.map(x => x.id === p.id ? { ...x, status: newStatus } : x))
+    try {
+      const res = await fetch(`${API}/properties/${p.id}`, { method: 'PUT', headers: headers(), body: JSON.stringify({ status: newStatus }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      setProperties(ps => ps.map(x => x.id === p.id ? { ...x, status: p.status } : x))
+      setError('Failed to update status')
+    }
+  }
+
   const del = async (id: number) => {
     if (!confirm('Delete this property?')) return
     setError(null)
@@ -107,10 +120,10 @@ export default function PropertiesPage() {
   const activeCount = properties.filter(p => p.status === 1).length
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-  const exportHeaders = ['#', 'Name', 'Code', 'Location', 'No Floor', 'No Unit', 'No Renter', 'Status']
+  const exportHeaders = ['#', 'Name', 'Code', 'Location', 'No Floor', 'No Unit', 'No Renter', 'Enable/Disable']
   const exportRows = () => filtered.map((p, i) => [
     i + 1, p.property_name, p.property_code, p.address, p.total_floor, p.total_unit, p.total_renter,
-    p.status === 1 ? 'Active' : 'Inactive',
+    p.status === 1 ? 'Enabled' : 'Disabled',
   ])
   const exportExcel = () => {
     const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -171,7 +184,7 @@ export default function PropertiesPage() {
             <thead>
               <tr>
                 <th>Property Name</th><th>Code</th><th>Owner</th><th>Type</th>
-                <th>Floors</th><th>Units</th><th>Renters</th><th>Status</th><th>Actions</th>
+                <th>Floors</th><th>Units</th><th>Renters</th><th>Enable/Disable</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -188,9 +201,7 @@ export default function PropertiesPage() {
                   <td>{p.total_unit}</td>
                   <td>{p.total_renter}</td>
                   <td>
-                    <span className={`af-prop-badge ${p.status === 1 ? 'active' : 'inactive'}`}>
-                      {p.status === 1 ? '● Active' : '○ Inactive'}
-                    </span>
+                    <ToggleSwitch checked={p.status === 1} onChange={() => toggleStatus(p)} />
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
