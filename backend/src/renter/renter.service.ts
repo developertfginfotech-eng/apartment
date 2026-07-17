@@ -19,7 +19,10 @@ export class RenterService {
           CONCAT_WS(' ', r.first_name, r.last_name) AS full_name,
           p.property_name,
           f.name AS floor_name,
-          l.on_rent,
+          (SELECT GROUP_CONCAT(pu.name SEPARATOR ', ')
+             FROM tbl_lease_units lu
+             JOIN tbl_property_units pu ON pu.id = lu.unit_id
+             WHERE lu.lease_id = l.id) AS on_rent,
           l.start_date AS lease_start_date,
           l.end_date AS lease_end_date
         FROM tbl_renters r
