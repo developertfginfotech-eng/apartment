@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
+import ToggleSwitch from '@/components/ToggleSwitch'
 import { formatDate } from '@/lib/date'
 
 interface Renter {
@@ -76,14 +77,6 @@ const headers = () => ({
   Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
 })
 
-const STATUS_COLORS: Record<number, string> = {
-  1: 'rgba(34,197,94,0.12)',
-  0: 'rgba(100,116,139,0.12)',
-}
-const STATUS_TEXT: Record<number, string> = {
-  1: '#22c55e',
-  0: '#64748b',
-}
 const STATUS_LABEL: Record<number, string> = {
   1: 'active',
   0: 'expired',
@@ -266,6 +259,18 @@ export default function TenantsPage() {
     await loadDocs(editing.id)
   }
 
+  const toggleEnabled = async (r: Renter) => {
+    const newStatus = r.status === 1 ? 0 : 1
+    setRenters(rs => rs.map(x => x.id === r.id ? { ...x, status: newStatus } : x))
+    try {
+      const res = await fetch(`${API}/renters/${r.id}`, { method: 'PUT', headers: headers(), body: JSON.stringify({ status: newStatus }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      setRenters(rs => rs.map(x => x.id === r.id ? { ...x, status: r.status } : x))
+      setError('Failed to update status')
+    }
+  }
+
   const del = async (id: number) => {
     if (!confirm('Remove this tenant?')) return
     setError(null)
@@ -278,10 +283,10 @@ export default function TenantsPage() {
     }
   }
 
-  const exportHeaders = ['#', 'Name', 'Type', 'Contact', 'Property', 'Floor', 'On Rent', 'Lease Start', 'Lease End', 'Advance Rent', 'Rent Per Month', 'Status']
+  const exportHeaders = ['#', 'Name', 'Type', 'Contact', 'Property Name', 'Floor', 'On Rent', 'Advance Rent', 'Rent Per Month', 'Enable/Disable']
   const exportRows = () => filtered.map((r, i) => [
     i + 1, r.name || '—', r.renter_type ?? 'individual', r.contact, r.property_name || '—', r.floor_name || '—',
-    r.on_rent || '—', formatDate(r.lease_start_date), formatDate(r.lease_end_date), r.advance_rent, r.rent_per_month, STATUS_LABEL[r.renter_status] ?? 'unknown',
+    r.on_rent || '—', r.advance_rent, r.rent_per_month, r.status === 1 ? 'Enabled' : 'Disabled',
   ])
   const exportExcel = () => {
     const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -372,19 +377,19 @@ export default function TenantsPage() {
                 <th>Name</th>
                 <th>Type</th>
                 <th>Contact</th>
-                <th>Property</th>
+                <th>Property Name</th>
                 <th>Floor</th>
                 <th>On Rent</th>
-                <th>Lease Period</th>
-                <th>Rent / Month</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Advance Rent</th>
+                <th>Rent Per Month</th>
+                <th>Enable/Disable</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={11} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
+                  <td colSpan={10} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
                     No tenants found
                   </td>
                 </tr>
@@ -409,22 +414,16 @@ export default function TenantsPage() {
                   <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.property_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.on_rent || '—'}</td>
-                  <td style={{ fontSize: 12.5 }}>{r.lease_start_date ? `${formatDate(r.lease_start_date)} → ${formatDate(r.lease_end_date)}` : '—'}</td>
+                  <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.advance_rent}</td>
                   <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.rent_per_month}</td>
                   <td>
-                    <span style={{
-                      fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100,
-                      background: STATUS_COLORS[r.renter_status] ?? 'rgba(100,116,139,0.12)',
-                      color:      STATUS_TEXT[r.renter_status]   ?? '#64748b',
-                    }}>
-                      {STATUS_LABEL[r.renter_status] ?? 'unknown'}
-                    </span>
+                    <ToggleSwitch checked={r.status === 1} onChange={() => toggleEnabled(r)} />
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => openView(r)}>View</button>
-                      <button className="af-prop-act edit" onClick={() => openEdit(r)}>Edit</button>
-                      <button className="af-prop-act del"  onClick={() => del(r.id)}>Remove</button>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button className="af-prop-act edit" title="View" onClick={() => openView(r)} style={{ cursor: 'pointer' }}>👁</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(r)} style={{ cursor: 'pointer' }}>✏️</button>
+                      <button className="af-prop-act del" title="Delete" onClick={() => del(r.id)} style={{ cursor: 'pointer' }}>🗑️</button>
                     </div>
                   </td>
                 </tr>

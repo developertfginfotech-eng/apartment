@@ -18,6 +18,7 @@ const MODULE_BY_PREFIX: Record<string, string> = {
   'lease-unit': 'leases',
   'lease-utility': 'leases',
   'lease-interest': 'leases',
+  'property-utility': 'leases',
   payments: 'payments',
   parking: 'payments',
   maintenance: 'maintenance',

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -19,8 +19,57 @@ export class LeaseService implements OnModuleInit {
 
   findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
-  async create(dto: Partial<Lease>) {
-    const saved = await this.repo.save(this.repo.create(dto));
+
+  async findFull(id: number) {
+    const [lease] = await this.ds.query(
+      `SELECT l.*,
+         CONCAT(r.first_name, ' ', COALESCE(r.middle_name,''), ' ', COALESCE(r.last_name,'')) AS renter_name,
+         r.renter_type, r.email AS renter_email, r.contact AS renter_contact,
+         r.national_id AS renter_national_id, r.address AS renter_address,
+         p.property_name,
+         f.name AS floor_name
+       FROM tbl_leases l
+       LEFT JOIN tbl_renters r ON r.id = l.renter_id
+       LEFT JOIN tbl_properties p ON p.id = l.property_id
+       LEFT JOIN tbl_property_floors f ON f.id = l.floor_id
+       WHERE l.id = ?`,
+      [id],
+    );
+    if (!lease) throw new NotFoundException();
+    const units = await this.ds.query(`SELECT unit_id FROM tbl_lease_units WHERE lease_id = ? AND status = 1`, [id]);
+    const deposits = await this.ds.query(`SELECT id, utility_type, utility FROM tbl_lease_utilities WHERE lease_id = ? AND status = 1`, [id]);
+    return { ...lease, unit_ids: units.map((u: any) => u.unit_id), deposits };
+  }
+
+  private async replaceLeaseUnits(leaseId: number, propertyId: number, unitIds?: number[]) {
+    if (!unitIds) return;
+    await this.ds.query(`DELETE FROM tbl_lease_units WHERE lease_id = ?`, [leaseId]);
+    for (const unitId of unitIds) {
+      await this.ds.query(
+        `INSERT INTO tbl_lease_units (property_id, lease_id, unit_id, status) VALUES (?, ?, ?, 1)`,
+        [propertyId, leaseId, unitId],
+      );
+    }
+  }
+
+  private async replaceLeaseUtilities(leaseId: number, deposits?: { utility_type: number; utility: string }[]) {
+    if (!deposits) return;
+    await this.ds.query(`DELETE FROM tbl_lease_utilities WHERE lease_id = ?`, [leaseId]);
+    for (const d of deposits) {
+      if (!d.utility_type || !d.utility) continue;
+      await this.ds.query(
+        `INSERT INTO tbl_lease_utilities (lease_id, utility_type, utility, status) VALUES (?, ?, ?, 1)`,
+        [leaseId, d.utility_type, d.utility],
+      );
+    }
+  }
+
+  async create(dto: any) {
+    const { unit_ids, deposits, ...fields } = dto;
+    fields.status = fields.status ?? 1;
+    const saved = await this.repo.save(this.repo.create(fields as Partial<Lease>));
+    await this.replaceLeaseUnits(saved.id, saved.property_id, unit_ids);
+    await this.replaceLeaseUtilities(saved.id, deposits);
     const [renter] = await this.ds.query(
       `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
       [saved.renter_id],
@@ -28,15 +77,80 @@ export class LeaseService implements OnModuleInit {
     await this.notifications.notify('lease', 'New lease created', `Lease for ${renter?.name ?? 'a renter'} was created`);
     return saved;
   }
-  async update(id: number, dto: Partial<Lease>) {
+
+  async update(id: number, dto: any) {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException();
-    return this.repo.save({ ...e, ...dto });
+    const { unit_ids, deposits, ...fields } = dto;
+    const saved = await this.repo.save({ ...e, ...fields });
+    await this.replaceLeaseUnits(id, saved.property_id, unit_ids);
+    await this.replaceLeaseUtilities(id, deposits);
+
+    const renterId = fields.renter_id ?? e.renter_id;
+    if (renterId) {
+      const firstUnit = Array.isArray(unit_ids) && unit_ids.length ? unit_ids[0] : null;
+      await this.ds.query(
+        `UPDATE tbl_renters SET property_id = ?, floor_id = ?, unit_id = COALESCE(?, unit_id), advance_rent = ?, rent_per_month = ? WHERE id = ?`,
+        [saved.property_id, saved.floor_id, firstUnit, saved.rent_deposit, saved.rent_amount, renterId],
+      );
+    }
+    return saved;
   }
+
   async remove(id: number) {
     const e = await this.repo.findOne({ where: { id } });
     if (!e) throw new NotFoundException();
     return this.repo.remove(e);
+  }
+
+  private monthBefore(dateStr: string): string {
+    const d = new Date(dateStr);
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  async escalate(id: number, dto: any) {
+    const lease = await this.repo.findOne({ where: { id } });
+    if (!lease) throw new NotFoundException();
+    if (!dto.amount || !dto.end_date) {
+      throw new BadRequestException('Rent Amount and When to start date are required');
+    }
+
+    const requiredMonth = this.monthBefore(dto.end_date);
+    const [paid] = await this.ds.query(
+      `SELECT 1 FROM tbl_pay_rents WHERE lease_id = ? AND payment_month = ? LIMIT 1`,
+      [id, requiredMonth],
+    );
+    if (!paid) {
+      throw new BadRequestException('Check your payment history! Please pay all previous dues first.');
+    }
+
+    await this.ds.query(
+      `INSERT INTO lease_agreement_histories
+        (lease_id, lease_no, amount, type, tax, wtax_applicable, wtax, maintenance, rent_amount, document_image, start_date, end_date, total_rent, status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id, lease.lease_no, lease.amount, 'Escalation', lease.tax, lease.wtax_applicable, lease.wtax,
+        lease.maintenance, lease.rent_amount, lease.document_image, lease.start_date, dto.end_date, lease.total_rent, 1,
+      ],
+    );
+
+    const updated = await this.repo.save({
+      ...lease,
+      amount: dto.amount,
+      rent_amount: dto.rent_amount,
+      tax: dto.tax,
+      wtax_applicable: dto.wtax_applicable,
+      wtax: dto.wtax,
+      maintenance: dto.maintenance,
+    });
+
+    const [renter] = await this.ds.query(
+      `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
+      [lease.renter_id],
+    );
+    await this.notifications.notify('lease', 'Lease rent escalated', `Rent for ${renter?.name ?? 'a renter'} was escalated`);
+    return updated;
   }
 
   async findSummary(status: number, search?: string) {

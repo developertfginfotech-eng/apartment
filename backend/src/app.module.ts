@@ -51,6 +51,7 @@ import { WtaxModule } from './wtax/wtax.module';
 import { TaxModule } from './tax/tax.module';
 import { NotificationModule } from './notification/notification.module';
 import { VendorModule } from './vendor/vendor.module';
+import { PropertyUtilityModule } from './property-utility/property-utility.module';
 
 @Module({
   imports: [
@@ -82,7 +83,7 @@ import { VendorModule } from './vendor/vendor.module';
     PayrollModule, SalaryStructureModule, ManagePayrollModule, DocumentModule,
     UtilityModule, NoticeBoardModule, ParkingModule, LoanModule, SecurityMoneyModule,
     SettingModule, ReportModule, ActivityLogModule, TodoModule, MessageModule,
-    CalendarModule, WtaxModule, TaxModule, NotificationModule, VendorModule,
+    CalendarModule, WtaxModule, TaxModule, NotificationModule, VendorModule, PropertyUtilityModule,
   ],
   controllers: [AppController],
   providers: [
