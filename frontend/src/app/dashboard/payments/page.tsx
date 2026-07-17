@@ -198,16 +198,26 @@ export default function PaymentsPage() {
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
       {(activeTab === 'rent' || activeTab === 'interest') && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="af-field" style={{ margin: 0, minWidth: 150 }}>
+            <label style={{ fontSize: 11.5 }}>From Date</label>
             <DatePicker value={from} onChange={setFrom} />
-            <span style={{ color: 'var(--muted)' }}>⇄</span>
+          </div>
+          <div style={{ alignSelf: 'center', color: 'var(--muted)', paddingBottom: 8 }}>⇄</div>
+          <div className="af-field" style={{ margin: 0, minWidth: 150 }}>
+            <label style={{ fontSize: 11.5 }}>To Date</label>
             <DatePicker value={to} onChange={setTo} />
           </div>
-          <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchTab(activeTab)} placeholder="Search renter, property, amount…"
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '7px 14px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 260 }} />
-          {(from || to) && (
-            <button onClick={() => { setFrom(''); setTo('') }} style={{ padding: '7px 12px', borderRadius: 8, background: 'none', border: '1px solid var(--border2)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
+          <input
+            className="af-prop-search"
+            placeholder="Search renter, property, amount…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && fetchTab(activeTab)}
+            style={{ minWidth: 260 }}
+          />
+          {(from || to || search) && (
+            <button onClick={() => { setFrom(''); setTo(''); setSearch('') }} style={{ padding: '9px 14px', borderRadius: 8, background: 'none', border: '1px solid var(--border2)', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Clear</button>
           )}
         </div>
       )}
