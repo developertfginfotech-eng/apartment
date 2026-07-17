@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import SparkleField from '../../components/SparkleField'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -549,7 +550,7 @@ export default function DashboardHome() {
                     <div style={{ fontWeight: 650, fontSize: 13 }}>{n.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{n.desc}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{n.recipient}</span><span>{n.date}</span>
+                      <span>{n.recipient}</span><span>{formatDate(n.date)}</span>
                     </div>
                   </div>
                 ))}

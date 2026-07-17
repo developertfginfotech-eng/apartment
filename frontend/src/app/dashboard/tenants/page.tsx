@@ -97,6 +97,8 @@ export default function TenantsPage() {
   })
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
+  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
   const counts = {
     active:   renters.filter(r => r.renter_status === 1).length,
     inactive: renters.filter(r => r.renter_status === 0).length,
@@ -143,7 +145,7 @@ export default function TenantsPage() {
   const exportHeaders = ['#', 'Name', 'Type', 'Contact', 'Property Name', 'Floor', 'On Rent', 'Advance Rent', 'Rent Per Month', 'Enable/Disable']
   const exportRows = () => filtered.map((r, i) => [
     i + 1, r.name || '—', r.renter_type ?? 'individual', r.contact, r.property_name || '—', r.floor_name || '—',
-    r.on_rent || '—', r.advance_rent, r.rent_per_month, r.status === 1 ? 'Enabled' : 'Disabled',
+    r.on_rent || '—', fmt(r.advance_rent), fmt(r.rent_per_month), r.status === 1 ? 'Enabled' : 'Disabled',
   ])
   const exportExcel = () => {
     const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -271,8 +273,8 @@ export default function TenantsPage() {
                   <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.property_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.on_rent || '—'}</td>
-                  <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.advance_rent}</td>
-                  <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.rent_per_month}</td>
+                  <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.advance_rent)}</td>
+                  <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.rent_per_month)}</td>
                   <td>
                     <ToggleSwitch checked={r.status === 1} onChange={() => toggleEnabled(r)} />
                   </td>
@@ -318,8 +320,8 @@ export default function TenantsPage() {
                   ['On Rent', viewing.on_rent || '—'],
                   ['Lease Start', formatDate(viewing.lease_start_date)],
                   ['Lease End', formatDate(viewing.lease_end_date)],
-                  ['Advance Rent', viewing.advance_rent],
-                  ['Rent Per Month', viewing.rent_per_month],
+                  ['Advance Rent', fmt(viewing.advance_rent)],
+                  ['Rent Per Month', fmt(viewing.rent_per_month)],
                   ['Issue Date', formatDate(viewing.issue_date)],
                   ['Address', viewing.address || '—'],
                   ['Status', STATUS_LABEL[viewing.renter_status] ?? 'unknown'],

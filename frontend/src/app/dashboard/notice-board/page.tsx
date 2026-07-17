@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -112,7 +113,7 @@ export default function NoticeBoardPage() {
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'auto',paddingTop:4}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
                     <span style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:100,...rc}}>{n.recipient}</span>
-                    <span style={{fontSize:11,color:'var(--muted)'}}>{n.date}</span>
+                    <span style={{fontSize:11,color:'var(--muted)'}}>{formatDate(n.date)}</span>
                   </div>
                   <div style={{display:'flex',gap:8}}>
                     <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/notice-board/edit?id=${n.id}`)}>✏️</button>

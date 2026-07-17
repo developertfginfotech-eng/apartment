@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatDate } from '@/lib/date'
 
 interface Msg { id:string; from:string; role:'tenant'|'owner'|'staff'; to?:string; subject:string; body:string; date:string; read:boolean }
 interface Recipient { name:string; role:'tenant'|'owner' }
@@ -113,7 +114,7 @@ export default function MessagesPage() {
               </div>
               <div style={{fontWeight:m.read?500:700,fontSize:13,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.from}</div>
               <div style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{m.subject}</div>
-              <div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>{m.date}</div>
+              <div style={{fontSize:11,color:'var(--muted)',marginTop:3}}>{formatDate(m.date)}</div>
             </div>
           ))}
         </div>

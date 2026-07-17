@@ -1,8 +1,17 @@
+// Locale is pinned to 'en-US' (not the visitor's browser locale) so the
+// month/day/year order stays fixed regardless of where the app is opened.
 export function formatDate(value?: string | Date | null): string {
   if (!value) return '—'
   const d = value instanceof Date ? value : parseDateLike(value)
   if (!d || Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+export function formatDateTime(value?: string | Date | null): string {
+  if (!value) return '—'
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return '—'
+  return `${d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
 }
 
 function parseDateLike(v: string): Date | null {

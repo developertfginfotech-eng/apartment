@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Pagination from '@/components/Pagination'
+import { formatDateTime } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -99,7 +100,7 @@ export default function ActivityLogsPage() {
                   <td style={{color:'var(--muted)',fontSize:12}}>{(page-1)*limit+i+1}</td>
                   <td style={{fontWeight:650,fontSize:13}}>{l.user_name?.trim() || '—'}</td>
                   <td style={{fontSize:13,color:'var(--text2)'}}>{l.role_name || '—'}</td>
-                  <td style={{fontSize:12,color:'var(--muted)',fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>{l.created_at}</td>
+                  <td style={{fontSize:12,color:'var(--muted)',fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>{formatDateTime(l.created_at)}</td>
                   <td style={{fontSize:13,color:'var(--text2)'}}>{l.description?.trim()}</td>
                 </tr>
               ))}

@@ -209,10 +209,11 @@ export class LeaseService implements OnModuleInit {
           [marker],
         );
         if (existing) continue;
+        const endDateLabel = new Date(row.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
         await this.notifications.notify(
           'lease_expiring',
           marker,
-          `Lease for ${row.renter_name ?? 'a renter'} ends on ${row.end_date}`,
+          `Lease for ${row.renter_name ?? 'a renter'} ends on ${endDateLabel}`,
         );
       }
     } catch (err) {

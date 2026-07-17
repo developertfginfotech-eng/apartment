@@ -118,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setShowNotifs(v => !v)
     if (showNotifs) return
     try {
-      const res = await fetch(`${API}/notifications`, { headers: authHeaders() })
+      const res = await fetch(`${API}/notifications/recent`, { headers: authHeaders() })
       if (res.ok) setNotifs(await res.json())
     } catch { /* dropdown just stays empty on failure */ }
   }
@@ -254,7 +254,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {showNotifs && (
                   <div style={{
                     position:'absolute', top:'calc(100% + 8px)', right:0, width:320, maxHeight:380,
-                    overflowY:'auto', background:'var(--surface)', border:'1px solid var(--border2)',
+                    overflowY:'auto',
+                    // Composite the translucent surface tint over the solid --bg (same technique as
+                    // af-datepicker-pop) so this reads as opaque instead of letting the page bleed through.
+                    background:'linear-gradient(var(--surface), var(--surface)) var(--bg)',
+                    border:'1px solid var(--border2)',
                     borderRadius:12, boxShadow:'0 12px 32px rgba(0,0,0,0.3)', zIndex:20,
                   }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid var(--border2)' }}>

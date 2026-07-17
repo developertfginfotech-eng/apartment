@@ -30,7 +30,8 @@ function toYMD(d: Date): string {
 function formatDisplay(v: string): string {
   const d = parseYMD(v)
   if (!d) return ''
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  // Pinned to 'en-US' so month/day/year order stays fixed regardless of browser locale.
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export default function DatePicker({ value, onChange, placeholder = 'Select date', style }: DatePickerProps) {
