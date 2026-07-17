@@ -170,8 +170,8 @@ export default function VendorsPage() {
                   <td style={{ fontSize: 13 }}>{formatDate(v.created_at)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => openEdit(v)}>Edit</button>
-                      <button className="af-prop-act delete" onClick={() => deleteVendor(v.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(v)}>✏️</button>
+                      <button className="af-prop-act delete" title="Delete" onClick={() => deleteVendor(v.id)}>🗑️</button>
                     </div>
                   </td>
                 </tr>

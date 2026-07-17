@@ -192,8 +192,8 @@ export default function AdminsPage() {
                   <td style={{color:'var(--muted)',fontSize:12}}>{formatDate(a.createdAt)}</td>
                   <td>
                     <div style={{display:'flex',gap:8}}>
-                      <button className="af-prop-act edit" onClick={() => openEdit(a)}>Edit</button>
-                      <button className="af-prop-act del" onClick={() => setDeleteId(a.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(a)}>✏️</button>
+                      <button className="af-prop-act del" title="Delete" onClick={() => setDeleteId(a.id)}>🗑️</button>
                     </div>
                   </td>
                 </tr>

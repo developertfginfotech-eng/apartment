@@ -110,8 +110,8 @@ export default function NoticeBoardPage() {
                     <span style={{fontSize:11,color:'var(--muted)'}}>{n.date}</span>
                   </div>
                   <div style={{display:'flex',gap:8}}>
-                    <button className="af-prop-act edit" onClick={() => openEdit(n)}>Edit</button>
-                    <button className="af-prop-act del"  onClick={() => del(n.id)}>Delete</button>
+                    <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(n)}>✏️</button>
+                    <button className="af-prop-act del"  title="Delete" onClick={() => del(n.id)}>🗑️</button>
                   </div>
                 </div>
               </div>

@@ -291,9 +291,9 @@ export default function LoanPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => setViewing(l)}>View</button>
-                      <button className="af-prop-act edit" onClick={() => openEdit(l)}>Edit</button>
-                      <button className="af-prop-act del" onClick={() => del(l.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => setViewing(l)}>👁</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(l)}>✏️</button>
+                      <button className="af-prop-act del" title="Delete" onClick={() => del(l.id)}>🗑️</button>
                     </div>
                   </td>
                 </tr>

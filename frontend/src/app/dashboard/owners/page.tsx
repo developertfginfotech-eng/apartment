@@ -422,22 +422,24 @@ export default function OwnersPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="af-prop-act edit" onClick={() => openView(o)} style={{ padding: '4px 14px', fontSize: 12, borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                          View
+                        <button className="af-prop-act edit" title="View" onClick={() => openView(o)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}>
+                          👁
                         </button>
                         <button
                           className="af-prop-act edit"
+                          title="Edit"
                           onClick={() => openEdit(o)}
-                          style={{ padding: '4px 14px', fontSize: 12, borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                          style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}
                         >
-                          Edit
+                          ✏️
                         </button>
                         <button
                           className="af-prop-act del"
+                          title="Delete"
                           onClick={() => setDeleteId(o.id)}
-                          style={{ padding: '4px 14px', fontSize: 12, borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                          style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}
                         >
-                          Delete
+                          🗑️
                         </button>
                       </div>
                     </td>

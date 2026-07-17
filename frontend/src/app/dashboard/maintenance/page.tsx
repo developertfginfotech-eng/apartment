@@ -401,9 +401,9 @@ export default function MaintenancePage() {
                       </span>
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
-                      <button className="af-prop-act edit" onClick={() => setViewing(r)}>View</button>
-                      <button className="af-prop-act edit" onClick={() => openEdit(r)}>Edit</button>
-                      <button className="af-prop-act delete" onClick={() => deleteRecord(r.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => setViewing(r)}>👁</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(r)}>✏️</button>
+                      <button className="af-prop-act delete" title="Delete" onClick={() => deleteRecord(r.id)}>🗑️</button>
                     </td>
                     <td>
                       {showPayNow

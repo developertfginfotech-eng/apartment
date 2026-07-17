@@ -359,9 +359,9 @@ export default function PropertiesPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => openView(p)}>View</button>
-                      <button className="af-prop-act edit" onClick={() => openEdit(p)}>Edit</button>
-                      <button className="af-prop-act del" onClick={() => del(p.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => openView(p)}>👁</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(p)}>✏️</button>
+                      <button className="af-prop-act del" title="Delete" onClick={() => del(p.id)}>🗑️</button>
                     </div>
                   </td>
                 </tr>

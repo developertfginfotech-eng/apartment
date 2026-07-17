@@ -59,7 +59,7 @@ const EMPTY_FORM = {
   employee_id:'', start_date:'', end_date:'', payment_date:'',
   basic:'0', ot_pay:'0', rental:'0', absences:'0', late:'0',
   sss:'0', phic:'0', hdmf:'0',
-  sss_loan:'0', hdmf_loan:'0', cash_advance:'0',
+  sss_loan:'0', phic_loan:'0', hdmf_loan:'0', cash_advance:'0',
   allowance:'0', adjustment:'0',
 }
 
@@ -139,10 +139,18 @@ export default function PayrollPage() {
       basic: String(p.basic), ot_pay: String(p.ot_pay), rental: String(p.rental ?? 0),
       absences: String(p.absences), late: String(p.late ?? 0),
       sss: String(p.sss), phic: String(p.phic), hdmf: String(p.hdmf),
-      sss_loan: String(p.sss_loan), hdmf_loan: String(p.hdmf_loan),
+      sss_loan: String(p.sss_loan), phic_loan: '0', hdmf_loan: String(p.hdmf_loan),
       cash_advance: String(p.cash_advance), allowance: String(p.allowance), adjustment: String(p.adjustment ?? 0),
     })
     setShowForm(true)
+  }
+
+  const deletePayroll = async (id: number) => {
+    if (!confirm('Delete this payroll record?')) return
+    try {
+      await fetch(`${API}/payroll/${id}`, { method: 'DELETE', headers: authHeaders() })
+      fetchPayrolls()
+    } catch { setError('Failed to delete payroll record') }
   }
 
   const save = async () => {
@@ -369,8 +377,9 @@ export default function PayrollPage() {
                   </td>
                   <td>
                     <div style={{display:'flex',gap:8}}>
-                      <button onClick={()=>openEdit(p)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'#60a5fa',fontSize:16,padding:2}}>✏️</button>
                       <button onClick={()=>setViewItem(p)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:16,padding:2}}>👁</button>
+                      <button onClick={()=>openEdit(p)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'#60a5fa',fontSize:16,padding:2}}>✏️</button>
+                      <button onClick={()=>deletePayroll(p.id)} title="Delete" style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',fontSize:16,padding:2}}>🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -406,12 +415,12 @@ export default function PayrollPage() {
       {/* Add/Edit Modal */}
       {showForm && (
         <div className="af-modal-overlay" onClick={()=>{setShowForm(false);setEditItem(null);resetForm()}}>
-          <div className="af-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:640,maxHeight:'90vh',overflowY:'auto'}}>
+          <div className="af-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:820,maxHeight:'90vh',overflowY:'auto'}}>
             <h2 className="af-modal-title">{editItem?'Edit Payroll':'Add Payroll'}</h2>
             <div className="af-modal-form">
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
                 {employees.length>0 && (
-                  <div className="af-field" style={{gridColumn:'span 2'}}>
+                  <div className="af-field" style={{gridColumn:'span 3'}}>
                     <label>Employee</label>
                     <select className="af-select" value={form.employee_id} onChange={e=>setForm(f=>({...f,employee_id:e.target.value}))}>
                       <option value="">-- Select Employee --</option>
@@ -421,50 +430,43 @@ export default function PayrollPage() {
                 )}
                 <div className="af-field"><label>Start Date</label><input type="date" value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/></div>
                 <div className="af-field"><label>End Date</label><input type="date" value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/></div>
-                <div className="af-field" style={{gridColumn:'span 2'}}><label>Payment Date</label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
+                <div className="af-field"><label>Payment Date</label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
 
-                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
+                <div style={{gridColumn:'span 3',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
+
                 {([['basic','Basic Pay'],['ot_pay','OT Pay'],['rental','Rental'],['absences','Absences'],['late','Late']] as const).map(([k,l])=>(
                   <div key={k} className="af-field"><label>{l}</label>
                     <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
                 ))}
-
-                {/* G-Pay auto-calculated */}
-                <div className="af-field" style={{gridColumn:'span 2'}}>
-                  <label style={{color:'var(--accent)'}}>G-Pay (Auto Calculated)</label>
+                <div className="af-field">
+                  <label style={{color:'var(--accent)'}}>G-Pay</label>
                   <input type="number" readOnly value={liveGPay.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
                 </div>
 
-                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Contributions</div>
-                {([['sss','SSS'],['phic','PhilHealth (PHIC)'],['hdmf','Pag-IBIG (HDMF)']] as const).map(([k,l])=>(
+                {([['sss','SSS'],['phic','PHIC'],['hdmf','HDMF']] as const).map(([k,l])=>(
                   <div key={k} className="af-field"><label>{l}</label>
                     <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
                 ))}
-
-                {/* G-Pay Net auto-calculated */}
-                <div className="af-field" style={{gridColumn:'span 2'}}>
-                  <label style={{color:'var(--accent)'}}>G-Pay Net (Auto Calculated)</label>
+                <div className="af-field">
+                  <label style={{color:'var(--accent)'}}>G-PAY NET</label>
                   <input type="number" readOnly value={liveGPayNet.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
                 </div>
+                <div className="af-field"><label>SSS Loan</label>
+                  <input type="number" step="0.01" value={form.sss_loan} onChange={e=>setForm(f=>({...f,sss_loan:e.target.value}))} placeholder="0.00"/></div>
+                <div className="af-field"><label>Phic Loan</label>
+                  <input type="number" step="0.01" value={form.phic_loan} onChange={e=>setForm(f=>({...f,phic_loan:e.target.value}))} placeholder="0.00"/></div>
 
-                <div style={{gridColumn:'span 2',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Deductions & Additions</div>
-                {([['sss_loan','SSS Loan'],['hdmf_loan','HDMF Loan'],['cash_advance','Payment Loan'],['allowance','Allowance'],['adjustment','Adjustment']] as const).map(([k,l])=>(
-                  <div key={k} className="af-field"><label>{l}</label>
-                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
-                ))}
-              </div>
-              <div style={{background:'var(--surface2)',borderRadius:10,padding:'14px 18px',marginTop:16,display:'flex',gap:28,flexWrap:'wrap'}}>
-                <div>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>G-Pay</div>
-                  <div style={{fontSize:16,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{fmt(liveGPay)}</div>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>G-Pay Net</div>
-                  <div style={{fontSize:16,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{fmt(liveGPayNet)}</div>
-                </div>
-                <div>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>Net Pay (Auto Calculated)</div>
-                  <div style={{fontSize:20,fontWeight:700,color:'#22c55e',fontVariantNumeric:'tabular-nums'}}>{fmt(liveNet)}</div>
+                <div className="af-field"><label>HDMF Loan</label>
+                  <input type="number" step="0.01" value={form.hdmf_loan} onChange={e=>setForm(f=>({...f,hdmf_loan:e.target.value}))} placeholder="0.00"/></div>
+                <div className="af-field"><label>payment loan</label>
+                  <input type="number" step="0.01" value={form.cash_advance} onChange={e=>setForm(f=>({...f,cash_advance:e.target.value}))} placeholder="0.00"/></div>
+                <div className="af-field"><label>Allowance</label>
+                  <input type="number" step="0.01" value={form.allowance} onChange={e=>setForm(f=>({...f,allowance:e.target.value}))} placeholder="0.00"/></div>
+                <div className="af-field"><label>Adjustment</label>
+                  <input type="number" step="0.01" value={form.adjustment} onChange={e=>setForm(f=>({...f,adjustment:e.target.value}))} placeholder="0.00"/></div>
+                <div className="af-field" style={{gridColumn:'span 2'}}>
+                  <label style={{color:'#22c55e',fontWeight:700}}>Net Pay (Auto Calculated)</label>
+                  <input readOnly value={fmt(liveNet)} style={{opacity:0.85,cursor:'not-allowed',color:'#22c55e',fontWeight:700}}/>
                 </div>
               </div>
             </div>

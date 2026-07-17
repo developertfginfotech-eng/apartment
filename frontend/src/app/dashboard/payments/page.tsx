@@ -307,7 +307,7 @@ export default function PaymentsPage() {
                       <span className={`af-status-pill ${r.payment_status === 'Pending' ? 'af-pulse' : ''}`} style={{ background: r.payment_status === 'Paid' ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: r.payment_status === 'Paid' ? '#22c55e' : '#f97316' }}>{r.payment_status}</span>
                     </td>
                     <td style={{ fontSize: 13 }}>{r.payment_method || '—'}</td>
-                    <td><button className="af-prop-act edit" onClick={() => openHistory(r)}>Edit</button></td>
+                    <td><button className="af-prop-act edit" title="Manage payments" onClick={() => openHistory(r)}>✏️</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -392,7 +392,7 @@ export default function PaymentsPage() {
                     <td style={{ fontSize: 13 }}>{p.payment_type || '—'}</td>
                     <td><span className={`af-status-pill ${p.payment_status !== '1' ? 'af-pulse' : ''}`} style={{ background: p.payment_status === '1' ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: p.payment_status === '1' ? '#22c55e' : '#f97316' }}>{p.payment_status === '1' ? 'Paid' : 'Pending'}</span></td>
                     <td>{p.payment_status === '1' ? <span style={{ fontSize: 12, color: 'var(--muted)' }}>—</span> : <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none', padding: '6px 14px', fontSize: 12 }} onClick={() => payParking(p.id)}>Pay Now</button>}</td>
-                    <td><button className="af-prop-act del" onClick={() => deleteParking(p.id)}>Delete</button></td>
+                    <td><button className="af-prop-act del" title="Delete" onClick={() => deleteParking(p.id)}>🗑️</button></td>
                   </tr>
                 ))}
               </tbody>

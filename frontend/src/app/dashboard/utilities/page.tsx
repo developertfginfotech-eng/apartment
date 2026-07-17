@@ -259,8 +259,8 @@ export default function UtilitiesPage() {
                   <td style={{ fontSize: 13 }}>{formatDate(b.issue_date)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => openEdit(b)}>Edit</button>
-                      <button className="af-prop-act del" onClick={() => del(b.id)}>Delete</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(b)}>✏️</button>
+                      <button className="af-prop-act del" title="Delete" onClick={() => del(b.id)}>🗑️</button>
                     </div>
                   </td>
                 </tr>

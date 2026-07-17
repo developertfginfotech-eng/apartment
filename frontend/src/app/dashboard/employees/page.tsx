@@ -88,8 +88,8 @@ export default function EmployeesPage() {
                 </td>
                 <td>
                   <div style={{display:'flex',gap:8}}>
-                    <button className="af-prop-act edit" onClick={()=>openEdit(e)}>Edit</button>
-                    <button className="af-prop-act del" onClick={()=>del(e.id)}>Delete</button>
+                    <button className="af-prop-act edit" title="Edit" onClick={()=>openEdit(e)}>✏️</button>
+                    <button className="af-prop-act del" title="Delete" onClick={()=>del(e.id)}>🗑️</button>
                   </div>
                 </td>
               </tr>
