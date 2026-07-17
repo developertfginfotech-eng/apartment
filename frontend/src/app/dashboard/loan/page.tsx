@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import DatePicker from '@/components/DatePicker'
-import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 import { formatDate } from '@/lib/date'
 
@@ -30,37 +28,15 @@ interface Loan {
   receipt_image: string | null
 }
 
-const LOAN_FROM_OPTIONS: { value: Loan['loan_from_company']; label: string }[] = [
-  { value: 'EPERC', label: 'Loan From EPERC' },
-  { value: 'PHIC', label: 'Loan From PHIC' },
-  { value: 'SSS', label: 'Loan From SSS' },
-  { value: 'HDMF', label: 'Loan From HDMF' },
-  { value: 'BANK', label: 'Loan From Bank' },
-]
-
-const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
-
-const EMPTY_FORM = {
-  employee_id: '', amount_of_loan: '', loan_from_company: '' as Loan['loan_from_company'] | '',
-  name_of_bank: '', interest_of_bank: '', date_of_the_loan: '', payment_date: '',
-  payment_type: 'Cash', payment_status: 'pending' as 'pending' | 'paid', status: 1,
-  receiptFile: null as File | null,
-}
-
 export default function LoanPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
 
   const [loans, setLoans] = useState<Loan[]>([])
-  const [employees, setEmployees] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState<Loan | null>(null)
-  const [form, setForm] = useState(EMPTY_FORM)
   const [viewing, setViewing] = useState<Loan | null>(null)
-  const [uploading, setUploading] = useState(false)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -79,11 +55,6 @@ export default function LoanPage() {
 
   useEffect(() => { fetchLoans() }, [fetchLoans])
 
-  useEffect(() => {
-    fetch(`${API}/payroll/employees`, { headers: authHeaders() })
-      .then(r => r.json()).then(d => Array.isArray(d) && setEmployees(d)).catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const filteredLoans = loans.filter(l =>
@@ -94,65 +65,6 @@ export default function LoanPage() {
   const totalLoans = loans.reduce((s, l) => s + Number(l.amount_of_loan), 0)
   const outstanding = loans.filter(l => l.payment_status !== 'paid').reduce((s, l) => s + Number(l.amount_of_loan), 0)
   const paidAmount = loans.filter(l => l.payment_status === 'paid').reduce((s, l) => s + Number(l.amount_of_loan), 0)
-
-  const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowModal(true) }
-  const openEdit = (l: Loan) => {
-    setEditing(l)
-    setForm({
-      employee_id: String(l.employee_id), amount_of_loan: String(l.amount_of_loan),
-      loan_from_company: l.loan_from_company, name_of_bank: l.name_of_bank ?? '',
-      interest_of_bank: l.interest_of_bank ? String(l.interest_of_bank) : '',
-      date_of_the_loan: l.date_of_the_loan?.slice(0, 10) ?? '', payment_date: l.payment_date?.slice(0, 10) ?? '',
-      payment_type: l.payment_type ?? 'Cash', payment_status: l.payment_status ?? 'pending', status: l.status,
-      receiptFile: null,
-    })
-    setShowModal(true)
-  }
-
-  const uploadReceipt = async (file: File): Promise<string | null> => {
-    const body = new FormData()
-    body.append('file', file)
-    const res = await fetch(`${API}/document/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-      body,
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.url ?? null
-  }
-
-  const save = async () => {
-    if (!form.employee_id || !form.amount_of_loan || !form.loan_from_company || !form.date_of_the_loan || !form.payment_date) return
-    setUploading(true)
-    try {
-      let receiptUrl: string | null | undefined
-      if (form.receiptFile) receiptUrl = await uploadReceipt(form.receiptFile)
-
-      const body: Record<string, unknown> = {
-        employee_id: parseInt(form.employee_id, 10),
-        amount_of_loan: parseFloat(form.amount_of_loan) || 0,
-        loan_from_company: form.loan_from_company,
-        name_of_bank: form.loan_from_company === 'BANK' ? form.name_of_bank : null,
-        interest_of_bank: form.loan_from_company === 'BANK' ? (parseFloat(form.interest_of_bank) || 0) : null,
-        date_of_the_loan: form.date_of_the_loan,
-        payment_date: form.payment_date,
-        payment_type: form.payment_type,
-        payment_status: form.payment_status,
-        status: form.status,
-      }
-      if (receiptUrl) body.receipt_image = receiptUrl
-
-      if (editing) {
-        await fetch(`${API}/loan/${editing.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
-      } else {
-        await fetch(`${API}/loan`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) })
-      }
-      setShowModal(false)
-      fetchLoans()
-    } catch { setError('Failed to save loan') }
-    finally { setUploading(false) }
-  }
 
   const del = async (id: number) => {
     try {
@@ -195,8 +107,6 @@ export default function LoanPage() {
     doc.save('loans.pdf')
   }
 
-  const sf = <K extends keyof typeof EMPTY_FORM>(k: K, v: typeof EMPTY_FORM[K]) => setForm(f => ({ ...f, [k]: v }))
-
   return (
     <main className="af-db-main">
       <div className="af-db-topbar">
@@ -211,7 +121,7 @@ export default function LoanPage() {
           <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
             ↓ Export To Pdf
           </button>
-          <button className="af-btn-primary" onClick={openNew} style={{ cursor: 'pointer', border: 'none' }}>+ Add Loan</button>
+          <button className="af-btn-primary" onClick={() => router.push('/dashboard/loan/new')} style={{ cursor: 'pointer', border: 'none' }}>+ Add Loan</button>
         </div>
       </div>
 
@@ -292,7 +202,7 @@ export default function LoanPage() {
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="af-prop-act edit" title="View" onClick={() => setViewing(l)}>👁</button>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => openEdit(l)}>✏️</button>
+                      <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/loan/edit?id=${l.id}`)}>✏️</button>
                       <button className="af-prop-act del" title="Delete" onClick={() => del(l.id)}>🗑️</button>
                     </div>
                   </td>
@@ -301,97 +211,6 @@ export default function LoanPage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={filteredLoans.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {/* Add / Edit Modal */}
-      {showModal && (
-        <div className="af-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="af-modal" style={{ maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">{editing ? 'Edit Loan' : 'Add Loan'}</h2>
-            <div className="af-modal-form">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="af-field" style={{ gridColumn: '1/-1' }}>
-                  <label>Employee Name</label>
-                  <select className="af-select" value={form.employee_id} onChange={e => sf('employee_id', e.target.value)}>
-                    <option value="">-- Select Employee --</option>
-                    {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                  </select>
-                </div>
-                <div className="af-field">
-                  <label>Amount of Loan</label>
-                  <input type="number" min="0" step="0.01" value={form.amount_of_loan} onChange={e => sf('amount_of_loan', e.target.value)} placeholder="5000"/>
-                </div>
-                <div className="af-field">
-                  <label>Loan From Company</label>
-                  <select className="af-select" value={form.loan_from_company} onChange={e => sf('loan_from_company', e.target.value as Loan['loan_from_company'])}>
-                    <option value="">Select Loan From Company</option>
-                    {LOAN_FROM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-
-                {form.loan_from_company === 'BANK' && (
-                  <>
-                    <div className="af-field">
-                      <label>Name of Bank</label>
-                      <input value={form.name_of_bank} onChange={e => sf('name_of_bank', e.target.value)} placeholder="BDO Bank"/>
-                    </div>
-                    <div className="af-field">
-                      <label>Interest of Bank (%)</label>
-                      <input type="number" min="0" step="0.01" value={form.interest_of_bank} onChange={e => sf('interest_of_bank', e.target.value)} placeholder="6.5"/>
-                    </div>
-                  </>
-                )}
-
-                <div className="af-field">
-                  <label>Date of the Loan</label>
-                  <DatePicker value={form.date_of_the_loan} onChange={v => sf('date_of_the_loan', v)}/>
-                </div>
-                <div className="af-field">
-                  <label>Payment Date</label>
-                  <DatePicker value={form.payment_date} onChange={v => sf('payment_date', v)}/>
-                </div>
-                <div className="af-field">
-                  <label>Payment Status</label>
-                  <select className="af-select" value={form.payment_status} onChange={e => sf('payment_status', e.target.value as 'pending' | 'paid')}>
-                    <option value="pending">Pending</option>
-                    <option value="paid">Paid</option>
-                  </select>
-                </div>
-                <div className="af-field">
-                  <label>Loan Status</label>
-                  <select className="af-select" value={form.status} onChange={e => sf('status', Number(e.target.value))}>
-                    <option value={1}>Active</option>
-                    <option value={0}>Inactive</option>
-                  </select>
-                </div>
-                <div className="af-field" style={{ gridColumn: '1/-1' }}>
-                  <label>Select Mode</label>
-                  <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
-                    {PAYMENT_TYPES.map(pt => (
-                      <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                        <input type="radio" name="payment_type" checked={form.payment_type === pt} onChange={() => sf('payment_type', pt)} />
-                        {pt}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="af-field" style={{ gridColumn: '1/-1' }}>
-                  <label>Receipt Image</label>
-                  <FileDropInput accept="image/*,.pdf" value={form.receiptFile} onChange={file => sf('receiptFile', file)} />
-                  {editing?.receipt_image && !form.receiptFile && (
-                    <a href={`${API}${editing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, display: 'inline-block' }}>View current receipt</a>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowModal(false)} disabled={uploading}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: uploading ? 0.7 : 1 }} onClick={save} disabled={uploading}>
-                {uploading ? 'Saving…' : editing ? 'Save changes' : 'Add loan'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

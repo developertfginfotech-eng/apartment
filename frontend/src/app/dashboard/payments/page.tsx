@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import DatePicker from '@/components/DatePicker'
-import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
 import { formatDate } from '@/lib/date'
 
@@ -40,8 +38,6 @@ interface UtilityRow {
 }
 interface ParkingRow { id: number; renter_name: string | null; property_name: string | null; price: string | number; payment_date: string; payment_type: string; payment_status: string }
 
-const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
-
 const TABS = [
   { key: 'rent', label: 'Rent' },
   { key: 'maintenance', label: 'Maintenances' },
@@ -50,9 +46,6 @@ const TABS = [
   { key: 'interest', label: 'Interest Bill' },
 ] as const
 type TabKey = typeof TABS[number]['key']
-
-const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const EMPTY_FORM = { renter_id: '', month: '', year: '', amount: '', status: '0' }
 
 function useCountUp(value: number, durationMs = 600) {
   const [display, setDisplay] = useState(0)
@@ -99,19 +92,6 @@ export default function PaymentsPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
 
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
-
-  const [collecting, setCollecting] = useState<{ kind: 'maintenance' | 'utility'; id: number; amount: string | number; title: string } | null>(null)
-  const [collectForm, setCollectForm] = useState({
-    payment_type: '', cheque_details: '', cheque_image: null as File | null,
-    online_details: '', online_image: null as File | null,
-    pdc_cheque_details: '', pdc_cheque_image: null as File | null, pdc_cheque_date: '',
-    receipt_image: null as File | null,
-  })
-  const [collectSaving, setCollectSaving] = useState(false)
-
   const authHeaders = () => ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
@@ -151,52 +131,9 @@ export default function PaymentsPage() {
     router.push(`/dashboard/payments/transactions?${params}`)
   }
 
-  const uploadFile = async (file: File): Promise<string | null> => {
-    const body = new FormData()
-    body.append('file', file)
-    const res = await fetch(`${API}/document/upload`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-      body,
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return data.url ?? null
-  }
-
   const openCollect = (kind: 'maintenance' | 'utility', row: { id: number; title: string; amount: string | number }) => {
-    setCollecting({ kind, id: row.id, amount: row.amount, title: row.title })
-    setCollectForm({
-      payment_type: '', cheque_details: '', cheque_image: null,
-      online_details: '', online_image: null,
-      pdc_cheque_details: '', pdc_cheque_image: null, pdc_cheque_date: '',
-      receipt_image: null,
-    })
-  }
-  const closeCollect = () => setCollecting(null)
-
-  const saveCollect = async () => {
-    if (!collecting || !collectForm.payment_type) return
-    setCollectSaving(true); setError('')
-    try {
-      const body: Record<string, unknown> = { payment_type: collectForm.payment_type }
-      if (collectForm.receipt_image) body.receipt_image = await uploadFile(collectForm.receipt_image)
-      if (collectForm.payment_type === 'Cheque') {
-        body.cheque_details = collectForm.cheque_details
-        if (collectForm.cheque_image) body.cheque_image = await uploadFile(collectForm.cheque_image)
-      } else if (collectForm.payment_type === 'Pdc Cheque') {
-        body.pdc_cheque_details = collectForm.pdc_cheque_details
-        body.pdc_cheque_date = collectForm.pdc_cheque_date
-        if (collectForm.pdc_cheque_image) body.pdc_cheque_image = await uploadFile(collectForm.pdc_cheque_image)
-      } else if (collectForm.payment_type === 'Online') {
-        body.online_details = collectForm.online_details
-        if (collectForm.online_image) body.online_image = await uploadFile(collectForm.online_image)
-      }
-      await fetch(`${API}/payments/${collecting.kind}/${collecting.id}/pay`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) })
-      closeCollect()
-      fetchTab(collecting.kind)
-    } catch { setError('Failed to collect payment') }
-    finally { setCollectSaving(false) }
+    const params = new URLSearchParams({ kind, id: String(row.id), amount: String(row.amount), title: row.title })
+    router.push(`/dashboard/payments/collect?${params}`)
   }
   const payParking = async (id: number) => { await fetch(`${API}/payments/parking/${id}/pay`, { method: 'PUT', headers: authHeaders() }); fetchTab('parking') }
   const deleteParking = async (id: number) => { if (!confirm('Delete this parking payment?')) return; await fetch(`${API}/payments/parking/${id}`, { method: 'DELETE', headers: authHeaders() }); fetchTab('parking') }
@@ -217,24 +154,6 @@ export default function PaymentsPage() {
     doc.save(`${activeTab}-payments.pdf`)
   }
 
-  const openNewPayment = () => { setForm(EMPTY_FORM); setShowForm(true) }
-  const savePayment = async () => {
-    if (!form.renter_id || !form.month || !form.year || !form.amount) return
-    setSaving(true); setError('')
-    try {
-      await fetch(`${API}/payments`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({
-          renter_id: parseInt(form.renter_id, 10), month: parseInt(form.month, 10),
-          year: parseInt(form.year, 10), amount: parseFloat(form.amount), status: parseInt(form.status, 10),
-        }),
-      })
-      setShowForm(false)
-      fetchTab('rent')
-    } catch { setError('Failed to save payment') }
-    finally { setSaving(false) }
-  }
-
   const collected = rent.filter(r => r.payment_status === 'Paid').length
   const pending = rent.filter(r => r.payment_status === 'Pending').length
   const totalRent = rent.reduce((s, r) => s + Number(r.rent_amount), 0)
@@ -250,7 +169,7 @@ export default function PaymentsPage() {
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>↓ Export To Excel</button>
             <button onClick={exportPDF} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 650, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>↓ Export To Pdf</button>
-            <button className="af-btn-primary" onClick={openNewPayment} style={{ cursor: 'pointer', border: 'none' }}>+ New Payment</button>
+            <button className="af-btn-primary" onClick={() => router.push('/dashboard/payments/new')} style={{ cursor: 'pointer', border: 'none' }}>+ New Payment</button>
           </div>
         )}
       </div>
@@ -404,123 +323,6 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {showForm && (
-        <div className="af-modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="af-modal af-modal-in" onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">New Payment</h2>
-            <div className="af-modal-form">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div className="af-field" style={{ gridColumn: '1 / -1' }}>
-                  <label>Renter ID</label>
-                  <input type="number" value={form.renter_id} onChange={e => setForm(f => ({ ...f, renter_id: e.target.value }))} placeholder="e.g. 1" />
-                </div>
-                <div className="af-field">
-                  <label>Month</label>
-                  <select className="af-select" value={form.month} onChange={e => setForm(f => ({ ...f, month: e.target.value }))}>
-                    <option value="">-- Select --</option>
-                    {MONTH_NAMES.slice(1).map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}
-                  </select>
-                </div>
-                <div className="af-field"><label>Year</label><input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} placeholder="2026" /></div>
-                <div className="af-field"><label>Amount</label><input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" /></div>
-                <div className="af-field">
-                  <label>Status</label>
-                  <select className="af-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="0">Pending</option>
-                    <option value="1">Paid</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: saving ? 0.7 : 1 }} onClick={savePayment} disabled={saving}>{saving ? 'Saving…' : 'Create payment'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Payment Collect (Maintenance / Utility) */}
-      {collecting && (
-        <div className="af-modal-overlay" onClick={closeCollect}>
-          <div className="af-modal af-modal-in" onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">{collecting.kind === 'maintenance' ? 'Maintenance Collect' : 'Utility Collect'}</h2>
-            <div className="af-modal-form">
-              <div className="af-field" style={{ marginBottom: 4 }}>
-                <label>Select Mode</label>
-                <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
-                  {PAYMENT_TYPES.map(pt => (
-                    <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                      <input type="radio" name="collect_payment_type" checked={collectForm.payment_type === pt} onChange={() => setCollectForm(f => ({ ...f, payment_type: pt }))} />
-                      {pt}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {collectForm.payment_type === 'Cheque' && (
-                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Cheque Details</label>
-                    <textarea rows={3} value={collectForm.cheque_details} onChange={e => setCollectForm(f => ({ ...f, cheque_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Cheque Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={collectForm.cheque_image} onChange={file => setCollectForm(f => ({ ...f, cheque_image: file }))} />
-                  </div>
-                </div>
-              )}
-
-              {collectForm.payment_type === 'Pdc Cheque' && (
-                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Pdc Cheque Details</label>
-                    <textarea rows={3} value={collectForm.pdc_cheque_details} onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Pdc Cheque Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={collectForm.pdc_cheque_image} onChange={file => setCollectForm(f => ({ ...f, pdc_cheque_image: file }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Pdc Cheque Date</label>
-                    <DatePicker value={collectForm.pdc_cheque_date} onChange={v => setCollectForm(f => ({ ...f, pdc_cheque_date: v }))} />
-                  </div>
-                </div>
-              )}
-
-              {collectForm.payment_type === 'Online' && (
-                <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                  <div className="af-field">
-                    <label>Online Details</label>
-                    <textarea rows={3} value={collectForm.online_details} onChange={e => setCollectForm(f => ({ ...f, online_details: e.target.value }))} />
-                  </div>
-                  <div className="af-field">
-                    <label>Online Image</label>
-                    <FileDropInput accept="image/*,.pdf" value={collectForm.online_image} onChange={file => setCollectForm(f => ({ ...f, online_image: file }))} />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ marginTop: 14, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
-                <div className="af-field">
-                  <label>{collecting.kind === 'maintenance' ? 'Total Maintenance' : 'Total Bill'}</label>
-                  <input value={fmt(collecting.amount)} readOnly disabled />
-                </div>
-                <div className="af-field">
-                  <label>Receipt Image</label>
-                  <FileDropInput accept="image/*,.pdf" value={collectForm.receipt_image} onChange={file => setCollectForm(f => ({ ...f, receipt_image: file }))} />
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={closeCollect} disabled={collectSaving}>Close</button>
-              <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px', opacity: collectSaving ? 0.7 : 1 }} onClick={saveCollect} disabled={collectSaving || !collectForm.payment_type}>
-                {collectSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

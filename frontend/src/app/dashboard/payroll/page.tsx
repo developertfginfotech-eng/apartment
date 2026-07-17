@@ -55,14 +55,6 @@ const MONTHS = [
 
 const SUB_NAV = ['Payroll','Manage Payroll','Payslip','Employee','Salary Structure']
 
-const EMPTY_FORM = {
-  employee_id:'', start_date:'', end_date:'', payment_date:'',
-  basic:'0', ot_pay:'0', rental:'0', absences:'0', late:'0',
-  sss:'0', phic:'0', hdmf:'0',
-  sss_loan:'0', phic_loan:'0', hdmf_loan:'0', cash_advance:'0',
-  allowance:'0', adjustment:'0',
-}
-
 export default function PayrollPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
@@ -72,14 +64,10 @@ export default function PayrollPage() {
   const [pages, setPages]         = useState(1)
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
-  const [employees, setEmployees]     = useState<{id:number; name:string}[]>([])
   const [signatories, setSignatories] = useState<{id:number; name:string}[]>([])
 
   const [activeTab, setActiveTab] = useState('Payroll')
-  const [showForm, setShowForm]   = useState(false)
   const [viewItem, setViewItem]   = useState<Payroll|null>(null)
-  const [editItem, setEditItem]   = useState<Payroll|null>(null)
-  const [form, setForm]           = useState(EMPTY_FORM)
 
   const [page, setPage]           = useState(1)
   const [limit, setLimit]         = useState(50)
@@ -114,36 +102,9 @@ export default function PayrollPage() {
 
   useEffect(() => {
     const h = authHeaders()
-    fetch(`${API}/payroll/employees`, { headers: h })
-      .then(r => r.json()).then(d => Array.isArray(d) && setEmployees(d)).catch(()=>{})
     fetch(`${API}/payroll/signatories`, { headers: h })
       .then(r => r.json()).then(d => Array.isArray(d) && setSignatories(d)).catch(()=>{})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const n = (v:string) => parseFloat(v)||0
-  // Match Laravel formula exactly:
-  // G-Pay = basic + ot_pay - rental - absences - late
-  // G-Pay Net = G-Pay - SSS - PHIC - HDMF
-  // Net Pay = G-Pay Net - SSS Loan - HDMF Loan - Cash Advance + Allowance + Adjustment
-  const liveGPay    = n(form.basic) + n(form.ot_pay) - n(form.rental) - n(form.absences) - n(form.late)
-  const liveGPayNet = liveGPay - n(form.sss) - n(form.phic) - n(form.hdmf)
-  const liveNet     = liveGPayNet - n(form.sss_loan) - n(form.hdmf_loan) - n(form.cash_advance) + n(form.allowance) + n(form.adjustment)
-
-  const resetForm = () => setForm(EMPTY_FORM)
-
-  const openEdit = (p: Payroll) => {
-    setEditItem(p)
-    setForm({
-      employee_id: '', start_date: p.start_date, end_date: p.end_date,
-      payment_date: p.payment_date ?? '',
-      basic: String(p.basic), ot_pay: String(p.ot_pay), rental: String(p.rental ?? 0),
-      absences: String(p.absences), late: String(p.late ?? 0),
-      sss: String(p.sss), phic: String(p.phic), hdmf: String(p.hdmf),
-      sss_loan: String(p.sss_loan), phic_loan: '0', hdmf_loan: String(p.hdmf_loan),
-      cash_advance: String(p.cash_advance), allowance: String(p.allowance), adjustment: String(p.adjustment ?? 0),
-    })
-    setShowForm(true)
-  }
 
   const deletePayroll = async (id: number) => {
     if (!confirm('Delete this payroll record?')) return
@@ -151,32 +112,6 @@ export default function PayrollPage() {
       await fetch(`${API}/payroll/${id}`, { method: 'DELETE', headers: authHeaders() })
       fetchPayrolls()
     } catch { setError('Failed to delete payroll record') }
-  }
-
-  const save = async () => {
-    if (!form.start_date || !form.end_date) return
-    const body = {
-      employee_id: form.employee_id ? parseInt(form.employee_id) : null,
-      start_date: form.start_date, end_date: form.end_date, payment_date: form.payment_date,
-      basic: n(form.basic), ot_pay: n(form.ot_pay), rental: n(form.rental),
-      absences: n(form.absences), late: n(form.late),
-      g_pay: liveGPay,
-      sss: n(form.sss), phic: n(form.phic), hdmf: n(form.hdmf),
-      g_pay_net: liveGPayNet,
-      gross_pay: liveGPay, gross_pay_net: liveGPayNet,
-      sss_loan: n(form.sss_loan), hdmf_loan: n(form.hdmf_loan),
-      cash_advance: n(form.cash_advance),
-      allowance: n(form.allowance), adjustment: n(form.adjustment),
-      net_pay: liveNet,
-    }
-    try {
-      if (editItem) {
-        await fetch(`${API}/payroll/${editItem.id}`, { method:'PUT', headers:authHeaders(), body:JSON.stringify(body) })
-      } else {
-        await fetch(`${API}/payroll`, { method:'POST', headers:authHeaders(), body:JSON.stringify(body) })
-      }
-      setShowForm(false); setEditItem(null); resetForm(); fetchPayrolls()
-    } catch { setError('Failed to save') }
   }
 
   const exportHeaders = ['#','Employee','Start Date','End Date','Pay Date','Basic','OT Pay','Allowance','Absences','Gross','SSS','PhilHealth','Pag-IBIG','SSS Loan','HDMF Loan','Cash Advance','Net Pay','Checked By','Approved By']
@@ -242,7 +177,7 @@ export default function PayrollPage() {
             <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
               ↓ Export PDF
             </button>
-            <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>{resetForm();setEditItem(null);setShowForm(true)}}>
+            <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>router.push('/dashboard/payroll/new')}>
               + Add New
             </button>
           </div>
@@ -378,7 +313,7 @@ export default function PayrollPage() {
                   <td>
                     <div style={{display:'flex',gap:8}}>
                       <button onClick={()=>setViewItem(p)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:16,padding:2}}>👁</button>
-                      <button onClick={()=>openEdit(p)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'#60a5fa',fontSize:16,padding:2}}>✏️</button>
+                      <button onClick={()=>router.push(`/dashboard/payroll/edit?id=${p.id}`)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'#60a5fa',fontSize:16,padding:2}}>✏️</button>
                       <button onClick={()=>deletePayroll(p.id)} title="Delete" style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',fontSize:16,padding:2}}>🗑️</button>
                     </div>
                   </td>
@@ -410,72 +345,6 @@ export default function PayrollPage() {
 
       {!loading && pages <= 1 && (
         <div style={{fontSize:12,color:'var(--muted)',marginTop:10}}>Showing {payrolls.length} of {total} entries</div>
-      )}
-
-      {/* Add/Edit Modal */}
-      {showForm && (
-        <div className="af-modal-overlay" onClick={()=>{setShowForm(false);setEditItem(null);resetForm()}}>
-          <div className="af-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:820,maxHeight:'90vh',overflowY:'auto'}}>
-            <h2 className="af-modal-title">{editItem?'Edit Payroll':'Add Payroll'}</h2>
-            <div className="af-modal-form">
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
-                {employees.length>0 && (
-                  <div className="af-field" style={{gridColumn:'span 3'}}>
-                    <label>Employee</label>
-                    <select className="af-select" value={form.employee_id} onChange={e=>setForm(f=>({...f,employee_id:e.target.value}))}>
-                      <option value="">-- Select Employee --</option>
-                      {employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                <div className="af-field"><label>Start Date</label><input type="date" value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/></div>
-                <div className="af-field"><label>End Date</label><input type="date" value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/></div>
-                <div className="af-field"><label>Payment Date</label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
-
-                <div style={{gridColumn:'span 3',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
-
-                {([['basic','Basic Pay'],['ot_pay','OT Pay'],['rental','Rental'],['absences','Absences'],['late','Late']] as const).map(([k,l])=>(
-                  <div key={k} className="af-field"><label>{l}</label>
-                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
-                ))}
-                <div className="af-field">
-                  <label style={{color:'var(--accent)'}}>G-Pay</label>
-                  <input type="number" readOnly value={liveGPay.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
-                </div>
-
-                {([['sss','SSS'],['phic','PHIC'],['hdmf','HDMF']] as const).map(([k,l])=>(
-                  <div key={k} className="af-field"><label>{l}</label>
-                    <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
-                ))}
-                <div className="af-field">
-                  <label style={{color:'var(--accent)'}}>G-PAY NET</label>
-                  <input type="number" readOnly value={liveGPayNet.toFixed(2)} style={{opacity:0.7,cursor:'not-allowed'}}/>
-                </div>
-                <div className="af-field"><label>SSS Loan</label>
-                  <input type="number" step="0.01" value={form.sss_loan} onChange={e=>setForm(f=>({...f,sss_loan:e.target.value}))} placeholder="0.00"/></div>
-                <div className="af-field"><label>Phic Loan</label>
-                  <input type="number" step="0.01" value={form.phic_loan} onChange={e=>setForm(f=>({...f,phic_loan:e.target.value}))} placeholder="0.00"/></div>
-
-                <div className="af-field"><label>HDMF Loan</label>
-                  <input type="number" step="0.01" value={form.hdmf_loan} onChange={e=>setForm(f=>({...f,hdmf_loan:e.target.value}))} placeholder="0.00"/></div>
-                <div className="af-field"><label>payment loan</label>
-                  <input type="number" step="0.01" value={form.cash_advance} onChange={e=>setForm(f=>({...f,cash_advance:e.target.value}))} placeholder="0.00"/></div>
-                <div className="af-field"><label>Allowance</label>
-                  <input type="number" step="0.01" value={form.allowance} onChange={e=>setForm(f=>({...f,allowance:e.target.value}))} placeholder="0.00"/></div>
-                <div className="af-field"><label>Adjustment</label>
-                  <input type="number" step="0.01" value={form.adjustment} onChange={e=>setForm(f=>({...f,adjustment:e.target.value}))} placeholder="0.00"/></div>
-                <div className="af-field" style={{gridColumn:'span 2'}}>
-                  <label style={{color:'#22c55e',fontWeight:700}}>Net Pay (Auto Calculated)</label>
-                  <input readOnly value={fmt(liveNet)} style={{opacity:0.85,cursor:'not-allowed',color:'#22c55e',fontWeight:700}}/>
-                </div>
-              </div>
-            </div>
-            <div style={{display:'flex',gap:10,marginTop:22,justifyContent:'flex-end'}}>
-              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>{setShowForm(false);setEditItem(null);resetForm()}}>Cancel</button>
-              <button className="af-auth-submit" style={{width:'auto',padding:'10px 28px'}} onClick={save}>{editItem?'Save Changes':'Add Payroll'}</button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* View modal */}

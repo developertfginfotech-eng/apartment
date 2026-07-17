@@ -8,6 +8,7 @@ export interface NoticeDto {
   desc: string;
   recipient: 'All' | 'Tenants' | 'Owners' | 'Staff';
   sender?: string;
+  status?: 'active' | 'inactive';
 }
 
 @Injectable()
@@ -52,9 +53,28 @@ export class NoticeBoardService implements OnModuleInit {
     const id = randomUUID();
     await this.ds.query(
       'INSERT INTO app_notices (id, title, description, recipient, sender, status) VALUES (?,?,?,?,?,?)',
-      [id, dto.title, dto.desc, dto.recipient, dto.sender ?? null, 'active'],
+      [id, dto.title, dto.desc, dto.recipient, dto.sender ?? null, dto.status ?? 'active'],
     );
     const [row] = await this.ds.query('SELECT * FROM app_notices WHERE id = ?', [id]);
     return this.mapRow(row);
+  }
+
+  async findOne(id: string) {
+    const [row] = await this.ds.query('SELECT * FROM app_notices WHERE id = ?', [id]);
+    return row ? this.mapRow(row) : null;
+  }
+
+  async update(id: string, dto: NoticeDto) {
+    await this.ds.query(
+      'UPDATE app_notices SET title = ?, description = ?, recipient = ?, status = ? WHERE id = ?',
+      [dto.title, dto.desc, dto.recipient, dto.status ?? 'active', id],
+    );
+    const [row] = await this.ds.query('SELECT * FROM app_notices WHERE id = ?', [id]);
+    return row ? this.mapRow(row) : null;
+  }
+
+  async remove(id: string) {
+    await this.ds.query('DELETE FROM app_notices WHERE id = ?', [id]);
+    return { success: true };
   }
 }

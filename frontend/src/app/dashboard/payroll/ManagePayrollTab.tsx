@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
 import { formatDate } from '@/lib/date'
 
@@ -21,12 +22,11 @@ const authHeaders = () => ({
 const fmt = (v: number|string) => `₱ ${Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
 
 export default function ManagePayrollTab() {
+  const router = useRouter()
   const [batches, setBatches] = useState<Batch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
   const [search, setSearch]   = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name:'', start_date:'', end_date:'' })
 
   const [openBatch, setOpenBatch] = useState<Batch|null>(null)
   const [rows, setRows] = useState<PayrollRow[]>([])
@@ -48,12 +48,6 @@ export default function ManagePayrollTab() {
   }, [search])
 
   useEffect(() => { fetchBatches() }, [fetchBatches])
-
-  const save = async () => {
-    if (!form.name || !form.start_date || !form.end_date) return
-    await fetch(`${API}/manage-payroll`, { method:'POST', headers:authHeaders(), body:JSON.stringify(form) })
-    setShowForm(false); setForm({ name:'', start_date:'', end_date:'' }); fetchBatches()
-  }
 
   const remove = async (b: Batch) => {
     if (!confirm(`Delete "${b.name}"?`)) return
@@ -138,7 +132,7 @@ export default function ManagePayrollTab() {
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name…"
           style={{background:'var(--surface2)',border:'1px solid var(--border2)',borderRadius:8,padding:'8px 12px',color:'var(--text)',fontSize:13,fontFamily:'inherit',width:220}}/>
-        <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>setShowForm(true)}>+ Add New</button>
+        <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>router.push('/dashboard/payroll/batch-new')}>+ Add New</button>
       </div>
 
       {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:10,padding:'10px 16px',marginBottom:16,color:'#ef4444',fontSize:13}}>{error}</div>}
@@ -166,26 +160,6 @@ export default function ManagePayrollTab() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {showForm && (
-        <div className="af-modal-overlay" onClick={()=>setShowForm(false)}>
-          <div className="af-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:440}}>
-            <h2 className="af-modal-title">Add Payroll Batch</h2>
-            <div className="af-modal-form">
-              <div className="af-field"><label>Name</label>
-                <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. July 1-15 Payroll" autoFocus/></div>
-              <div className="af-field"><label>Start Date</label>
-                <input type="date" value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/></div>
-              <div className="af-field"><label>End Date</label>
-                <input type="date" value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/></div>
-            </div>
-            <div style={{display:'flex',gap:10,marginTop:22,justifyContent:'flex-end'}}>
-              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>setShowForm(false)}>Cancel</button>
-              <button className="af-auth-submit" style={{width:'auto',padding:'10px 28px'}} onClick={save}>Add</button>
-            </div>
-          </div>
         </div>
       )}
     </>
