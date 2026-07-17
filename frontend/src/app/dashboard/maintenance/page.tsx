@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
+import ToggleSwitch from '@/components/ToggleSwitch'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -27,11 +28,6 @@ interface Maintenance {
   payment_status: number
   payment_type: string | null
   receipt_image: string | null
-}
-
-const STATUS_STYLE: Record<number, { bg: string; color: string; label: string }> = {
-  1: { bg: 'rgba(34,197,94,0.12)',  color: '#22c55e', label: 'Active' },
-  0: { bg: 'rgba(100,116,139,0.12)', color: '#64748b', label: 'Inactive' },
 }
 
 const REQUESTED_BY: Record<string, string> = { '0': 'Owner', '1': 'Renter', '2': 'Admin', '3': 'Maintenance' }
@@ -122,6 +118,18 @@ export default function MaintenancePage() {
       headStyles: { fillColor: [34, 197, 94] },
     })
     doc.save('maintenances.pdf')
+  }
+
+  const toggleStatus = async (r: Maintenance) => {
+    const newStatus = r.status === 1 ? 0 : 1
+    setRecords(rs => rs.map(x => x.id === r.id ? { ...x, status: newStatus } : x))
+    try {
+      const res = await fetch(`${API}/maintenance/${r.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status: newStatus }) })
+      if (!res.ok) throw new Error()
+    } catch {
+      setRecords(rs => rs.map(x => x.id === r.id ? { ...x, status: r.status } : x))
+      setError('Failed to update status')
+    }
   }
 
   const deleteRecord = async (id: number) => {
@@ -272,7 +280,6 @@ export default function MaintenancePage() {
             </thead>
             <tbody>
               {pageItems.map((r, i) => {
-                const st = STATUS_STYLE[r.status] ?? STATUS_STYLE[0]
                 const ms = MAINTENANCE_STATUS[r.maintenances_status] ?? MAINTENANCE_STATUS[0]
                 const editableStatus = r.maintenances_status !== 2 && r.maintenances_status !== 3
                 const showPayNow = r.payment_status === 0 && !!r.amount && r.maintenances_status === 2
@@ -312,9 +319,7 @@ export default function MaintenancePage() {
                       </span>
                     </td>
                     <td>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: st.bg, color: st.color }}>
-                        {st.label}
-                      </span>
+                      <ToggleSwitch checked={r.status === 1} onChange={() => toggleStatus(r)} />
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
                       <button className="af-prop-act edit" title="View" onClick={() => setViewing(r)}>👁</button>

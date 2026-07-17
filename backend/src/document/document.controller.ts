@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -26,6 +26,26 @@ export class DocumentController {
   @Get('types')
   getTypes() {
     return this.svc.getTypes();
+  }
+
+  @Get('types/admin')
+  getAllTypesAdmin() {
+    return this.svc.getAllTypesAdmin();
+  }
+
+  @Post('types')
+  createType(@Body() body: { name: string }) {
+    return this.svc.createType(body);
+  }
+
+  @Put('types/:id')
+  updateType(@Param('id') id: string, @Body() body: any) {
+    return this.svc.updateType(parseInt(id, 10), body);
+  }
+
+  @Delete('types/:id')
+  removeType(@Param('id') id: string) {
+    return this.svc.removeType(parseInt(id, 10));
   }
 
   @Get('property')

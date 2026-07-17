@@ -10,6 +10,33 @@ export class DocumentService {
     return this.ds.query(`SELECT id, name FROM tbl_documents WHERE status = 1 ORDER BY name ASC`);
   }
 
+  getAllTypesAdmin() {
+    return this.ds.query(`SELECT id, name, status FROM tbl_documents ORDER BY name ASC`);
+  }
+
+  async createType(body: { name: string }) {
+    const res = await this.ds.query(`INSERT INTO tbl_documents (name, status) VALUES (?, 1)`, [body.name]);
+    return { id: res.insertId };
+  }
+
+  async updateType(id: number, body: any) {
+    const fields = Object.keys(body)
+      .filter(k => !['id'].includes(k))
+      .map(k => `\`${k}\` = ?`)
+      .join(', ');
+    const values = Object.keys(body)
+      .filter(k => !['id'].includes(k))
+      .map(k => body[k]);
+    if (!fields) return { ok: true };
+    await this.ds.query(`UPDATE tbl_documents SET ${fields} WHERE id = ?`, [...values, id]);
+    return { ok: true };
+  }
+
+  async removeType(id: number) {
+    await this.ds.query(`DELETE FROM tbl_documents WHERE id = ?`, [id]);
+    return { ok: true };
+  }
+
   // table/fkColumn are fixed internal constants, never derived from request input
   private getDocuments(table: string, fkColumn: string, fkId: number) {
     return this.ds.query(
