@@ -21,7 +21,7 @@ export default function ToggleSwitch({ checked, onChange, disabled }: ToggleSwit
         border: 'none',
         padding: 2,
         cursor: disabled ? 'default' : 'pointer',
-        background: checked ? '#22c55e' : 'var(--border2)',
+        background: checked ? 'var(--accent)' : 'var(--border2)',
         transition: 'background 0.15s',
         display: 'inline-flex',
         alignItems: 'center',

@@ -256,8 +256,8 @@ export default function MaintenancePage() {
           <table className="af-prop-table" style={{ minWidth: 1400 }}>
             <thead>
               <tr>
-                <th>Title</th>
-                <th>Type</th>
+                <th>#</th>
+                <th>Maintenance Title</th>
                 <th>Property</th>
                 <th>Date</th>
                 <th>Amount</th>
@@ -271,15 +271,15 @@ export default function MaintenancePage() {
               </tr>
             </thead>
             <tbody>
-              {pageItems.map(r => {
+              {pageItems.map((r, i) => {
                 const st = STATUS_STYLE[r.status] ?? STATUS_STYLE[0]
                 const ms = MAINTENANCE_STATUS[r.maintenances_status] ?? MAINTENANCE_STATUS[0]
                 const editableStatus = r.maintenances_status !== 2 && r.maintenances_status !== 3
                 const showPayNow = r.payment_status === 0 && !!r.amount && r.maintenances_status === 2
                 return (
                   <tr key={r.id}>
+                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                     <td style={{ fontWeight: 650 }}>{r.title}</td>
-                    <td>{r.type_name ?? '—'}</td>
                     <td>{r.property_name ?? r.property_id}</td>
                     <td style={{ fontSize: 13 }}>{formatDate(r.date)}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
