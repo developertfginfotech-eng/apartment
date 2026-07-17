@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -85,7 +86,7 @@ export default function PayslipTab() {
               ) : pageItems.map(r=>(
                 <tr key={r.id}>
                   <td>{r.employee_name}</td>
-                  <td>{r.start_date} – {r.end_date}</td>
+                  <td>{formatDate(r.start_date)} – {formatDate(r.end_date)}</td>
                   <td>{fmt(r.basic)}</td>
                   <td>{fmt(r.cash_advance)}</td>
                   <td style={{color:'#22c55e',fontWeight:700}}>{fmt(r.net_pay)}</td>
@@ -102,7 +103,7 @@ export default function PayslipTab() {
         <div className="af-modal-overlay" onClick={()=>setDetail(null)}>
           <div className="af-modal" onClick={e=>e.stopPropagation()} style={{maxWidth:520}}>
             <h2 className="af-modal-title">Payslip — {detail.employee_name}</h2>
-            <p style={{color:'var(--muted)',fontSize:12,marginTop:-8,marginBottom:16}}>Period: {detail.start_date} – {detail.end_date} · Paid: {detail.payment_date}</p>
+            <p style={{color:'var(--muted)',fontSize:12,marginTop:-8,marginBottom:16}}>Period: {formatDate(detail.start_date)} – {formatDate(detail.end_date)} · Paid: {formatDate(detail.payment_date)}</p>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
               {[
                 ['Basic Pay', detail.basic], ['OT Pay', detail.ot_pay], ['Rental', detail.rental],

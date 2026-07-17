@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -202,7 +203,7 @@ export default function PaymentsPage() {
 
   // Export (Rent/Interest tab)
   const rentExportHeaders = ['#', 'Renter', 'Property', 'Floor', 'Units', 'Rent Amount', 'Start Date', 'Last Billing', 'Overdue', 'Payment Status', 'Payment Method']
-  const rentExportRows = () => rent.map((r, i) => [i + 1, r.renter_name?.trim() || '-', r.property_name || '-', r.floor_name || '-', r.units || '-', fmt(r.rent_amount), r.start_date?.slice(0, 10), r.lastbill_date?.slice(0, 10) || '-', r.overdueMonths.join(', ') || '-', r.payment_status, r.payment_method || '-'])
+  const rentExportRows = () => rent.map((r, i) => [i + 1, r.renter_name?.trim() || '-', r.property_name || '-', r.floor_name || '-', r.units || '-', fmt(r.rent_amount), formatDate(r.start_date), formatDate(r.lastbill_date), r.overdueMonths.join(', ') || '-', r.payment_status, r.payment_method || '-'])
   const exportCSV = () => {
     const csv = [rentExportHeaders, ...rentExportRows()].map(row => row.map(c => `"${c}"`).join(',')).join('\n')
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `${activeTab}-payments.csv` })
@@ -299,8 +300,8 @@ export default function PaymentsPage() {
                     <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
                     <td><span className="af-prop-badge type">{r.units || '—'}</span></td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.rent_amount)}</td>
-                    <td style={{ fontSize: 12.5 }}>{r.start_date?.slice(0, 10)}</td>
-                    <td style={{ fontSize: 12.5 }}>{r.lastbill_date?.slice(0, 10) || '—'}</td>
+                    <td style={{ fontSize: 12.5 }}>{formatDate(r.start_date)}</td>
+                    <td style={{ fontSize: 12.5 }}>{formatDate(r.lastbill_date)}</td>
                     <td style={{ fontSize: 12, maxWidth: 220 }}>{r.overdueMonths.length ? r.overdueMonths.join(', ') : '—'}</td>
                     <td>
                       <span className={`af-status-pill ${r.payment_status === 'Pending' ? 'af-pulse' : ''}`} style={{ background: r.payment_status === 'Paid' ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: r.payment_status === 'Paid' ? '#22c55e' : '#f97316' }}>{r.payment_status}</span>
@@ -326,7 +327,7 @@ export default function PaymentsPage() {
                   <tr key={m.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{m.title}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{m.property_name || '—'}</td>
-                    <td style={{ fontSize: 13 }}>{m.date?.slice(0, 10)}</td>
+                    <td style={{ fontSize: 13 }}>{formatDate(m.date)}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(m.amount)}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{m.description || '—'}</td>
                     <td style={{ fontSize: 13 }}>{m.payment_type || '—'}</td>
@@ -357,7 +358,7 @@ export default function PaymentsPage() {
                   <tr key={u.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
                     <td style={{ fontWeight: 650 }}>{u.property_name || '—'}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(u.total_rent)}</td>
-                    <td style={{ fontSize: 13 }}>{u.issue_date?.slice(0, 10)}</td>
+                    <td style={{ fontSize: 13 }}>{formatDate(u.issue_date)}</td>
                     <td style={{ fontSize: 13 }}>{u.payment_type || '—'}</td>
                     <td><span className={`af-status-pill ${u.payment_status === 0 ? 'af-pulse' : ''}`} style={{ background: u.payment_status === 1 ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: u.payment_status === 1 ? '#22c55e' : '#f97316' }}>{u.payment_status === 1 ? 'Paid' : 'Pending'}</span></td>
                     <td>
@@ -387,7 +388,7 @@ export default function PaymentsPage() {
                     <td style={{ fontWeight: 650 }}>{p.renter_name?.trim() || '—'}</td>
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{p.property_name || '—'}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.price)}</td>
-                    <td style={{ fontSize: 13 }}>{p.payment_date?.slice(0, 10)}</td>
+                    <td style={{ fontSize: 13 }}>{formatDate(p.payment_date)}</td>
                     <td style={{ fontSize: 13 }}>{p.payment_type || '—'}</td>
                     <td><span className={`af-status-pill ${p.payment_status !== '1' ? 'af-pulse' : ''}`} style={{ background: p.payment_status === '1' ? 'rgba(34,197,94,0.12)' : 'rgba(249,115,22,0.12)', color: p.payment_status === '1' ? '#22c55e' : '#f97316' }}>{p.payment_status === '1' ? 'Paid' : 'Pending'}</span></td>
                     <td>{p.payment_status === '1' ? <span style={{ fontSize: 12, color: 'var(--muted)' }}>—</span> : <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none', padding: '6px 14px', fontSize: 12 }} onClick={() => payParking(p.id)}>Pay Now</button>}</td>

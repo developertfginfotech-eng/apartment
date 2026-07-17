@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
 const MODULES = [
-  'properties', 'owners', 'tenants', 'leases', 'payments', 'maintenance',
+  'properties', 'owners', 'tenants', 'leases', 'payments', 'maintenance', 'vendors',
   'expenses', 'utilities', 'messages', 'notice-board', 'reports',
   'activity-logs', 'loan', 'security-money', 'payroll', 'taxes', 'settings',
 ]
 const MODULE_LABELS: Record<string, string> = {
   properties: 'Properties', owners: 'Owners', tenants: 'Renters', leases: 'Lease Agreement',
-  payments: 'Payments', maintenance: 'Maintenance', expenses: 'Expenses', utilities: 'Utilities',
+  payments: 'Payments', maintenance: 'Maintenance', vendors: 'Vendors', expenses: 'Expenses', utilities: 'Utilities',
   messages: 'Messages', 'notice-board': 'Notice Board', reports: 'Reports',
   'activity-logs': 'Activity Logs', loan: 'Loan', 'security-money': 'Security Money',
   payroll: 'Payroll', taxes: 'Taxes', settings: 'Setting',
@@ -188,7 +189,7 @@ export default function AdminsPage() {
                         ))}
                     </div>
                   </td>
-                  <td style={{color:'var(--muted)',fontSize:12}}>{new Date(a.createdAt).toLocaleDateString()}</td>
+                  <td style={{color:'var(--muted)',fontSize:12}}>{formatDate(a.createdAt)}</td>
                   <td>
                     <div style={{display:'flex',gap:8}}>
                       <button className="af-prop-act edit" onClick={() => openEdit(a)}>Edit</button>

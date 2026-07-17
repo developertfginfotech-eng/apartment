@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ScheduleModule } from '@nestjs/schedule';
 import { uploadDir } from './document/upload-dir';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -49,10 +50,12 @@ import { CalendarModule } from './calendar/calendar.module';
 import { WtaxModule } from './wtax/wtax.module';
 import { TaxModule } from './tax/tax.module';
 import { NotificationModule } from './notification/notification.module';
+import { VendorModule } from './vendor/vendor.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({ rootPath: uploadDir, serveRoot: '/uploads' }),
     JwtModule.register({ global: true, secret: process.env.JWT_SECRET ?? 'apartment-dev-secret-2024', signOptions: { expiresIn: '7d' } }),
     TypeOrmModule.forRootAsync({
@@ -79,7 +82,7 @@ import { NotificationModule } from './notification/notification.module';
     PayrollModule, SalaryStructureModule, ManagePayrollModule, DocumentModule,
     UtilityModule, NoticeBoardModule, ParkingModule, LoanModule, SecurityMoneyModule,
     SettingModule, ReportModule, ActivityLogModule, TodoModule, MessageModule,
-    CalendarModule, WtaxModule, TaxModule, NotificationModule,
+    CalendarModule, WtaxModule, TaxModule, NotificationModule, VendorModule,
   ],
   controllers: [AppController],
   providers: [

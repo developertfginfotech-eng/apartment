@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -98,7 +99,7 @@ export default function LeasesPage() {
     const days = daysLeft(l.end_date)
     return [
       i + 1, l.renter_name?.trim() || '—', l.property_name || '—', l.floor_name || '—', l.units || '—',
-      `${l.start_date?.slice(0, 10)} - ${l.end_date?.slice(0, 10) || '—'}`, fmt(l.rent_amount), fmt(l.rent_deposit),
+      `${formatDate(l.start_date)} - ${formatDate(l.end_date)}`, fmt(l.rent_amount), fmt(l.rent_deposit),
       days === null ? '—' : days > 0 ? `${days}d` : 'Ended', l.payment_status, STA[bucket].label,
     ]
   })
@@ -195,7 +196,7 @@ export default function LeasesPage() {
                     <td style={{ fontSize: 13, color: 'var(--muted)' }}>{l.property_name || '—'}</td>
                     <td style={{ fontSize: 13 }}>{l.floor_name || '—'}</td>
                     <td><span className="af-prop-badge type">{l.units || '—'}</span></td>
-                    <td style={{ fontSize: 12.5 }}>{l.start_date?.slice(0, 10)} → {l.end_date?.slice(0, 10) || '—'}</td>
+                    <td style={{ fontSize: 12.5 }}>{formatDate(l.start_date)} → {formatDate(l.end_date)}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(l.rent_amount)}</td>
                     <td style={{ fontVariantNumeric: 'tabular-nums', color: '#22c55e' }}>{fmt(l.rent_deposit)}</td>
                     <td style={{ fontSize: 13, color: days !== null && days <= 60 && days > 0 ? '#f97316' : days !== null && days <= 0 ? '#ef4444' : 'var(--text2)', fontWeight: days !== null && days <= 60 ? 650 : 400 }}>

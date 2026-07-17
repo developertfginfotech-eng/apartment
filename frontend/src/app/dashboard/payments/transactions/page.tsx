@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -97,7 +98,7 @@ function PaymentTransactionsContent() {
   const exportHeaders = ['#', 'Renter', 'Payment Month', 'Rent Amount', 'Deposit Amount', 'Payment Type', 'Payment Date']
   const exportRows = () => filtered.map((h, i) => [
     i + 1, h.renter_name?.trim() || renterLabel || '—', h.month || h.payment_month || '—',
-    fmt(h.amount), fmt(h.deposit_amount), h.payment_type || '—', h.payment_date?.slice(0, 10) || '—',
+    fmt(h.amount), fmt(h.deposit_amount), h.payment_type || '—', formatDate(h.payment_date),
   ])
   const exportExcel = () => {
     const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -130,7 +131,7 @@ function PaymentTransactionsContent() {
       ['Rent Amount', fmt(h.amount)],
       ['Deposit Amount', fmt(h.deposit_amount)],
       ['Payment Type', h.payment_type || '—'],
-      ['Payment Date', h.payment_date?.slice(0, 10) || '—'],
+      ['Payment Date', formatDate(h.payment_date)],
     ]
     autoTable(doc, { body: lines, startY: 30, styles: { fontSize: 11 }, theme: 'plain' })
     doc.save(`receipt-${h.id}.pdf`)
@@ -279,7 +280,7 @@ function PaymentTransactionsContent() {
                   <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(h.amount)}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(h.deposit_amount)}</td>
                   <td style={{ fontSize: 13 }}>{h.payment_type || '—'}</td>
-                  <td style={{ fontSize: 13 }}>{h.payment_date?.slice(0, 10) || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{formatDate(h.payment_date)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="af-prop-act edit" onClick={() => openEditHistory(h)} title="Edit">✎</button>

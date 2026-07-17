@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -102,7 +103,7 @@ export default function SecurityMoneyPage() {
   }
 
   const historyExportHeaders = ['#', 'Title', 'Type', 'Payment Date', 'Reason']
-  const historyExportRows = () => history.map((t, i) => [i + 1, t.title || '-', t.type, t.payment_date, t.reason || '-'])
+  const historyExportRows = () => history.map((t, i) => [i + 1, t.title || '-', t.type, formatDate(t.payment_date), t.reason || '-'])
 
   const exportHistoryCSV = () => {
     const csv = [historyExportHeaders, ...historyExportRows()].map(r => r.join(',')).join('\n')
@@ -351,7 +352,7 @@ export default function SecurityMoneyPage() {
                         <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: tx.type === 'add' ? '#22c55e' : '#ef4444' }}>
                           {tx.type === 'add' ? '+' : '-'}{fmt(tx.amount)}
                         </td>
-                        <td style={{ fontSize: 13 }}>{tx.payment_date}</td>
+                        <td style={{ fontSize: 13 }}>{formatDate(tx.payment_date)}</td>
                         <td style={{ fontSize: 13, color: 'var(--muted)' }}>{tx.reason || '—'}</td>
                         <td style={{ fontSize: 13 }}>
                           {tx.receipt_image ? <a href={`${API}${tx.receipt_image}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>View</a> : '—'}

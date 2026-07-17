@@ -1,16 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Lease } from './lease.entity';
 import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
-export class LeaseService {
+export class LeaseService implements OnModuleInit {
   constructor(
     @InjectRepository(Lease) private repo: Repository<Lease>,
     @InjectDataSource() private readonly ds: DataSource,
     private readonly notifications: NotificationService,
   ) {}
+
+  onModuleInit() {
+    this.checkExpiringLeases();
+  }
 
   findAll()               { return this.repo.find({ order: { created_at: 'DESC' } }); }
   findOne(id: number)     { return this.repo.findOne({ where: { id } }); }
@@ -69,5 +74,35 @@ export class LeaseService {
       ...r,
       payment_status: Number(r.paid_this_month) > 0 ? 'Paid' : 'Pending',
     }));
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async checkExpiringLeases() {
+    try {
+      const rows = await this.ds.query(
+        `SELECT l.id, l.end_date,
+           COALESCE(NULLIF(TRIM(CONCAT_WS(' ', r.first_name, r.last_name)), ''), r.name) AS renter_name
+         FROM tbl_leases l
+         LEFT JOIN tbl_renters r ON r.id = l.renter_id
+         WHERE l.status = 1 AND l.end_date IS NOT NULL
+           AND DATEDIFF(l.end_date, CURDATE()) BETWEEN 0 AND 60`,
+      );
+
+      for (const row of rows) {
+        const marker = `Lease #${row.id} expiring soon`;
+        const [existing] = await this.ds.query(
+          `SELECT id FROM app_notifications WHERE type = 'lease_expiring' AND title = ? LIMIT 1`,
+          [marker],
+        );
+        if (existing) continue;
+        await this.notifications.notify(
+          'lease_expiring',
+          marker,
+          `Lease for ${row.renter_name ?? 'a renter'} ends on ${row.end_date}`,
+        );
+      }
+    } catch (err) {
+      console.error('[LeaseService] checkExpiringLeases failed:', err instanceof Error ? err.message : err);
+    }
   }
 }

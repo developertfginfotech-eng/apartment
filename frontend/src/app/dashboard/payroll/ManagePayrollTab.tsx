@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -85,7 +86,7 @@ export default function ManagePayrollTab() {
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
           <button onClick={()=>{setOpenBatch(null);setRows([]);setDetailFrom('');setDetailTo('');setDetailSearch('')}}
             style={{background:'none',border:'1px solid var(--border2)',borderRadius:8,padding:'6px 12px',color:'var(--text)',cursor:'pointer',fontFamily:'inherit',fontSize:13}}>← Back</button>
-          <h3 style={{margin:0,fontSize:16,fontWeight:700}}>{openBatch.name} <span style={{color:'var(--muted)',fontWeight:500,fontSize:13}}>({openBatch.start_date} – {openBatch.end_date})</span></h3>
+          <h3 style={{margin:0,fontSize:16,fontWeight:700}}>{openBatch.name} <span style={{color:'var(--muted)',fontWeight:500,fontSize:13}}>({formatDate(openBatch.start_date)} – {formatDate(openBatch.end_date)})</span></h3>
         </div>
 
         <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
@@ -115,7 +116,7 @@ export default function ManagePayrollTab() {
                   <tr key={r.id}>
                     <td>{(page-1)*pageSize+i+1}</td>
                     <td>{r.employee_name}</td>
-                    <td>{r.start_date} – {r.end_date}</td>
+                    <td>{formatDate(r.start_date)} – {formatDate(r.end_date)}</td>
                     <td>{fmt(r.basic)}</td>
                     <td>{fmt(r.cash_advance)}</td>
                     <td style={{color:'#22c55e',fontWeight:700}}>{fmt(r.net_pay)}</td>
@@ -155,8 +156,8 @@ export default function ManagePayrollTab() {
                 <tr key={b.id}>
                   <td>{i+1}</td>
                   <td>{b.name}</td>
-                  <td>{b.start_date}</td>
-                  <td>{b.end_date}</td>
+                  <td>{formatDate(b.start_date)}</td>
+                  <td>{formatDate(b.end_date)}</td>
                   <td>
                     <button onClick={()=>setOpenBatch(b)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'#3b82f6',marginRight:10}}>👁</button>
                     <button onClick={()=>remove(b)} title="Delete" style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444'}}>🗑</button>

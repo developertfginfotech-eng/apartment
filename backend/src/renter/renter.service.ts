@@ -19,7 +19,9 @@ export class RenterService {
           CONCAT_WS(' ', r.first_name, r.last_name) AS full_name,
           p.property_name,
           f.floor_name,
-          l.on_rent
+          l.on_rent,
+          l.start_date AS lease_start_date,
+          l.end_date AS lease_end_date
         FROM tbl_renters r
         LEFT JOIN tbl_properties p ON p.id = r.property_id
         LEFT JOIN tbl_property_floors f ON f.id = r.floor_id

@@ -39,6 +39,7 @@ const MODULE_BY_PREFIX: Record<string, string> = {
   tax: 'taxes',
   wtax: 'taxes',
   setting: 'settings',
+  vendors: 'vendors',
 };
 
 @Injectable()

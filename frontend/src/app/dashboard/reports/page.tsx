@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -88,7 +89,7 @@ export default function ReportsPage() {
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
       { label:'Renter', get:r=>r.renter_name },
-      { label:'Last Bill Date', get:r=>r.lastbill_date??'—' },
+      { label:'Last Bill Date', get:r=>formatDate(r.lastbill_date) },
       { label:'Total Rent', get:r=>fmt(r.lease_total_rent) },
       { label:'Paid', get:r=>fmt(r.paid_amount) },
       { label:'Balance', get:r=>fmt(Number(r.lease_total_rent??0)-Number(r.paid_amount??0)) },
@@ -98,7 +99,7 @@ export default function ReportsPage() {
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
       { label:'Renter', get:r=>r.renter_name },
-      { label:'Last Pay', get:r=>r.lastbill_date??'—' },
+      { label:'Last Pay', get:r=>formatDate(r.lastbill_date) },
       { label:'Outstanding', get:r=>fmt(Number(r.lease_total_rent??0)-Number(r.paid_amount??0)), raw:r=>Number(r.lease_total_rent??0)-Number(r.paid_amount??0) },
     ],
     financial: [
@@ -116,7 +117,7 @@ export default function ReportsPage() {
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
       { label:'Renter', get:r=>r.renter_name },
-      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'Date', get:r=>formatDate(r.max_payment_date) },
       { label:'Amount', get:r=>fmt(r.total_paid_amount) },
     ],
     utility: [
@@ -130,7 +131,7 @@ export default function ReportsPage() {
     ],
     expenses: [
       { label:'Title', get:r=>r.title },
-      { label:'Date', get:r=>r.date },
+      { label:'Date', get:r=>formatDate(r.date) },
       { label:'Property', get:r=>r.property_name??'—' },
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
@@ -139,7 +140,7 @@ export default function ReportsPage() {
     ],
     'wtax-expenses': [
       { label:'Title', get:r=>r.title },
-      { label:'Date', get:r=>r.date },
+      { label:'Date', get:r=>formatDate(r.date) },
       { label:'Property', get:r=>r.property_name??'—' },
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
@@ -152,7 +153,7 @@ export default function ReportsPage() {
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
       { label:'Renter', get:r=>r.renter_name },
-      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'Date', get:r=>formatDate(r.max_payment_date) },
       { label:'VAT Amount', get:r=>fmt(r.total_paid_amount) },
     ],
     'wtax-income': [
@@ -161,19 +162,19 @@ export default function ReportsPage() {
       { label:'Floor', get:r=>r.floor_name??'—' },
       { label:'Unit', get:r=>r.unit_name??'—' },
       { label:'Renter', get:r=>r.renter_name },
-      { label:'Date', get:r=>r.max_payment_date??'—' },
+      { label:'Date', get:r=>formatDate(r.max_payment_date) },
       { label:'WHT Amount', get:r=>fmt(r.total_paid_amount) },
     ],
     parking: [
       { label:'Property', get:r=>r.property_name??'—' },
       { label:'Renter', get:r=>r.renter_name??'—' },
-      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?r.payment_date:'—' },
+      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?formatDate(r.payment_date):'—' },
       { label:'Amount', get:r=>fmt(Number(r.payment_status)!==0?r.price:0) },
     ],
     'refund-deposit': [
       { label:'Property', get:r=>r.property_name??'—' },
       { label:'Renter', get:r=>r.renter_name??'—' },
-      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?r.payment_date:'—' },
+      { label:'Payment Date', get:r=>Number(r.payment_status)!==0?formatDate(r.payment_date):'—' },
       { label:'Amount', get:r=>fmt(Number(r.payment_status)!==0?r.amount:0) },
     ],
   }

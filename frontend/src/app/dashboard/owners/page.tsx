@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
@@ -644,7 +645,7 @@ export default function OwnersPage() {
                       ['Last Name', viewing.last_name || '—'],
                       ['Phone', viewing.phone || '—'],
                       ['Email', viewing.email || '—'],
-                      ['Registration Date', viewing.registration_date?.slice(0, 10) || '—'],
+                      ['Registration Date', formatDate(viewing.registration_date)],
                       ['National ID', viewing.id_number || '—'],
                       ['Country', viewing.country || '—'],
                       ['State', viewing.state || '—'],

@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -118,7 +119,7 @@ export default function MaintenancePage() {
 
   const exportHeaders = ['#', 'Maintenance Title', 'Property', 'Date', 'Amount', 'Details', 'Requested By', 'Maintenances Status', 'Payment Status', 'Status']
   const exportRows = () => records.map((r, i) => [
-    i + 1, r.title, r.property_name ?? String(r.property_id), r.date ? r.date.slice(0, 10) : '—',
+    i + 1, r.title, r.property_name ?? String(r.property_id), formatDate(r.date),
     fmt(r.amount), r.description || '—', REQUESTED_BY[r.maintenance_by ?? ''] ?? '—',
     MAINTENANCE_STATUS[r.maintenances_status]?.label ?? '—', r.payment_status === 1 ? 'Paid' : 'Pending',
     r.status === 1 ? 'Active' : 'Inactive',
@@ -364,7 +365,7 @@ export default function MaintenancePage() {
                     <td style={{ fontWeight: 650 }}>{r.title}</td>
                     <td>{r.type_name ?? '—'}</td>
                     <td>{r.property_name ?? r.property_id}</td>
-                    <td style={{ fontSize: 13 }}>{r.date ? r.date.slice(0, 10) : '—'}</td>
+                    <td style={{ fontSize: 13 }}>{formatDate(r.date)}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                       ₱ {Number(r.amount).toLocaleString()}
                     </td>
@@ -513,7 +514,7 @@ export default function MaintenancePage() {
                 ['Title', viewing.title],
                 ['Type', viewing.type_name ?? '—'],
                 ['Property', viewing.property_name ?? String(viewing.property_id)],
-                ['Date', viewing.date ? viewing.date.slice(0, 10) : '—'],
+                ['Date', formatDate(viewing.date)],
                 ['Amount', fmt(viewing.amount)],
                 ['Requested By', REQUESTED_BY[viewing.maintenance_by ?? ''] ?? '—'],
                 ['Maintenances Status', MAINTENANCE_STATUS[viewing.maintenances_status]?.label ?? '—'],

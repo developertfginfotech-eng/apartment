@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -170,7 +171,7 @@ export default function LoanPage() {
   const exportHeaders = ['#', 'Employee', 'Amount of Loan', 'Loan From', 'Date of Loan', 'Payment Date', 'Payment Amount', 'Available Balance', 'Status']
   const exportRows = () => filteredLoans.map((l, i) => [
     i + 1, l.employee_name || '-', fmt(l.amount_of_loan), l.loan_from_company,
-    l.date_of_the_loan, l.latest_payment_date || '-', l.latest_payment_amount ? fmt(l.latest_payment_amount) : '-',
+    formatDate(l.date_of_the_loan), l.latest_payment_date ? formatDate(l.latest_payment_date) : '-', l.latest_payment_amount ? fmt(l.latest_payment_amount) : '-',
     l.available_balance !== null ? fmt(l.available_balance) : '-', l.status === 1 ? 'Active' : 'Inactive',
   ])
 
@@ -275,8 +276,8 @@ export default function LoanPage() {
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>{l.name_of_bank}{l.interest_of_bank ? ` · ${l.interest_of_bank}%` : ''}</div>
                     )}
                   </td>
-                  <td style={{ fontSize: 13 }}>{l.date_of_the_loan?.slice(0, 10)}</td>
-                  <td style={{ fontSize: 13 }}>{l.latest_payment_date?.slice(0, 10) || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{formatDate(l.date_of_the_loan)}</td>
+                  <td style={{ fontSize: 13 }}>{formatDate(l.latest_payment_date)}</td>
                   <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{l.latest_payment_amount ? fmt(l.latest_payment_amount) : '—'}</td>
                   <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{l.available_balance !== null ? fmt(l.available_balance) : '—'}</td>
                   <td>
@@ -404,8 +405,8 @@ export default function LoanPage() {
                 ['Employee', viewing.employee_name || '—'],
                 ['Amount of Loan', fmt(viewing.amount_of_loan)],
                 ['Loan From Company', viewing.loan_from_company],
-                ['Date of the Loan', viewing.date_of_the_loan?.slice(0, 10)],
-                ['Payment Date', viewing.payment_date?.slice(0, 10) || '—'],
+                ['Date of the Loan', formatDate(viewing.date_of_the_loan)],
+                ['Payment Date', formatDate(viewing.payment_date)],
                 ['Payment Type', viewing.payment_type || '—'],
                 ['Payment Status', viewing.payment_status],
                 ['Status', viewing.status === 1 ? 'Active' : 'Inactive'],

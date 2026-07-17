@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import Pagination, { usePagination } from '@/components/Pagination'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -94,7 +95,7 @@ export default function UtilitiesPage() {
     i + 1, b.renter_name?.trim() || '—', b.property_name || '—', b.floor_name || '—', b.unit_name || '—',
     b.month || '—', fmt(b.water_bill), fmt(b.electric_bill), fmt(b.cusa), fmt(b.other_bill),
     fmt(billTotal(b)), b.interest ? fmt(b.interest) : '—', b.payment_status === 1 ? 'paid' : 'unpaid',
-    b.issue_date?.slice(0, 10) || '—',
+    formatDate(b.issue_date),
   ])
 
   const exportExcel = () => {
@@ -232,13 +233,13 @@ export default function UtilitiesPage() {
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {fmt(b.water_bill)}
                     {(b.water_bill_due_from || b.water_bill_due_to) && (
-                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{b.water_bill_due_from?.slice(0, 10) || '—'} → {b.water_bill_due_to?.slice(0, 10) || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{formatDate(b.water_bill_due_from)} → {formatDate(b.water_bill_due_to)}</div>
                     )}
                   </td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {fmt(b.electric_bill)}
                     {(b.electric_bill_due_from || b.electric_bill_due_to) && (
-                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{b.electric_bill_due_from?.slice(0, 10) || '—'} → {b.electric_bill_due_to?.slice(0, 10) || '—'}</div>
+                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{formatDate(b.electric_bill_due_from)} → {formatDate(b.electric_bill_due_to)}</div>
                     )}
                   </td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.cusa)}</td>
@@ -255,7 +256,7 @@ export default function UtilitiesPage() {
                       {b.payment_status === 1 ? 'paid' : 'unpaid'}
                     </span>
                   </td>
-                  <td style={{ fontSize: 13 }}>{b.issue_date?.slice(0, 10) || '—'}</td>
+                  <td style={{ fontSize: 13 }}>{formatDate(b.issue_date)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button className="af-prop-act edit" onClick={() => openEdit(b)}>Edit</button>

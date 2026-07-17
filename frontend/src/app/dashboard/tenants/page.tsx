@@ -6,6 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
+import { formatDate } from '@/lib/date'
 
 interface Renter {
   id: number
@@ -13,6 +14,8 @@ interface Renter {
   property_name: string | null
   floor_name: string | null
   on_rent: string | null
+  lease_start_date: string | null
+  lease_end_date: string | null
   first_name: string
   middle_name: string | null
   last_name: string | null
@@ -275,10 +278,10 @@ export default function TenantsPage() {
     }
   }
 
-  const exportHeaders = ['#', 'Name', 'Type', 'Contact', 'Property', 'Floor', 'On Rent', 'Advance Rent', 'Rent Per Month', 'Status']
+  const exportHeaders = ['#', 'Name', 'Type', 'Contact', 'Property', 'Floor', 'On Rent', 'Lease Start', 'Lease End', 'Advance Rent', 'Rent Per Month', 'Status']
   const exportRows = () => filtered.map((r, i) => [
     i + 1, r.name || '—', r.renter_type ?? 'individual', r.contact, r.property_name || '—', r.floor_name || '—',
-    r.on_rent || '—', r.advance_rent, r.rent_per_month, STATUS_LABEL[r.renter_status] ?? 'unknown',
+    r.on_rent || '—', formatDate(r.lease_start_date), formatDate(r.lease_end_date), r.advance_rent, r.rent_per_month, STATUS_LABEL[r.renter_status] ?? 'unknown',
   ])
   const exportExcel = () => {
     const csv = [exportHeaders, ...exportRows()].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -372,6 +375,7 @@ export default function TenantsPage() {
                 <th>Property</th>
                 <th>Floor</th>
                 <th>On Rent</th>
+                <th>Lease Period</th>
                 <th>Rent / Month</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -380,7 +384,7 @@ export default function TenantsPage() {
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
+                  <td colSpan={11} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>
                     No tenants found
                   </td>
                 </tr>
@@ -405,6 +409,7 @@ export default function TenantsPage() {
                   <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.property_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{r.on_rent || '—'}</td>
+                  <td style={{ fontSize: 12.5 }}>{r.lease_start_date ? `${formatDate(r.lease_start_date)} → ${formatDate(r.lease_end_date)}` : '—'}</td>
                   <td style={{ fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{r.rent_per_month}</td>
                   <td>
                     <span style={{
@@ -569,9 +574,11 @@ export default function TenantsPage() {
                   ['Property', viewing.property_name || '—'],
                   ['Floor', viewing.floor_name || '—'],
                   ['On Rent', viewing.on_rent || '—'],
+                  ['Lease Start', formatDate(viewing.lease_start_date)],
+                  ['Lease End', formatDate(viewing.lease_end_date)],
                   ['Advance Rent', viewing.advance_rent],
                   ['Rent Per Month', viewing.rent_per_month],
-                  ['Issue Date', viewing.issue_date?.slice(0, 10) || '—'],
+                  ['Issue Date', formatDate(viewing.issue_date)],
                   ['Address', viewing.address || '—'],
                   ['Status', STATUS_LABEL[viewing.renter_status] ?? 'unknown'],
                 ] as [string, string][]).map(([k, v]) => (

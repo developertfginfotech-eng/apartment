@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 interface Notif { id:string; type:string; title:string; body:string; read:boolean; createdAt:string }
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
-const TYPE_COLOR: Record<string,string> = { message:'#3b82f6', admin:'#f97316' }
-const TYPE_ICON: Record<string,string> = { message:'✉️', admin:'🛡️' }
+const TYPE_COLOR: Record<string,string> = { message:'#3b82f6', admin:'#f97316', lease_expiring:'#f97316' }
+const TYPE_ICON: Record<string,string> = { message:'✉️', admin:'🛡️', lease_expiring:'⏰' }
 
 export default function NotificationsPage() {
   const router = useRouter()

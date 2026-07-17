@@ -8,6 +8,7 @@ import SalaryStructureTab from './SalaryStructureTab'
 import EmployeeTab from './EmployeeTab'
 import ManagePayrollTab from './ManagePayrollTab'
 import PayslipTab from './PayslipTab'
+import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -171,7 +172,7 @@ export default function PayrollPage() {
   }
 
   const exportHeaders = ['#','Employee','Start Date','End Date','Pay Date','Basic','OT Pay','Allowance','Absences','Gross','SSS','PhilHealth','Pag-IBIG','SSS Loan','HDMF Loan','Cash Advance','Net Pay','Checked By','Approved By']
-  const exportRows = () => payrolls.map((p,i) => [i+1,p.employee_name,p.start_date,p.end_date,p.payment_date,p.basic,p.ot_pay,p.allowance,p.absences,p.gross_pay,p.sss,p.phic,p.hdmf,p.sss_loan,p.hdmf_loan,p.cash_advance,p.net_pay,p.checked_by_name??'',p.approved_by_name??''])
+  const exportRows = () => payrolls.map((p,i) => [i+1,p.employee_name,formatDate(p.start_date),formatDate(p.end_date),formatDate(p.payment_date),p.basic,p.ot_pay,p.allowance,p.absences,p.gross_pay,p.sss,p.phic,p.hdmf,p.sss_loan,p.hdmf_loan,p.cash_advance,p.net_pay,p.checked_by_name??'',p.approved_by_name??''])
 
   const exportCSV = () => {
     const csv = [exportHeaders,...exportRows()].map(r=>r.join(',')).join('\n')
@@ -332,9 +333,9 @@ export default function PayrollPage() {
                 <tr key={p.id}>
                   <td style={{color:'var(--muted)',fontSize:12}}>{(page-1)*limit+i+1}</td>
                   <td style={{fontWeight:700,fontSize:13}}>{p.employee_name||'—'}</td>
-                  <td style={{fontSize:12}}>{p.start_date}</td>
-                  <td style={{fontSize:12}}>{p.end_date}</td>
-                  <td style={{fontSize:12}}>{p.payment_date||'—'}</td>
+                  <td style={{fontSize:12}}>{formatDate(p.start_date)}</td>
+                  <td style={{fontSize:12}}>{formatDate(p.end_date)}</td>
+                  <td style={{fontSize:12}}>{formatDate(p.payment_date)}</td>
                   <td style={{fontVariantNumeric:'tabular-nums'}}>{fmt(p.basic)}</td>
                   <td style={{fontVariantNumeric:'tabular-nums',color:Number(p.sss_loan)+Number(p.hdmf_loan)+Number(p.cash_advance)>0?'#ef4444':'var(--muted)'}}>
                     {fmt(Number(p.sss_loan)+Number(p.hdmf_loan)+Number(p.cash_advance))}
@@ -483,9 +484,9 @@ export default function PayrollPage() {
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
               {([
                 ['Employee',   viewItem.employee_name||'—'],
-                ['Start Date', viewItem.start_date],
-                ['End Date',   viewItem.end_date],
-                ['Pay Date',   viewItem.payment_date||'—'],
+                ['Start Date', formatDate(viewItem.start_date)],
+                ['End Date',   formatDate(viewItem.end_date)],
+                ['Pay Date',   formatDate(viewItem.payment_date)],
                 ['Basic',      fmt(viewItem.basic)],
                 ['Allowance',  fmt(viewItem.allowance)],
                 ['OT Pay',     fmt(viewItem.ot_pay)],
