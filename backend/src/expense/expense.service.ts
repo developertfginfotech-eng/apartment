@@ -28,6 +28,8 @@ export class ExpenseService {
          e.id, e.date, e.title, e.type, e.sub_category, e.property_id, e.floor_id, e.unit_id,
          e.amount, e.tax, e.famount, e.description, e.status,
          p.property_name,
+         p.property_code,
+         p.address AS property_address,
          f.name AS floor_name,
          pu.name AS unit_name,
          gt.name AS type_name,

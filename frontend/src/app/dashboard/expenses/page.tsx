@@ -16,6 +16,8 @@ interface Expense {
   title: string
   type_name: string | null
   property_name: string | null
+  property_code: string | null
+  property_address: string | null
   floor_name: string | null
   unit_name: string | null
   amount: string | number
@@ -36,8 +38,6 @@ export default function ExpensesPage() {
   const [to, setTo] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
-
-  const [viewing, setViewing] = useState<Expense | null>(null)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -98,6 +98,16 @@ export default function ExpensesPage() {
   }
 
   const runSearch = () => setSearch(searchInput)
+
+  const openView = (e: Expense) => {
+    const params = new URLSearchParams({
+      id: String(e.id), title: e.title, date: e.date, type_name: e.type_name || '', property_name: e.property_name || '',
+      property_code: e.property_code || '', property_address: e.property_address || '',
+      floor_name: e.floor_name || '', unit_name: e.unit_name || '', famount: String(e.famount ?? ''),
+      tax: String(e.tax ?? ''), amount: String(e.amount ?? ''), description: e.description || '',
+    })
+    router.push(`/dashboard/expenses/view?${params}`)
+  }
 
   return (
     <main className="af-db-main">
@@ -169,7 +179,7 @@ export default function ExpensesPage() {
                   <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(e.amount)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="View" onClick={() => setViewing(e)}>👁</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => openView(e)}>👁</button>
                       <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/expenses/edit?id=${e.id}`)}>✏️</button>
                       <button className="af-prop-act del" title="Delete" onClick={() => deleteExpense(e.id)}>🗑️</button>
                     </div>
@@ -179,41 +189,6 @@ export default function ExpensesPage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={expenses.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">Expense Details</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              {([
-                ['Title', viewing.title],
-                ['Date', formatDate(viewing.date)],
-                ['Type', viewing.type_name || '—'],
-                ['Property', viewing.property_name || '—'],
-                ['Floor', viewing.floor_name || '—'],
-                ['Unit', viewing.unit_name || '—'],
-                ['Amount', fmt(viewing.famount)],
-                ['Tax', `${viewing.tax || 0}%`],
-                ['Final Amount', fmt(viewing.amount)],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                </div>
-              ))}
-              {viewing.description && (
-                <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Description</div>
-                  <div style={{ fontSize: 14 }}>{viewing.description}</div>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
     </main>

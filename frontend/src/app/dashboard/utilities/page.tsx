@@ -72,11 +72,11 @@ export default function UtilitiesPage() {
   const paidAmount = bills.filter(b => b.payment_status === 1).reduce((s, b) => s + billTotal(b), 0)
   const unpaidAmount = bills.filter(b => b.payment_status !== 1).reduce((s, b) => s + billTotal(b), 0)
 
-  const exportHeaders = ['#', 'Renter', 'Property', 'Floor', 'Unit', 'Month', 'Water Bill', 'Electric Bill', 'Cusa', 'Other', 'Total', 'Interest', 'Status', 'Pay Date']
+  const exportHeaders = ['#', 'Renter Name', 'Property', 'Floor', 'Unit', 'Month', 'Water Bill', 'Electric Bill', 'Cusa', 'Other', 'Total Utility', 'Status', 'Interest', 'Pay Date']
   const exportRows = () => filtered.map((b, i) => [
     i + 1, b.renter_name?.trim() || '—', b.property_name || '—', b.floor_name || '—', b.unit_name || '—',
     b.month || '—', fmt(b.water_bill), fmt(b.electric_bill), fmt(b.cusa), fmt(b.other_bill),
-    fmt(billTotal(b)), b.interest ? fmt(b.interest) : '—', b.payment_status === 1 ? 'paid' : 'unpaid',
+    fmt(billTotal(b)), b.payment_status === 1 ? 'paid' : 'unpaid', b.interest ? fmt(b.interest) : '—',
     formatDate(b.issue_date),
   ])
 
@@ -157,16 +157,17 @@ export default function UtilitiesPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
-                <th>Renter</th><th>Property</th><th>Floor</th><th>Unit</th><th>Month</th>
-                <th>Water Bill</th><th>Electric Bill</th><th>Cusa</th><th>Other</th><th>Total</th>
-                <th>Interest</th><th>Status</th><th>Pay Date</th><th>Actions</th>
+                <th>#</th><th>Renter Name</th><th>Property</th><th>Floor</th><th>Unit</th><th>Month</th>
+                <th>Water Bill</th><th>Electric Bill</th><th>Cusa</th><th>Other</th><th>Total Utility</th>
+                <th>Status</th><th>Interest</th><th>Pay Date</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={14} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
+                <tr><td colSpan={15} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
               ) : pageItems.map((b, i) => (
                 <tr key={b.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
+                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{b.renter_name?.trim() || '—'}</td>
                   <td style={{ fontSize: 13 }}>{b.property_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{b.floor_name || '—'}</td>
@@ -187,7 +188,6 @@ export default function UtilitiesPage() {
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.cusa)}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.other_bill)}</td>
                   <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(billTotal(b))}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{b.interest ? fmt(b.interest) : '—'}</td>
                   <td>
                     <span
                       onClick={() => b.payment_status !== 1 && markPaid(b.id)}
@@ -198,6 +198,7 @@ export default function UtilitiesPage() {
                       {b.payment_status === 1 ? 'paid' : 'unpaid'}
                     </span>
                   </td>
+                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{b.interest ? fmt(b.interest) : '—'}</td>
                   <td style={{ fontSize: 13 }}>{formatDate(b.issue_date)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>

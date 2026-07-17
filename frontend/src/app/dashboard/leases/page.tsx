@@ -25,35 +25,6 @@ interface Lease {
   payment_status: 'Paid' | 'Pending'
 }
 
-interface LeaseFull {
-  id: number
-  renter_id: number
-  property_id: number
-  floor_id: string | null
-  type: string | null
-  amount: string | null
-  maintenance: string | null
-  tax: string | null
-  wtax_applicable: string | null
-  wtax: string | null
-  rent_amount: string | null
-  rent_deposit: string | null
-  start_date: string | null
-  end_date: string | null
-  due_on: string | null
-  document_image: string | null
-  unit_ids: number[]
-  deposits: { id: number; utility_type: number; utility: string }[]
-  renter_name: string
-  renter_type: string | null
-  renter_email: string | null
-  renter_contact: string | null
-  renter_national_id: string | null
-  renter_address: string | null
-  property_name: string | null
-  floor_name: string | null
-}
-
 type Bucket = 'all' | 'active' | 'expiring' | 'expired' | 'inactive'
 
 const STA: Record<Exclude<Bucket, 'all'>, { bg: string; color: string; label: string }> = {
@@ -62,9 +33,6 @@ const STA: Record<Exclude<Bucket, 'all'>, { bg: string; color: string; label: st
   expired:  { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444', label: 'Expired' },
   inactive: { bg: 'rgba(100,116,139,0.12)', color: '#64748b', label: 'Inactive' },
 }
-
-const VIEW_TABS = ['Info', 'Renter Details', 'Documents'] as const
-type ViewTab = typeof VIEW_TABS[number]
 
 export default function LeasesPage() {
   const router = useRouter()
@@ -75,10 +43,6 @@ export default function LeasesPage() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<Bucket>('all')
   const [search, setSearch] = useState('')
-
-  // View
-  const [viewing, setViewing] = useState<LeaseFull | null>(null)
-  const [viewTab, setViewTab] = useState<ViewTab>('Info')
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -162,16 +126,6 @@ export default function LeasesPage() {
     } catch { setError('Failed to delete lease') }
   }
 
-  const openView = async (l: Lease) => {
-    setError('')
-    try {
-      const res = await fetch(`${API}/leases/${l.id}/full`, { headers: authHeaders() })
-      const full: LeaseFull = await res.json()
-      setViewTab('Info')
-      setViewing(full)
-    } catch { setError('Failed to load lease') }
-  }
-
   return (
     <main className="af-db-main">
       <div className="af-db-topbar af-fade-in">
@@ -241,7 +195,7 @@ export default function LeasesPage() {
                   <td><span className="af-status-pill" style={{ background: STA[bucket].bg, color: STA[bucket].color }}>{STA[bucket].label}</span></td>
                   <td>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, width: 52 }}>
-                      <button title="View" onClick={() => openView(l)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>👁</button>
+                      <button title="View" onClick={() => router.push(`/dashboard/leases/view?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>👁</button>
                       <button title="Edit" onClick={() => router.push(`/dashboard/leases/edit?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>✏️</button>
                       <button title="Rent Escalation" onClick={() => router.push(`/dashboard/leases/escalate?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🏠</button>
                       <button title="Delete" onClick={() => deleteLease(l.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🗑️</button>
@@ -252,78 +206,6 @@ export default function LeasesPage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {/* View */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 650, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="af-modal-title">Lease Details</h2>
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -14, marginBottom: 16 }}>{viewing.renter_name?.trim()}</p>
-
-            <div className="af-tab-bar" style={{ marginBottom: 18 }}>
-              {VIEW_TABS.map(t => (
-                <button key={t} onClick={() => setViewTab(t)} className={`af-tab-pill ${viewTab === t ? 'active' : ''}`}>{t}</button>
-              ))}
-            </div>
-
-            {viewTab === 'Info' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {([
-                  ['Type', viewing.type || '—'],
-                  ['Renter', viewing.renter_name?.trim() || '—'],
-                  ['Property', viewing.property_name || '—'],
-                  ['Floor', viewing.floor_name || '—'],
-                  ['Unit(s)', viewing.unit_ids?.join(', ') || '—'],
-                  ['Start Date', formatDate(viewing.start_date)],
-                  ['End Date', formatDate(viewing.end_date)],
-                  ['Rent Amount', fmt(viewing.amount)],
-                  ['Total Rent (incl. VAT)', fmt(viewing.rent_amount)],
-                ] as [string, string][]).map(([k, v]) => (
-                  <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {viewTab === 'Renter Details' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {([
-                  ['Name', viewing.renter_name?.trim() || '—'],
-                  ['Type', viewing.renter_type ?? 'individual'],
-                  ['Email', viewing.renter_email || '—'],
-                  ['Contact', viewing.renter_contact || '—'],
-                  ['National ID', viewing.renter_national_id || '—'],
-                  ['Address', viewing.renter_address || '—'],
-                ] as [string, string][]).map(([k, v]) => (
-                  <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {viewTab === 'Documents' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {!viewing.document_image ? (
-                  <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
-                ) : viewing.document_image.split(',').filter(Boolean).map((d, i) => (
-                  <a key={i} href={`${API}${d}`} target="_blank" rel="noreferrer"
-                    style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--accent)' }}>
-                    {d.split('/').pop()}
-                  </a>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
     </main>
