@@ -52,4 +52,10 @@ export class DocumentService {
     return this.addDocument('tbl_renter_documents', 'renter_id', body.renter_id, body.document_type, body.document);
   }
   removeRenterDocument(id: number) { return this.removeDocument('tbl_renter_documents', id); }
+
+  getExpenseDocuments(expenseId: number) { return this.getDocuments('tbl_expense_documents', 'expense_id', expenseId); }
+  addExpenseDocument(body: { expense_id: number; document_type: number; document: string }) {
+    return this.addDocument('tbl_expense_documents', 'expense_id', body.expense_id, body.document_type, body.document);
+  }
+  removeExpenseDocument(id: number) { return this.removeDocument('tbl_expense_documents', id); }
 }

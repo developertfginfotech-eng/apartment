@@ -24,6 +24,7 @@ const MODULE_BY_PREFIX: Record<string, string> = {
   maintenance: 'maintenance',
   'maintenance-type': 'maintenance',
   expense: 'expenses',
+  expenses: 'expenses',
   'expense-type': 'expenses',
   'general-expense': 'expenses',
   utility: 'utilities',
