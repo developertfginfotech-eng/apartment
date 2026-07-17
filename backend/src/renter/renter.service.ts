@@ -18,7 +18,7 @@ export class RenterService {
         SELECT r.*,
           CONCAT_WS(' ', r.first_name, r.last_name) AS full_name,
           p.property_name,
-          f.floor_name,
+          f.name AS floor_name,
           l.on_rent,
           l.start_date AS lease_start_date,
           l.end_date AS lease_end_date
