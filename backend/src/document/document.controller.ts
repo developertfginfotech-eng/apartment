@@ -72,4 +72,19 @@ export class DocumentController {
   removeRenterDocument(@Param('id') id: string) {
     return this.svc.removeRenterDocument(parseInt(id, 10));
   }
+
+  @Get('expense')
+  getExpenseDocuments(@Query('expense_id') expenseId: string) {
+    return this.svc.getExpenseDocuments(parseInt(expenseId, 10));
+  }
+
+  @Post('expense')
+  addExpenseDocument(@Body() body: { expense_id: number; document_type: number; document: string }) {
+    return this.svc.addExpenseDocument(body);
+  }
+
+  @Delete('expense/:id')
+  removeExpenseDocument(@Param('id') id: string) {
+    return this.svc.removeExpenseDocument(parseInt(id, 10));
+  }
 }
