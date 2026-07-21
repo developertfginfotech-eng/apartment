@@ -6,7 +6,6 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import ToggleSwitch from '@/components/ToggleSwitch'
-import { formatDate } from '@/lib/date'
 
 interface Renter {
   id: number
@@ -33,21 +32,11 @@ interface Renter {
   status: number
 }
 
-interface Doc { id: number; document_type: number; document: string; document_type_name: string }
-
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
   'Content-Type': 'application/json',
   Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
 })
-
-const STATUS_LABEL: Record<number, string> = {
-  1: 'active',
-  0: 'expired',
-}
-
-const VIEW_TABS = ['Info', 'Documents'] as const
-type ViewTab = typeof VIEW_TABS[number]
 
 export default function TenantsPage() {
   const router = useRouter()
@@ -56,11 +45,6 @@ export default function TenantsPage() {
   const [search, setSearch]       = useState('')
   const [filter, setFilter]       = useState<'all' | 'active' | 'inactive'>('all')
   const [error, setError]         = useState<string | null>(null)
-
-  const [viewing, setViewing]     = useState<Renter | null>(null)
-  const [viewTab, setViewTab]     = useState<ViewTab>('Info')
-  const [viewDocs, setViewDocs]   = useState<Doc[]>([])
-  const [viewLoading, setViewLoading] = useState(false)
 
   const fetchRenters = useCallback(async () => {
     setLoading(true)
@@ -102,20 +86,6 @@ export default function TenantsPage() {
   const counts = {
     active:   renters.filter(r => r.renter_status === 1).length,
     inactive: renters.filter(r => r.renter_status === 0).length,
-  }
-
-  const openView = async (r: Renter) => {
-    setViewTab('Info')
-    setViewing(r)
-    setViewLoading(true)
-    try {
-      const res = await fetch(`${API}/document/renter?renter_id=${r.id}`, { headers: headers() })
-      setViewDocs(await res.json())
-    } catch {
-      setViewDocs([])
-    } finally {
-      setViewLoading(false)
-    }
   }
 
   const toggleEnabled = async (r: Renter) => {
@@ -280,7 +250,7 @@ export default function TenantsPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 10 }}>
-                      <button className="af-prop-act edit" title="View" onClick={() => openView(r)} style={{ cursor: 'pointer' }}>👁</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/tenants/view?id=${r.id}`)} style={{ cursor: 'pointer' }}>👁</button>
                       <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/tenants/edit?id=${r.id}`)} style={{ cursor: 'pointer' }}>✏️</button>
                       <button className="af-prop-act del" title="Delete" onClick={() => del(r.id)} style={{ cursor: 'pointer' }}>🗑️</button>
                     </div>
@@ -292,71 +262,6 @@ export default function TenantsPage() {
         )}
       </div>
       {!loading && <Pagination page={page} pageSize={pageSize} totalItems={filtered.length} onPageChange={setPage} />}
-
-      {/* View Renter Details */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 650, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="af-modal-title">Renter Details</h2>
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -14, marginBottom: 16 }}>{viewing.name}</p>
-
-            <div className="af-tab-bar" style={{ marginBottom: 18 }}>
-              {VIEW_TABS.map(t => (
-                <button key={t} onClick={() => setViewTab(t)} className={`af-tab-pill ${viewTab === t ? 'active' : ''}`}>{t}</button>
-              ))}
-            </div>
-
-            {viewTab === 'Info' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {([
-                  ['Type', viewing.renter_type ?? 'individual'],
-                  ['Company Type', viewing.company_type || '—'],
-                  ['Name', viewing.name],
-                  ['Email', viewing.email],
-                  ['Contact', viewing.contact],
-                  ['National ID', viewing.national_id || '—'],
-                  ['Property', viewing.property_name || '—'],
-                  ['Floor', viewing.floor_name || '—'],
-                  ['On Rent', viewing.on_rent || '—'],
-                  ['Lease Start', formatDate(viewing.lease_start_date)],
-                  ['Lease End', formatDate(viewing.lease_end_date)],
-                  ['Advance Rent', fmt(viewing.advance_rent)],
-                  ['Rent Per Month', fmt(viewing.rent_per_month)],
-                  ['Issue Date', formatDate(viewing.issue_date)],
-                  ['Address', viewing.address || '—'],
-                  ['Status', STATUS_LABEL[viewing.renter_status] ?? 'unknown'],
-                ] as [string, string][]).map(([k, v]) => (
-                  <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {viewTab === 'Documents' && (
-              viewLoading ? (
-                <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>Loading…</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {viewDocs.length === 0 ? (
-                    <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
-                  ) : viewDocs.map(d => (
-                    <a key={d.id} href={`${API}${d.document}`} target="_blank" rel="noreferrer"
-                      style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--accent)' }}>
-                      {d.document_type_name ?? 'Document'}
-                    </a>
-                  ))}
-                </div>
-              )
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }
