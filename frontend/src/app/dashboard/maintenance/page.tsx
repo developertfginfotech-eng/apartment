@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
 import ToggleSwitch from '@/components/ToggleSwitch'
-import { formatDate } from '@/lib/date'
+import { formatDateTime } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -41,15 +41,21 @@ const MAINTENANCE_STATUS: Record<number, { label: string; color: string }> = {
 
 const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 
+const STATUS_TABS = [
+  { value: 'all', label: 'All' },
+  { value: 'new', label: 'New' },
+  { value: 'open', label: 'Open' },
+  { value: 'completed', label: 'Completed' },
+] as const
+
 export default function MaintenancePage() {
   const router = useRouter()
 
   const [records, setRecords]     = useState<Maintenance[]>([])
+  const [statusTab, setStatusTab] = useState<typeof STATUS_TABS[number]['value']>('all')
   const [search, setSearch]       = useState('')
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
-
-  const [viewing, setViewing] = useState<Maintenance | null>(null)
 
   const [collecting, setCollecting] = useState<Maintenance | null>(null)
   const [collectForm, setCollectForm] = useState({
@@ -75,6 +81,7 @@ export default function MaintenancePage() {
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
+      if (statusTab !== 'all') params.set('status', statusTab)
       const res = await fetch(`${API}/maintenance?${params}`, { headers: authHeaders() })
       if (!res.ok) throw new Error(`Failed to load: ${res.status}`)
       const data = await res.json()
@@ -84,7 +91,7 @@ export default function MaintenancePage() {
     } finally {
       setLoading(false)
     }
-  }, [search])
+  }, [search, statusTab])
 
   useEffect(() => { fetchRecords() }, [fetchRecords])
 
@@ -94,7 +101,7 @@ export default function MaintenancePage() {
 
   const exportHeaders = ['#', 'Maintenance Title', 'Property', 'Date', 'Amount', 'Details', 'Requested By', 'Maintenances Status', 'Payment Status', 'Status']
   const exportRows = () => records.map((r, i) => [
-    i + 1, r.title, r.property_name ?? String(r.property_id), formatDate(r.date),
+    i + 1, r.title, r.property_name ?? String(r.property_id), formatDateTime(r.date),
     fmt(r.amount), r.description || '—', REQUESTED_BY[r.maintenance_by ?? ''] ?? '—',
     MAINTENANCE_STATUS[r.maintenances_status]?.label ?? '—', r.payment_status === 1 ? 'Paid' : 'Pending',
     r.status === 1 ? 'Active' : 'Inactive',
@@ -240,7 +247,25 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {STATUS_TABS.map(t => (
+            <button
+              key={t.value}
+              onClick={() => setStatusTab(t.value)}
+              style={{
+                padding: '8px 14px', borderRadius: 8, border: '1px solid', fontSize: 12.5,
+                fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                borderColor: statusTab === t.value ? 'var(--accent)' : 'var(--border2)',
+                background:  statusTab === t.value ? 'rgba(249,115,22,0.12)' : 'var(--surface)',
+                color:       statusTab === t.value ? 'var(--accent)' : 'var(--muted)',
+                transition:  'all 0.13s',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search title, property, type…"
           style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 260 }}/>
       </div>
@@ -288,7 +313,7 @@ export default function MaintenancePage() {
                     <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                     <td style={{ fontWeight: 650 }}>{r.title}</td>
                     <td>{r.property_name ?? r.property_id}</td>
-                    <td style={{ fontSize: 13 }}>{formatDate(r.date)}</td>
+                    <td style={{ fontSize: 13 }}>{formatDateTime(r.date)}</td>
                     <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                       ₱ {Number(r.amount).toLocaleString()}
                     </td>
@@ -308,7 +333,7 @@ export default function MaintenancePage() {
                           <option value={3}>Rejected</option>
                         </select>
                       ) : r.maintenances_status === 3 ? (
-                        <a role="button" onClick={() => setViewing(r)} style={{ color: ms.color, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Rejected</a>
+                        <a role="button" onClick={() => router.push(`/dashboard/maintenance/view?id=${r.id}`)} style={{ color: ms.color, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Rejected</a>
                       ) : (
                         <span style={{ color: ms.color, fontSize: 12, fontWeight: 600 }}>{ms.label}</span>
                       )}
@@ -322,7 +347,7 @@ export default function MaintenancePage() {
                       <ToggleSwitch checked={r.status === 1} onChange={() => toggleStatus(r)} />
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
-                      <button className="af-prop-act edit" title="View" onClick={() => setViewing(r)}>👁</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/maintenance/view?id=${r.id}`)}>👁</button>
                       <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/maintenance/edit?id=${r.id}`)}>✏️</button>
                       <button className="af-prop-act delete" title="Delete" onClick={() => deleteRecord(r.id)}>🗑️</button>
                     </td>
@@ -343,49 +368,6 @@ export default function MaintenancePage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={records.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {/* View Details */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">Maintenance Details</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              {([
-                ['Title', viewing.title],
-                ['Type', viewing.type_name ?? '—'],
-                ['Property', viewing.property_name ?? String(viewing.property_id)],
-                ['Date', formatDate(viewing.date)],
-                ['Amount', fmt(viewing.amount)],
-                ['Requested By', REQUESTED_BY[viewing.maintenance_by ?? ''] ?? '—'],
-                ['Maintenances Status', MAINTENANCE_STATUS[viewing.maintenances_status]?.label ?? '—'],
-                ['Payment Status', viewing.payment_status === 1 ? 'Paid' : 'Pending'],
-                ['Payment Type', viewing.payment_type || '—'],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                </div>
-              ))}
-              <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
-                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Details</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.description || '—'}</div>
-              </div>
-              {viewing.maintenances_status === 3 && (
-                <div style={{ background: 'rgba(239,68,68,0.08)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
-                  <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Rejected Reason</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.reject_details || '—'}</div>
-                </div>
-              )}
-            </div>
-            {viewing.receipt_image && (
-              <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
 

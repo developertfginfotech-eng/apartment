@@ -107,4 +107,19 @@ export class DocumentController {
   removeExpenseDocument(@Param('id') id: string) {
     return this.svc.removeExpenseDocument(parseInt(id, 10));
   }
+
+  @Get('maintenance')
+  getMaintenanceDocuments(@Query('maintenance_id') maintenanceId: string) {
+    return this.svc.getMaintenanceDocuments(parseInt(maintenanceId, 10));
+  }
+
+  @Post('maintenance')
+  addMaintenanceDocument(@Body() body: { maintenance_id: number; document_type: number; document: string }) {
+    return this.svc.addMaintenanceDocument(body);
+  }
+
+  @Delete('maintenance/:id')
+  removeMaintenanceDocument(@Param('id') id: string) {
+    return this.svc.removeMaintenanceDocument(parseInt(id, 10));
+  }
 }

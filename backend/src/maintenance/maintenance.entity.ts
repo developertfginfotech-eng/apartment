@@ -5,8 +5,12 @@ export class Maintenance {
   @PrimaryGeneratedColumn() id: number;
   @Column({ nullable: true }) user_id: number;
   @Column({ nullable: true }) property_id: number;
+  @Column({ nullable: true }) floor_id: number;
+  @Column({ nullable: true }) unit_id: number;
   @Column({ nullable: true }) type: string;
   @Column({ nullable: true }) title: string;
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true }) famount: string;
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true }) tax: string;
   @Column({ nullable: true }) amount: string;
   @Column({ nullable: true }) date: string;
   @Column({ nullable: true }) month: string;
@@ -14,6 +18,7 @@ export class Maintenance {
   @Column({ type: 'text', nullable: true }) description: string;
   @Column({ default: 1 }) status: number;
   @Column({ nullable: true }) maintenance_by: string;
+  @Column({ nullable: true }) maintenances_paid_by: number;
   @Column({ default: 0 }) maintenances_status: number;
   @Column({ nullable: true }) reject_details: string;
   @Column({ nullable: true }) payment_type: string;

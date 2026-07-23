@@ -85,4 +85,10 @@ export class DocumentService {
     return this.addDocument('tbl_expense_documents', 'expense_id', body.expense_id, body.document_type, body.document);
   }
   removeExpenseDocument(id: number) { return this.removeDocument('tbl_expense_documents', id); }
+
+  getMaintenanceDocuments(maintenanceId: number) { return this.getDocuments('tbl_maintenance_documents', 'maintenance_id', maintenanceId); }
+  addMaintenanceDocument(body: { maintenance_id: number; document_type: number; document: string }) {
+    return this.addDocument('tbl_maintenance_documents', 'maintenance_id', body.maintenance_id, body.document_type, body.document);
+  }
+  removeMaintenanceDocument(id: number) { return this.removeDocument('tbl_maintenance_documents', id); }
 }

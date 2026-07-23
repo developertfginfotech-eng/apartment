@@ -26,7 +26,7 @@ export class LandlordService {
       LEFT JOIN tbl_properties p ON p.landlord_id = l.id AND p.status = 1
       LEFT JOIN tbl_renters r ON r.property_id = p.id AND r.status = 1
       GROUP BY l.id
-      ORDER BY l.id DESC
+      ORDER BY l.first_name ASC
     `);
   }
 
