@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
@@ -57,12 +58,12 @@ function EditTransactionInner() {
       .then((h: HistoryRow) => {
         setRow(h)
         setForm({
-          amount: String(h.amount ?? ''), payment_date: h.payment_date?.slice(0, 10) ?? '',
+          amount: String(h.amount ?? ''), payment_date: toDateInputValue(h.payment_date),
           payment_type: h.payment_type ?? 'Cash', deposit_amount: h.deposit_amount != null ? String(h.deposit_amount) : '',
           remark: h.remark ?? '',
           cheque_details: h.cheque_details ?? '', cheque_image: null,
           online_details: h.online_details ?? '', online_image: null,
-          pdc_cheque_details: h.pdc_cheque_details ?? '', pdc_cheque_image: null, pdc_cheque_date: h.pdc_cheque_date?.slice(0, 10) ?? '',
+          pdc_cheque_details: h.pdc_cheque_details ?? '', pdc_cheque_image: null, pdc_cheque_date: toDateInputValue(h.pdc_cheque_date),
           receipt_image: null,
         })
       })

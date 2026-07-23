@@ -7,6 +7,17 @@ export function formatDate(value?: string | Date | null): string {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+// Normalizes any stored date-like string (MM-DD-YYYY text, YYYY-MM-DD, or a
+// native Date-parseable string) into the YYYY-MM-DD shape date inputs/pickers
+// require — without this, a MM-DD-YYYY value fed straight into a date input
+// renders as a nonsense date (e.g. "11-21-2024" read as year 11, day 21).
+export function toDateInputValue(value?: string | Date | null): string {
+  if (!value) return ''
+  const d = value instanceof Date ? value : parseDateLike(value)
+  if (!d || Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export function formatDateTime(value?: string | Date | null): string {
   if (!value) return '—'
   const d = value instanceof Date ? value : new Date(value)

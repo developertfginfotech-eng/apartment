@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import DatePicker from '@/components/DatePicker'
 import FileDropInput from '@/components/FileDropInput'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -74,7 +75,7 @@ export default function LoanForm({ loanId }: { loanId?: number }) {
           employee_id: String(l.employee_id), amount_of_loan: String(l.amount_of_loan),
           loan_from_company: l.loan_from_company, name_of_bank: l.name_of_bank ?? '',
           interest_of_bank: l.interest_of_bank ? String(l.interest_of_bank) : '',
-          date_of_the_loan: l.date_of_the_loan?.slice(0, 10) ?? '', payment_date: l.payment_date?.slice(0, 10) ?? '',
+          date_of_the_loan: toDateInputValue(l.date_of_the_loan), payment_date: toDateInputValue(l.payment_date),
           payment_type: l.payment_type ?? 'Cash', payment_status: l.payment_status ?? 'pending', status: l.status,
           receiptFile: null,
         })

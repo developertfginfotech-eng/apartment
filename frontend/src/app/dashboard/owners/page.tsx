@@ -28,7 +28,9 @@ interface Owner {
   country: string | null
   state: string | null
   city: string | null
+  postal_address: string | null
   physical_address: string | null
+  residential_address: string | null
   status: number // 1 = active, 0 = inactive
   total_property: number
   total_renter: number
@@ -39,6 +41,8 @@ interface OwnerDetail extends Owner { properties: OwnerProperty[] }
 interface Doc { id: number; document_type: number; document: string; document_type_name: string }
 const VIEW_TABS = ['Info', 'Properties', 'Documents'] as const
 type ViewTab = typeof VIEW_TABS[number]
+
+const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
 
 export default function OwnersPage() {
   const router = useRouter()
@@ -102,6 +106,13 @@ export default function OwnersPage() {
     } finally {
       setViewLoading(false)
     }
+  }
+
+  const removeDoc = async (id: number) => {
+    if (!viewing) return
+    await fetch(`${API}/document/landlord/${id}`, { method: 'DELETE', headers: headers() })
+    const res = await fetch(`${API}/document/landlord?landlord_id=${viewing.id}`, { headers: headers() })
+    setDocs(await res.json())
   }
 
   async function toggleStatus(o: Owner) {
@@ -339,7 +350,9 @@ export default function OwnersPage() {
                       ['Country', viewing.country || '—'],
                       ['State', viewing.state || '—'],
                       ['City', viewing.city || '—'],
+                      ['Postal Address', viewing.postal_address || '—'],
                       ['Physical Address', viewing.physical_address || '—'],
+                      ['Residential Address', viewing.residential_address || '—'],
                     ] as [string, string][]).map(([k, v]) => (
                       <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
                         <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
@@ -352,12 +365,13 @@ export default function OwnersPage() {
                 {viewTab === 'Properties' && (
                   <div className="af-prop-table-wrap">
                     <table className="af-prop-table">
-                      <thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Floors</th><th>Units</th></tr></thead>
+                      <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Location</th><th>Floors</th><th>Units</th></tr></thead>
                       <tbody>
                         {viewing.properties.length === 0 ? (
-                          <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No properties found</td></tr>
-                        ) : viewing.properties.map(p => (
+                          <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No properties found</td></tr>
+                        ) : viewing.properties.map((p, i) => (
                           <tr key={p.id}>
+                            <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
                             <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
                             <td style={{ fontWeight: 600 }}>{p.property_name}</td>
                             <td style={{ fontSize: 13 }}>{p.address}</td>
@@ -371,16 +385,43 @@ export default function OwnersPage() {
                 )}
 
                 {viewTab === 'Documents' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {docs.length === 0 ? (
-                      <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
-                    ) : docs.map(d => (
-                      <a key={d.id} href={`${API}${d.document}`} target="_blank" rel="noreferrer"
-                        style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--accent)' }}>
-                        {d.document_type_name ?? 'Document'}
-                      </a>
-                    ))}
-                  </div>
+                  docs.length === 0 ? (
+                    <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
+                      {docs.map(d => (
+                        <div key={d.id} style={{ position: 'relative' }}>
+                          <button
+                            onClick={() => removeDoc(d.id)}
+                            title="Remove document"
+                            style={{
+                              position: 'absolute', top: -8, right: -8, zIndex: 1,
+                              background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
+                              width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                            }}
+                          >
+                            ✕
+                          </button>
+                          <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                            <div style={{
+                              border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
+                              background: 'var(--surface2)', height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {isImage(d.document) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <span style={{ fontSize: 40 }}>📄</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {d.document_type_name ?? 'Document'}
+                            </div>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )
                 )}
               </>
             )}

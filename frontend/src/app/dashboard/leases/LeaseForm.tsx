@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import DatePicker from '@/components/DatePicker'
 import { computeFinalAmount } from '@/lib/leaseCalc'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -103,8 +104,8 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
           tax: full.tax ?? '',
           wtax_applicable: full.wtax_applicable === 'on',
           wtax: full.wtax ?? '',
-          start_date: full.start_date?.slice(0, 10) ?? '',
-          end_date: full.end_date?.slice(0, 10) ?? '',
+          start_date: toDateInputValue(full.start_date),
+          end_date: toDateInputValue(full.end_date),
           due_on: full.due_on ?? '1',
         })
         setDepositForm({

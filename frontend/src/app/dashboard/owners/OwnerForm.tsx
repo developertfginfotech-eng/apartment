@@ -3,8 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import FileDropInput from '@/components/FileDropInput'
+import DatePicker from '@/components/DatePicker'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
 
 interface Doc { id: number; document_type: number; document: string; document_type_name: string }
 interface DocType { id: number; name: string }
@@ -21,9 +24,12 @@ type FormState = {
   registration_date: string
   id_number: string
   country: string
-  state: string
   city: string
+  postal_address: string
   physical_address: string
+  residential_address: string
+  password: string
+  confirm_password: string
 }
 
 const BLANK_FORM: FormState = {
@@ -37,9 +43,12 @@ const BLANK_FORM: FormState = {
   registration_date: '',
   id_number: '',
   country: '',
-  state: '',
   city: '',
+  postal_address: '',
   physical_address: '',
+  residential_address: '',
+  password: '',
+  confirm_password: '',
 }
 
 export default function OwnerForm({ ownerId }: { ownerId?: number }) {
@@ -88,12 +97,15 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
           company_type:      o.company_type ?? '',
           phone:             o.phone ?? '',
           email:             o.email ?? '',
-          registration_date: o.registration_date ? o.registration_date.slice(0, 10) : '',
-          id_number:         o.id_number ?? '',
-          country:           o.country ?? '',
-          state:             o.state ?? '',
-          city:              o.city ?? '',
-          physical_address:  o.physical_address ?? '',
+          registration_date:    toDateInputValue(o.registration_date),
+          id_number:            o.id_number ?? '',
+          country:              o.country ?? '',
+          city:                 o.city ?? '',
+          postal_address:       o.postal_address ?? '',
+          physical_address:     o.physical_address ?? '',
+          residential_address:  o.residential_address ?? '',
+          password:             '',
+          confirm_password:     '',
         })
         await loadDocs(ownerId)
       } catch { setError('Failed to load owner') }
@@ -134,22 +146,32 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
   }
 
   const save = async () => {
-    const trimmed = {
-      owner_type:        form.owner_type,
-      first_name:        form.first_name.trim(),
-      middle_name:       form.middle_name.trim(),
-      last_name:         form.last_name.trim(),
-      company_type:      form.owner_type === 'company' ? form.company_type.trim() : null,
-      phone:             form.phone.trim(),
-      email:             form.email.trim(),
-      registration_date: form.registration_date || null,
-      id_number:         form.id_number.trim(),
-      country:           form.country.trim(),
-      state:             form.state.trim(),
-      city:              form.city.trim(),
-      physical_address:  form.physical_address.trim(),
+    if (!form.first_name.trim()) return
+    if (!ownerId && (!form.password || form.password !== form.confirm_password)) {
+      setError('Password and Confirm Password must match')
+      return
     }
-    if (!trimmed.first_name) return
+    if (form.password && form.password !== form.confirm_password) {
+      setError('Password and Confirm Password must match')
+      return
+    }
+    const trimmed: Record<string, unknown> = {
+      owner_type:           form.owner_type,
+      first_name:           form.first_name.trim(),
+      middle_name:          form.middle_name.trim(),
+      last_name:            form.last_name.trim(),
+      company_type:         form.owner_type === 'company' ? form.company_type.trim() : null,
+      phone:                form.phone.trim(),
+      email:                form.email.trim(),
+      registration_date:    form.registration_date || null,
+      id_number:            form.id_number.trim(),
+      country:              form.country.trim(),
+      city:                 form.city.trim(),
+      postal_address:       form.postal_address.trim(),
+      physical_address:     form.physical_address.trim(),
+      residential_address:  form.residential_address.trim(),
+    }
+    if (form.password) trimmed.password = form.password
     setSaving(true); setError('')
     try {
       const url = ownerId ? `${API}/landlords/${ownerId}` : `${API}/landlords`
@@ -226,11 +248,11 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="af-field">
                 <label>Registration Date</label>
-                <input type="date" value={form.registration_date} onChange={e => setField('registration_date', e.target.value)} />
+                <DatePicker value={form.registration_date} onChange={v => setField('registration_date', v)} placeholder="MM-DD-YYYY" />
               </div>
               <div className="af-field">
                 <label>National ID or Passport</label>
-                <input type="text" value={form.id_number} onChange={e => setField('id_number', e.target.value)} placeholder="ID number" />
+                <input type="text" value={form.id_number} onChange={e => setField('id_number', e.target.value)} placeholder="National ID or Passport" />
               </div>
             </div>
 
@@ -247,19 +269,35 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
                 )}
               </div>
               <div className="af-field">
-                <label>State</label>
-                <input type="text" value={form.state} onChange={e => setField('state', e.target.value)} placeholder="State" />
+                <label>City</label>
+                <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="City" />
               </div>
             </div>
 
             <div className="af-field">
-              <label>City</label>
-              <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="City" />
+              <label>Postal Address</label>
+              <input type="text" value={form.postal_address} onChange={e => setField('postal_address', e.target.value)} placeholder="Postal Address" />
             </div>
 
             <div className="af-field">
               <label>Physical Address</label>
-              <input type="text" value={form.physical_address} onChange={e => setField('physical_address', e.target.value)} placeholder="Street, City" />
+              <input type="text" value={form.physical_address} onChange={e => setField('physical_address', e.target.value)} placeholder="Physical Address" />
+            </div>
+
+            <div className="af-field">
+              <label>Residential Address</label>
+              <input type="text" value={form.residential_address} onChange={e => setField('residential_address', e.target.value)} placeholder="Residential Address" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="af-field">
+                <label>Password{!ownerId && <span style={{ color: '#f87171' }}> *</span>}</label>
+                <input type="password" value={form.password} onChange={e => setField('password', e.target.value)} placeholder="Password" />
+              </div>
+              <div className="af-field">
+                <label>Confirm Password{!ownerId && <span style={{ color: '#f87171' }}> *</span>}</label>
+                <input type="password" value={form.confirm_password} onChange={e => setField('confirm_password', e.target.value)} placeholder="Confirm Password" />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
@@ -293,15 +331,43 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
                   {uploading ? 'Uploading…' : 'Upload'}
                 </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {docs.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>}
-                {docs.map(d => (
-                  <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
-                    <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{d.document_type_name ?? 'Document'}</a>
-                    <button onClick={() => removeDoc(d.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
-                  </div>
-                ))}
-              </div>
+              {docs.length === 0 ? (
+                <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+                  {docs.map(d => (
+                    <div key={d.id} style={{ position: 'relative' }}>
+                      <button
+                        onClick={() => removeDoc(d.id)}
+                        title="Remove document"
+                        style={{
+                          position: 'absolute', top: -8, right: -8, zIndex: 1,
+                          background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
+                          width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                        }}
+                      >
+                        ✕
+                      </button>
+                      <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                        <div style={{
+                          border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
+                          background: 'var(--surface2)', height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {isImage(d.document) ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: 32 }}>📄</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {d.document_type_name ?? 'Document'}
+                        </div>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

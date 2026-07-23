@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -47,7 +48,7 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
         type: String(r.type_id ?? r.type ?? ''),
         title: r.title ?? '',
         amount: String(r.amount ?? ''),
-        date: r.date ? r.date.slice(0, 10) : '',
+        date: toDateInputValue(r.date),
         description: r.description ?? '',
         property_id: String(r.property_id ?? ''),
       })

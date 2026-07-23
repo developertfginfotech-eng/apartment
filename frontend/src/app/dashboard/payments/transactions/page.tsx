@@ -6,7 +6,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import DatePicker from '@/components/DatePicker'
 import Pagination, { usePagination } from '@/components/Pagination'
-import { formatDate } from '@/lib/date'
+import { formatDate, toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -68,8 +68,9 @@ function PaymentTransactionsContent() {
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
   const filtered = history.filter(h => {
-    if (dateFrom && (!h.payment_date || h.payment_date.slice(0, 10) < dateFrom)) return false
-    if (dateTo && (!h.payment_date || h.payment_date.slice(0, 10) > dateTo)) return false
+    const paymentDate = toDateInputValue(h.payment_date)
+    if (dateFrom && (!paymentDate || paymentDate < dateFrom)) return false
+    if (dateTo && (!paymentDate || paymentDate > dateTo)) return false
     if (search) {
       const q = search.toLowerCase()
       const hay = `${h.renter_name ?? ''} ${h.month ?? h.payment_month ?? ''} ${h.payment_type ?? ''}`.toLowerCase()

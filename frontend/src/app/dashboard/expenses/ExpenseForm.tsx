@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import FileDropInput from '@/components/FileDropInput'
 import DatePicker from '@/components/DatePicker'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -80,7 +81,7 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
           floor_id: e.floor_id ?? '',
           unit_id: e.unit_id ?? '',
           title: e.title ?? '',
-          date: e.date?.slice(0, 10) ?? '',
+          date: toDateInputValue(e.date),
           type: e.type ?? '',
           sub_category: e.sub_category ?? '',
           famount: e.famount ?? '',
