@@ -202,61 +202,45 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 900 }}>
         <div style={{ display: 'grid', gridTemplateColumns: ownerId ? '1fr 1fr' : '1fr', gap: 24 }}>
           <div className="af-modal-form">
-
-            <div className="af-field">
-              <label>Owner Type</label>
-              <select className="af-select" value={form.owner_type} onChange={e => setField('owner_type', e.target.value)}>
-                <option value="individual">Individual</option>
-                <option value="company">Company</option>
-              </select>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="af-field">
-                <label>{form.owner_type === 'company' ? 'Company Name' : 'First Name'} <span style={{ color: '#f87171' }}>*</span></label>
-                <input type="text" value={form.first_name} onChange={e => setField('first_name', e.target.value)} placeholder="First name" />
+                <label>Owner Type<span style={{ color: '#f87171' }}> *</span></label>
+                <select className="af-select" value={form.owner_type} onChange={e => setField('owner_type', e.target.value)}>
+                  <option value="individual">Individual</option>
+                  <option value="company">Company</option>
+                </select>
               </div>
               <div className="af-field">
-                <label>Last Name</label>
-                <input type="text" value={form.last_name} onChange={e => setField('last_name', e.target.value)} placeholder="Last name" disabled={form.owner_type === 'company'} />
+                <label>{form.owner_type === 'company' ? 'Company Name' : 'First Name'}<span style={{ color: '#f87171' }}> *</span></label>
+                <input type="text" value={form.first_name} onChange={e => setField('first_name', e.target.value)} placeholder="First Name" />
               </div>
-            </div>
 
-            {form.owner_type === 'company' ? (
               <div className="af-field">
-                <label>Company Type</label>
-                <input type="text" value={form.company_type} onChange={e => setField('company_type', e.target.value)} placeholder="Corporation, LLC…" />
+                <label>{form.owner_type === 'company' ? 'Company Type' : 'Middle Name'}</label>
+                {form.owner_type === 'company' ? (
+                  <input type="text" value={form.company_type} onChange={e => setField('company_type', e.target.value)} placeholder="Corporation, LLC…" />
+                ) : (
+                  <input type="text" value={form.middle_name} onChange={e => setField('middle_name', e.target.value)} placeholder="Middle Name" />
+                )}
               </div>
-            ) : (
               <div className="af-field">
-                <label>Middle Name</label>
-                <input type="text" value={form.middle_name} onChange={e => setField('middle_name', e.target.value)} placeholder="Middle name (optional)" />
+                <label>Last Name{form.owner_type !== 'company' && <span style={{ color: '#f87171' }}> *</span>}</label>
+                <input type="text" value={form.last_name} onChange={e => setField('last_name', e.target.value)} placeholder="Last Name" disabled={form.owner_type === 'company'} />
               </div>
-            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="af-field">
-                <label>Phone</label>
-                <input type="tel" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="+1-555-0000" />
+                <label>{form.owner_type === 'company' ? 'Company Email' : 'Email'}<span style={{ color: '#f87171' }}> *</span></label>
+                <input type="email" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="Email" />
               </div>
               <div className="af-field">
-                <label>Email</label>
-                <input type="email" value={form.email} onChange={e => setField('email', e.target.value)} placeholder="email@example.com" />
+                <label>{form.owner_type === 'company' ? 'Company Contact' : 'Phone Number'}<span style={{ color: '#f87171' }}> *</span></label>
+                <input type="tel" value={form.phone} onChange={e => setField('phone', e.target.value)} placeholder="Phone Number" />
               </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="af-field">
                 <label>Registration Date</label>
                 <DatePicker value={form.registration_date} onChange={v => setField('registration_date', v)} placeholder="MM-DD-YYYY" />
               </div>
-              <div className="af-field">
-                <label>National ID or Passport</label>
-                <input type="text" value={form.id_number} onChange={e => setField('id_number', e.target.value)} placeholder="National ID or Passport" />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div className="af-field">
                 <label>Country</label>
                 {countries.length > 0 ? (
@@ -268,39 +252,41 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
                   <input type="text" value={form.country} onChange={e => setField('country', e.target.value)} placeholder="Country" />
                 )}
               </div>
+
               <div className="af-field">
                 <label>City</label>
                 <input type="text" value={form.city} onChange={e => setField('city', e.target.value)} placeholder="City" />
               </div>
-            </div>
+              <div className="af-field">
+                <label>National ID or Passport</label>
+                <input type="text" value={form.id_number} onChange={e => setField('id_number', e.target.value)} placeholder="National ID or Passport" />
+              </div>
 
-            <div className="af-field">
-              <label>Postal Address</label>
-              <input type="text" value={form.postal_address} onChange={e => setField('postal_address', e.target.value)} placeholder="Postal Address" />
-            </div>
+              <div className="af-field">
+                <label>Postal Address</label>
+                <input type="text" value={form.postal_address} onChange={e => setField('postal_address', e.target.value)} placeholder="Postal Address" />
+              </div>
+              <div className="af-field">
+                <label>Physical Address</label>
+                <input type="text" value={form.physical_address} onChange={e => setField('physical_address', e.target.value)} placeholder="Physical Address" />
+              </div>
 
-            <div className="af-field">
-              <label>Physical Address</label>
-              <input type="text" value={form.physical_address} onChange={e => setField('physical_address', e.target.value)} placeholder="Physical Address" />
-            </div>
-
-            <div className="af-field">
-              <label>Residential Address</label>
-              <input type="text" value={form.residential_address} onChange={e => setField('residential_address', e.target.value)} placeholder="Residential Address" />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="af-field">
+                <label>Residential Address</label>
+                <input type="text" value={form.residential_address} onChange={e => setField('residential_address', e.target.value)} placeholder="Residential Address" />
+              </div>
               <div className="af-field">
                 <label>Password{!ownerId && <span style={{ color: '#f87171' }}> *</span>}</label>
                 <input type="password" value={form.password} onChange={e => setField('password', e.target.value)} placeholder="Password" />
               </div>
+
               <div className="af-field">
                 <label>Confirm Password{!ownerId && <span style={{ color: '#f87171' }}> *</span>}</label>
                 <input type="password" value={form.confirm_password} onChange={e => setField('confirm_password', e.target.value)} placeholder="Confirm Password" />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <button className="af-auth-submit" style={{ flex: 1, opacity: saving ? 0.7 : 1 }} onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : ownerId ? 'Save Changes' : 'Add Owner'}
               </button>
