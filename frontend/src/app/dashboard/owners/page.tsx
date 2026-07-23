@@ -6,7 +6,6 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import ToggleSwitch from '@/components/ToggleSwitch'
-import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
@@ -36,14 +35,6 @@ interface Owner {
   total_renter: number
 }
 
-interface OwnerProperty { id: number; property_name: string; property_code: string; address: string; total_floor: number; total_unit: number }
-interface OwnerDetail extends Owner { properties: OwnerProperty[] }
-interface Doc { id: number; document_type: number; document: string; document_type_name: string }
-const VIEW_TABS = ['Info', 'Properties', 'Documents'] as const
-type ViewTab = typeof VIEW_TABS[number]
-
-const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
-
 export default function OwnersPage() {
   const router = useRouter()
   useEffect(() => { if (!localStorage.getItem('apt_token')) router.push('/login') }, [router])
@@ -54,12 +45,6 @@ export default function OwnersPage() {
   const [deleteId, setDeleteId]     = useState<number | null>(null)
   const [deleting, setDeleting]     = useState(false)
   const [error, setError]           = useState<string | null>(null)
-
-  const [docs, setDocs]             = useState<Doc[]>([])
-
-  const [viewing, setViewing]       = useState<OwnerDetail | null>(null)
-  const [viewTab, setViewTab]       = useState<ViewTab>('Info')
-  const [viewLoading, setViewLoading] = useState(false)
 
   async function fetchOwners() {
     setLoading(true)
@@ -89,31 +74,6 @@ export default function OwnersPage() {
     )
   })
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
-
-  const openView = async (o: Owner) => {
-    setViewTab('Info')
-    setViewLoading(true)
-    try {
-      const [detailRes, docsRes] = await Promise.all([
-        fetch(`${API}/landlords/${o.id}`, { headers: headers() }),
-        fetch(`${API}/document/landlord?landlord_id=${o.id}`, { headers: headers() }),
-      ])
-      const detail = await detailRes.json()
-      setDocs(await docsRes.json())
-      setViewing(detail)
-    } catch {
-      setError('Failed to load owner details')
-    } finally {
-      setViewLoading(false)
-    }
-  }
-
-  const removeDoc = async (id: number) => {
-    if (!viewing) return
-    await fetch(`${API}/document/landlord/${id}`, { method: 'DELETE', headers: headers() })
-    const res = await fetch(`${API}/document/landlord?landlord_id=${viewing.id}`, { headers: headers() })
-    setDocs(await res.json())
-  }
 
   async function toggleStatus(o: Owner) {
     const newStatus = o.status === 1 ? 0 : 1
@@ -256,7 +216,7 @@ export default function OwnersPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="af-prop-act edit" title="View" onClick={() => openView(o)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}>
+                        <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/owners/view?id=${o.id}`)} style={{ padding: '4px 10px', fontSize: 14, borderRadius: 7, border: 'none', cursor: 'pointer' }}>
                           👁
                         </button>
                         <button
@@ -312,122 +272,6 @@ export default function OwnersPage() {
               <button className="af-btn-secondary" style={{ flex: 1 }} onClick={() => setDeleteId(null)} disabled={deleting}>
                 Cancel
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── View Owner Details ── */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="af-modal-title">Property Owner Details</h2>
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -14, marginBottom: 16 }}>
-              {[viewing.first_name, viewing.middle_name, viewing.last_name].filter(Boolean).join(' ')}
-            </p>
-
-            <div className="af-tab-bar" style={{ marginBottom: 18 }}>
-              {VIEW_TABS.map(t => (
-                <button key={t} onClick={() => setViewTab(t)} className={`af-tab-pill ${viewTab === t ? 'active' : ''}`}>{t}</button>
-              ))}
-            </div>
-
-            {viewLoading ? (
-              <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Loading…</div>
-            ) : (
-              <>
-                {viewTab === 'Info' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {([
-                      ['Owner Type', viewing.owner_type || '—'],
-                      ['Company Type', viewing.company_type || '—'],
-                      ['First Name', viewing.first_name],
-                      ['Last Name', viewing.last_name || '—'],
-                      ['Phone', viewing.phone || '—'],
-                      ['Email', viewing.email || '—'],
-                      ['Registration Date', formatDate(viewing.registration_date)],
-                      ['National ID', viewing.id_number || '—'],
-                      ['Country', viewing.country || '—'],
-                      ['State', viewing.state || '—'],
-                      ['City', viewing.city || '—'],
-                      ['Postal Address', viewing.postal_address || '—'],
-                      ['Physical Address', viewing.physical_address || '—'],
-                      ['Residential Address', viewing.residential_address || '—'],
-                    ] as [string, string][]).map(([k, v]) => (
-                      <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {viewTab === 'Properties' && (
-                  <div className="af-prop-table-wrap">
-                    <table className="af-prop-table">
-                      <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Location</th><th>Floors</th><th>Units</th></tr></thead>
-                      <tbody>
-                        {viewing.properties.length === 0 ? (
-                          <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No properties found</td></tr>
-                        ) : viewing.properties.map((p, i) => (
-                          <tr key={p.id}>
-                            <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                            <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
-                            <td style={{ fontWeight: 600 }}>{p.property_name}</td>
-                            <td style={{ fontSize: 13 }}>{p.address}</td>
-                            <td style={{ fontSize: 13 }}>{p.total_floor}</td>
-                            <td style={{ fontSize: 13 }}>{p.total_unit}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {viewTab === 'Documents' && (
-                  docs.length === 0 ? (
-                    <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
-                      {docs.map(d => (
-                        <div key={d.id} style={{ position: 'relative' }}>
-                          <button
-                            onClick={() => removeDoc(d.id)}
-                            title="Remove document"
-                            style={{
-                              position: 'absolute', top: -8, right: -8, zIndex: 1,
-                              background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
-                              width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
-                            }}
-                          >
-                            ✕
-                          </button>
-                          <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
-                            <div style={{
-                              border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
-                              background: 'var(--surface2)', height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {isImage(d.document) ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <span style={{ fontSize: 40 }}>📄</span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                              {d.document_type_name ?? 'Document'}
-                            </div>
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
-              </>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
             </div>
           </div>
         </div>
