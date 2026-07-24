@@ -183,20 +183,20 @@ export default function PropertiesPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
-                <th>Property Name</th><th>Code</th><th>Owner</th><th>Type</th>
-                <th>Floors</th><th>Units</th><th>Renters</th><th>Enable/Disable</th><th>Action</th>
+                <th>#</th><th>Name</th><th>Code</th><th>Location</th>
+                <th>No Floor</th><th>No Unit</th><th>No Renter</th><th>Enable/Disable</th><th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
                 <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--muted)', padding: '32px' }}>No properties found</td></tr>
               )}
-              {pageItems.map(p => (
+              {pageItems.map((p, i) => (
                 <tr key={p.id}>
+                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{p.property_name}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
-                  <td style={{ color: 'var(--muted)', fontSize: 13 }}>{p.owner_name?.trim() || '—'}</td>
-                  <td><span className="af-prop-badge type">{p.property_type}</span></td>
+                  <td style={{ color: 'var(--muted)', fontSize: 13 }}>{p.address || '—'}</td>
                   <td>{p.total_floor}</td>
                   <td>{p.total_unit}</td>
                   <td>{p.total_renter}</td>
