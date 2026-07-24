@@ -20,7 +20,6 @@ type FormState = {
   property_type: string
   ownership_percentage: string
   address: string
-  status: number
 }
 
 const EMPTY_FORM: FormState = {
@@ -30,7 +29,6 @@ const EMPTY_FORM: FormState = {
   property_type: '',
   ownership_percentage: '100',
   address: '',
-  status: 1,
 }
 
 export default function PropertyForm({ propertyId }: { propertyId?: number }) {
@@ -86,7 +84,6 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
           property_type: data.property_type ?? '',
           ownership_percentage: data.ownership_percentage ?? '100',
           address: data.address ?? '',
-          status: data.status ?? 1,
         })
       } catch { setError('Failed to load property') }
       finally { setLoading(false) }
@@ -199,7 +196,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
               <div className="af-field">
                 <label>Property Type</label>
                 <select className="af-select" value={form.property_type} onChange={e => setForm(f => ({ ...f, property_type: e.target.value }))}>
-                  <option value="">-- Select Type --</option>
+                  <option value="">Property Type</option>
                   {types.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>
@@ -212,15 +209,8 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
                 <input value={form.property_code} onChange={e => setForm(f => ({ ...f, property_code: e.target.value }))} placeholder="PROP-001" />
               </div>
               <div className="af-field">
-                <label>Percent (%) of ownership</label>
+                <label>Percent(%) of ownership</label>
                 <input type="number" value={form.ownership_percentage} onChange={e => setForm(f => ({ ...f, ownership_percentage: e.target.value }))} placeholder="100" />
-              </div>
-              <div className="af-field">
-                <label>Status</label>
-                <select className="af-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: Number(e.target.value) }))}>
-                  <option value={1}>Active</option>
-                  <option value={0}>Inactive</option>
-                </select>
               </div>
               <div className="af-field" style={{ gridColumn: '1 / -1' }}>
                 <label>Location</label>
@@ -262,7 +252,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
               ))}
             </div>
 
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Floor / Unit</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Floor/Unit</div>
             {floors.map(f => (
               <div key={f.id} style={{ background: 'var(--surface2)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -278,14 +268,14 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
                 <div style={{ display: 'flex', gap: 6, marginTop: 6, paddingLeft: 14 }}>
                   <input placeholder="Unit" value={newUnit[f.id]?.name ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.id]: { name: e.target.value, area: m[f.id]?.area ?? '' } }))} style={{ flex: 1, fontSize: 12, padding: '5px 8px' }} />
                   <input placeholder="Area" type="number" value={newUnit[f.id]?.area ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.id]: { name: m[f.id]?.name ?? '', area: e.target.value } }))} style={{ width: 70, fontSize: 12, padding: '5px 8px' }} />
-                  <button className="af-btn-secondary" style={{ cursor: 'pointer', fontSize: 12, padding: '4px 10px' }} onClick={() => addUnit(f.id)}>+ Unit</button>
+                  <button className="af-btn-secondary" style={{ cursor: 'pointer', fontSize: 12, padding: '4px 10px' }} onClick={() => addUnit(f.id)}>+ Add More Unit</button>
                 </div>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 6 }}>
               <input placeholder="Floor" value={newFloor.name} onChange={e => setNewFloor(f => ({ ...f, name: e.target.value }))} style={{ flex: 1, fontSize: 13, padding: '7px 10px' }} />
               <input placeholder="Area (m²)" type="number" value={newFloor.area} onChange={e => setNewFloor(f => ({ ...f, area: e.target.value }))} style={{ width: 90, fontSize: 13, padding: '7px 10px' }} />
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={addFloor}>+ Floor</button>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={addFloor}>+ Add More Floor</button>
             </div>
           </div>
         )}

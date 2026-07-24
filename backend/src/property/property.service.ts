@@ -74,12 +74,20 @@ export class PropertyService {
     const [financial] = await this.ds.query(
       `SELECT
          COALESCE((SELECT SUM(amount) FROM tbl_pay_rents WHERE property_id = ?), 0) AS pay_amount,
+         (SELECT COUNT(*) FROM tbl_pay_rents WHERE property_id = ?) AS pay_count,
          COALESCE((SELECT SUM(amount) FROM tbl_expenses WHERE property_id = ?), 0) AS expenses,
          COALESCE((SELECT SUM(amount) FROM tbl_maintenances WHERE property_id = ? AND maintenance_by = 0), 0) AS owner_maintenance,
          COALESCE((SELECT SUM(amount) FROM tbl_maintenances WHERE property_id = ? AND maintenance_by = 1), 0) AS renter_maintenance,
          COALESCE((SELECT SUM(rent_deposit) FROM tbl_leases WHERE property_id = ?), 0) AS deposit`,
-      [id, id, id, id, id],
+      [id, id, id, id, id, id],
     );
+    // Matches legacy PropertyController::show exactly: profit stays 0 unless at
+    // least one rent-payment record exists; loss is an unconditional, separate
+    // sum (owner maintenance + expenses) — not derived from profit.
+    financial.profit = Number(financial.pay_count) > 0
+      ? Number(financial.pay_amount) - Number(financial.owner_maintenance) - Number(financial.expenses) + Number(financial.renter_maintenance)
+      : 0;
+    financial.loss = Number(financial.owner_maintenance) + Number(financial.expenses);
 
     return {
       ...property,

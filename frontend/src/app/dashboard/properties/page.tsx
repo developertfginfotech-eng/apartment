@@ -22,16 +22,6 @@ interface Property {
   total_renter: number
 }
 
-interface Floor { id: number; name: string; area: number; units: Unit[] }
-interface Unit { id: number; floor_id: number; name: string; area: number }
-interface Doc { id: number; document_type: number; document: string; document_type_name: string }
-interface ViewRenter { id: number; name: string; contact: string | null; email: string | null; floor_name: string | null; unit_name: string | null }
-interface Financial { pay_amount: string | number; expenses: string | number; owner_maintenance: string | number; renter_maintenance: string | number; deposit: string | number }
-interface PropertyDetail extends Property { floors: Floor[]; documents: Doc[]; renters: ViewRenter[]; financial: Financial }
-
-const VIEW_TABS = ['Info', 'Renters', 'Floors', 'Units', 'Financial Report', 'Documents'] as const
-type ViewTab = typeof VIEW_TABS[number]
-
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({
   'Content-Type': 'application/json',
@@ -44,10 +34,6 @@ export default function PropertiesPage() {
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
   const [search, setSearch]         = useState('')
-
-  const [viewing, setViewing]   = useState<PropertyDetail | null>(null)
-  const [viewTab, setViewTab]   = useState<ViewTab>('Info')
-  const [viewLoading, setViewLoading] = useState(false)
 
   const fetchProperties = useCallback(async () => {
     setLoading(true)
@@ -77,20 +63,6 @@ export default function PropertiesPage() {
     p.address?.toLowerCase().includes(search.toLowerCase())
   )
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
-
-  const openView = async (p: Property) => {
-    setViewTab('Info')
-    setViewLoading(true)
-    try {
-      const res = await fetch(`${API}/properties/${p.id}`, { headers: headers() })
-      const data = await res.json()
-      setViewing(data)
-    } catch {
-      setError('Failed to load property details')
-    } finally {
-      setViewLoading(false)
-    }
-  }
 
   const toggleStatus = async (p: Property) => {
     const newStatus = p.status === 1 ? 0 : 1
@@ -205,7 +177,7 @@ export default function PropertiesPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="View" onClick={() => openView(p)}>👁</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/properties/view?id=${p.id}`)}>👁</button>
                       <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/properties/edit?id=${p.id}`)}>✏️</button>
                       <button className="af-prop-act del" title="Delete" onClick={() => del(p.id)}>🗑️</button>
                     </div>
@@ -218,141 +190,6 @@ export default function PropertiesPage() {
         </div>
       )}
 
-      {/* View Property Details */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 800, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 className="af-modal-title">Property Details</h2>
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: -14, marginBottom: 16 }}>
-              {viewing.property_name} {viewing.property_code}
-            </p>
-
-            <div className="af-tab-bar" style={{ marginBottom: 18 }}>
-              {VIEW_TABS.map(t => (
-                <button key={t} onClick={() => setViewTab(t)} className={`af-tab-pill ${viewTab === t ? 'active' : ''}`}>{t}</button>
-              ))}
-            </div>
-
-            {viewLoading ? (
-              <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>Loading…</div>
-            ) : (
-              <>
-                {viewTab === 'Info' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {([
-                      ['Owner', viewing.owner_name?.trim() || '—'],
-                      ['Ownership %', `${viewing.ownership_percentage ?? 0}%`],
-                      ['Property Type', viewing.property_type],
-                      ['Property Name', viewing.property_name],
-                      ['Property Code', viewing.property_code],
-                      ['Location', viewing.address],
-                      ['Status', viewing.status === 1 ? 'Active' : 'Inactive'],
-                    ] as [string, string][]).map(([k, v]) => (
-                      <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {viewTab === 'Renters' && (
-                  <div className="af-prop-table-wrap">
-                    <table className="af-prop-table">
-                      <thead><tr><th>Name</th><th>Contact</th><th>Email</th><th>Floor</th><th>Unit</th></tr></thead>
-                      <tbody>
-                        {viewing.renters.length === 0 ? (
-                          <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No renters found</td></tr>
-                        ) : viewing.renters.map(r => (
-                          <tr key={r.id}>
-                            <td style={{ fontWeight: 600 }}>{r.name?.trim() || '—'}</td>
-                            <td style={{ fontSize: 13 }}>{r.contact || '—'}</td>
-                            <td style={{ fontSize: 13 }}>{r.email || '—'}</td>
-                            <td style={{ fontSize: 13 }}>{r.floor_name || '—'}</td>
-                            <td style={{ fontSize: 13 }}>{r.unit_name || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {viewTab === 'Floors' && (
-                  <div className="af-prop-table-wrap">
-                    <table className="af-prop-table">
-                      <thead><tr><th>Floor</th><th>Area (m²)</th><th>Units</th></tr></thead>
-                      <tbody>
-                        {viewing.floors.length === 0 ? (
-                          <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No floors found</td></tr>
-                        ) : viewing.floors.map(f => (
-                          <tr key={f.id}>
-                            <td style={{ fontWeight: 600 }}>{f.name}</td>
-                            <td style={{ fontSize: 13 }}>{f.area}</td>
-                            <td style={{ fontSize: 13 }}>{f.units.length}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {viewTab === 'Units' && (
-                  <div className="af-prop-table-wrap">
-                    <table className="af-prop-table">
-                      <thead><tr><th>Unit</th><th>Floor</th><th>Area (m²)</th></tr></thead>
-                      <tbody>
-                        {viewing.floors.flatMap(f => f.units).length === 0 ? (
-                          <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No units found</td></tr>
-                        ) : viewing.floors.flatMap(f => f.units.map(u => (
-                          <tr key={u.id}>
-                            <td style={{ fontWeight: 600 }}>{u.name}</td>
-                            <td style={{ fontSize: 13 }}>{f.name}</td>
-                            <td style={{ fontSize: 13 }}>{u.area}</td>
-                          </tr>
-                        )))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {viewTab === 'Financial Report' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    {([
-                      ['Rent Collected', fmt(viewing.financial.pay_amount)],
-                      ['Expenses', fmt(viewing.financial.expenses)],
-                      ['Owner Maintenance', fmt(viewing.financial.owner_maintenance)],
-                      ['Renter Maintenance', fmt(viewing.financial.renter_maintenance)],
-                      ['Deposits', fmt(viewing.financial.deposit)],
-                    ] as [string, string][]).map(([k, v]) => (
-                      <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                        <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {viewTab === 'Documents' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {viewing.documents.length === 0 ? (
-                      <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>
-                    ) : viewing.documents.map(d => (
-                      <a key={d.id} href={`${API}${d.document}`} target="_blank" rel="noreferrer"
-                        style={{ background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--accent)' }}>
-                        {d.document_type_name ?? 'Document'}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }
