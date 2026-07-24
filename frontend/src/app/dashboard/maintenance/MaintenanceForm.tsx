@@ -19,7 +19,7 @@ const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
 
 const EMPTY_FORM = {
   property_id: '', floor_id: '', unit_id: '',
-  type: '', title: '', famount: '', tax: '',
+  type: '', title: '',
   date: '', maintenance_by: '0', description: '',
 }
 
@@ -31,12 +31,12 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
   const [properties, setProperties] = useState<{ id: number; property_name: string }[]>([])
   const [floors, setFloors] = useState<{ id: number; name: string }[]>([])
   const [units, setUnits] = useState<{ id: number; name: string }[]>([])
-  const [taxes, setTaxes] = useState<{ id: number; key: string; value: string }[]>([])
   const [docTypes, setDocTypes] = useState<DocType[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
   const [newDocType, setNewDocType] = useState('')
   const [newDocFile, setNewDocFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [pendingDocs, setPendingDocs] = useState<{ type: string; file: File | null }[]>([{ type: '', file: null }])
 
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(!!maintenanceId)
@@ -51,7 +51,6 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
   useEffect(() => {
     fetch(`${API}/maintenance-type`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setTypes(d)).catch(() => {})
     fetch(`${API}/properties`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setProperties(d)).catch(() => {})
-    fetch(`${API}/tax`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setTaxes(d)).catch(() => {})
     fetch(`${API}/document/types`, { headers: authHeaders() }).then(r => r.json()).then(d => Array.isArray(d) && setDocTypes(d)).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -87,8 +86,6 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
         unit_id: r.unit_id ? String(r.unit_id) : '',
         type: String(r.type ?? ''),
         title: r.title ?? '',
-        famount: r.famount ?? '',
-        tax: r.tax ?? '',
         date: r.date ? r.date.slice(0, 16) : '',
         maintenance_by: r.maintenance_by ?? '0',
         description: r.description ?? '',
@@ -118,24 +115,26 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
     fetchUnits(form.property_id, floorId)
   }
 
-  const finalAmount = ((Number(form.famount) || 0) + (Number(form.famount) || 0) * (Number(form.tax) || 0) / 100).toFixed(2)
+  const uploadOne = async (id: number, documentType: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const upRes = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body: fd,
+    })
+    const { url } = await upRes.json()
+    await fetch(`${API}/document/maintenance`, {
+      method: 'POST', headers: authHeaders(),
+      body: JSON.stringify({ maintenance_id: id, document_type: parseInt(documentType, 10), document: url }),
+    })
+  }
 
   const uploadDoc = async () => {
     if (!maintenanceId || !newDocType || !newDocFile) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', newDocFile)
-      const upRes = await fetch(`${API}/document/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-        body: fd,
-      })
-      const { url } = await upRes.json()
-      await fetch(`${API}/document/maintenance`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ maintenance_id: maintenanceId, document_type: parseInt(newDocType, 10), document: url }),
-      })
+      await uploadOne(maintenanceId, newDocType, newDocFile)
       setNewDocType(''); setNewDocFile(null)
       await loadDocs(maintenanceId)
     } catch {
@@ -151,21 +150,24 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
     await loadDocs(maintenanceId)
   }
 
+  const setPendingDoc = (i: number, patch: Partial<{ type: string; file: File | null }>) => {
+    setPendingDocs(rows => rows.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  }
+  const addPendingDocRow = () => setPendingDocs(rows => [...rows, { type: '', file: null }])
+  const removePendingDocRow = (i: number) => setPendingDocs(rows => rows.length === 1 ? rows : rows.filter((_, idx) => idx !== i))
+
   const save = async () => {
     if (!form.title || !form.property_id || !form.type || !form.date) return
     setSaving(true)
     setError('')
     try {
       const dateObj = new Date(form.date)
-      const body = {
+      const body: Record<string, unknown> = {
         property_id: parseInt(form.property_id, 10),
         floor_id: form.floor_id ? parseInt(form.floor_id, 10) : null,
         unit_id: form.unit_id ? parseInt(form.unit_id, 10) : null,
         type: form.type,
         title: form.title,
-        famount: form.famount || null,
-        tax: form.tax || 0,
-        amount: finalAmount,
         date: form.date,
         month: dateObj.getMonth() + 1,
         year: dateObj.getFullYear(),
@@ -173,12 +175,22 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
         description: form.description,
         status: 1,
       }
+      if (!maintenanceId) body.maintenances_status = 1
 
       const url = maintenanceId ? `${API}/maintenance/${maintenanceId}` : `${API}/maintenance`
       const method = maintenanceId ? 'PUT' : 'POST'
 
       const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) })
       if (!res.ok) throw new Error(`Save failed: ${res.status}`)
+
+      if (!maintenanceId) {
+        const created = await res.json()
+        const staged = pendingDocs.filter(d => d.type && d.file)
+        for (const d of staged) {
+          if (d.file) await uploadOne(created.id, d.type, d.file)
+        }
+      }
+
       router.push('/dashboard/maintenance')
     } catch {
       setError(maintenanceId ? 'Failed to update record' : 'Failed to save record')
@@ -202,16 +214,16 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: maintenanceId ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'start', maxWidth: 1000 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start', maxWidth: 1000 }}>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Basic Information</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="af-field">
-              <label>Title</label>
+              <label>Title<span style={{ color: '#f87171' }}> *</span></label>
               <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Title" />
             </div>
             <div className="af-field">
-              <label>Property</label>
+              <label>Property<span style={{ color: '#f87171' }}> *</span></label>
               <select className="af-select" value={form.property_id} onChange={e => onPropertyChange(e.target.value)}>
                 <option value="">-- Select Property --</option>
                 {properties.map(p => <option key={p.id} value={p.id}>{p.property_name}</option>)}
@@ -232,29 +244,14 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
               </select>
             </div>
             <div className="af-field">
-              <label>Type</label>
+              <label>Type<span style={{ color: '#f87171' }}> *</span></label>
               <select className="af-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
                 <option value="">-- Select Type --</option>
                 {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
             <div className="af-field">
-              <label>Amount</label>
-              <input type="number" min="0" step="0.01" value={form.famount} onChange={e => setForm(f => ({ ...f, famount: e.target.value }))} placeholder="0.00" />
-            </div>
-            <div className="af-field">
-              <label>Tax (%)</label>
-              <select className="af-select" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))}>
-                <option value="">-- Select Tax --</option>
-                {taxes.map(t => <option key={t.id} value={t.value}>{t.key} ({t.value}%)</option>)}
-              </select>
-            </div>
-            <div className="af-field">
-              <label>Final Amount</label>
-              <input readOnly value={finalAmount} style={{ opacity: 0.75 }} />
-            </div>
-            <div className="af-field">
-              <label>Date</label>
+              <label>Date<span style={{ color: '#f87171' }}> *</span></label>
               <input type="datetime-local" className="af-select" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
             </div>
             <div className="af-field">
@@ -283,64 +280,87 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
           </div>
         </div>
 
-        {maintenanceId && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
-            <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Documents</div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-              <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
-                <option value="">-- Select Type --</option>
-                {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-              <div style={{ flex: '1 1 200px' }}>
-                <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
-                {uploading ? 'Uploading…' : 'Upload'}
-              </button>
-            </div>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
+          <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Documents</div>
 
-            {docs.length > 0 && (
-              <div style={{ marginTop: 20, borderTop: '1px solid var(--border2)', paddingTop: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Uploaded Documents</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
-                  {docs.map(d => (
-                    <div key={d.id} style={{ position: 'relative' }}>
-                      <button
-                        onClick={() => removeDoc(d.id)}
-                        title="Remove document"
-                        style={{
-                          position: 'absolute', top: -8, right: -8, zIndex: 1,
-                          background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
-                          width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
-                        }}
-                      >
-                        ✕
-                      </button>
-                      <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
-                        <div style={{
-                          border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
-                          background: 'var(--surface2)', height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          {isImage(d.document) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <span style={{ fontSize: 32 }}>📄</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {d.document_type_name ?? 'Document'}
-                        </div>
-                      </a>
-                    </div>
-                  ))}
+          {!maintenanceId ? (
+            <>
+              {pendingDocs.map((row, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select className="af-select" value={row.type} onChange={e => setPendingDoc(i, { type: e.target.value })} style={{ flex: '1 1 140px' }}>
+                    <option value="">-- Select Type --</option>
+                    {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <FileDropInput value={row.file} onChange={file => setPendingDoc(i, { file })} placeholder="Choose a document or drag it here" />
+                  </div>
+                  {pendingDocs.length > 1 && (
+                    <button onClick={() => removePendingDocRow(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={addPendingDocRow} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }}>
+                + Add More
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
+                  <option value="">-- Select Type --</option>
+                  {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                <div style={{ flex: '1 1 200px' }}>
+                  <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
                 </div>
               </div>
-            )}
-          </div>
-        )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
+
+              {docs.length > 0 && (
+                <div style={{ marginTop: 20, borderTop: '1px solid var(--border2)', paddingTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Uploaded Documents</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+                    {docs.map(d => (
+                      <div key={d.id} style={{ position: 'relative' }}>
+                        <button
+                          onClick={() => removeDoc(d.id)}
+                          title="Remove document"
+                          style={{
+                            position: 'absolute', top: -8, right: -8, zIndex: 1,
+                            background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
+                            width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                        <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                          <div style={{
+                            border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
+                            background: 'var(--surface2)', height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            {isImage(d.document) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <span style={{ fontSize: 32 }}>📄</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            {d.document_type_name ?? 'Document'}
+                          </div>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </main>
   )

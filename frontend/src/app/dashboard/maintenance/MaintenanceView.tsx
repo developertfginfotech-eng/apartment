@@ -48,6 +48,12 @@ const VIEW_TABS = ['Info', 'Properties', 'Documents'] as const
 type ViewTab = typeof VIEW_TABS[number]
 
 const REQUESTED_BY: Record<string, string> = { '0': 'Owner', '1': 'Renter', '2': 'Admin', '3': 'Maintenance' }
+const PAID_BY_OPTIONS = [
+  { value: '0', label: 'Owner' },
+  { value: '1', label: 'Renter' },
+  { value: '2', label: 'Admin' },
+  { value: '3', label: 'Maintenance' },
+]
 const MAINTENANCE_STATUS: Record<number, string> = { 0: 'Under Process', 1: 'Open', 2: 'Completed', 3: 'Rejected' }
 const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
 
@@ -63,11 +69,17 @@ export default function MaintenanceView({ maintenanceId }: { maintenanceId: numb
   const [error, setError]     = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const fmt = (v: string | number | null) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const [taxes, setTaxes] = useState<{ id: number; key: string; value: string }[]>([])
+  const [financeForm, setFinanceForm] = useState({ famount: '', tax: '', maintenances_paid_by: '' })
+  const [savingFinance, setSavingFinance] = useState(false)
 
   const loadDocs = useCallback(async (id: number) => {
     const res = await fetch(`${API}/document/maintenance?maintenance_id=${id}`, { headers: headers() })
     setDocs(await res.json())
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API}/tax`, { headers: headers() }).then(r => r.json()).then(d => Array.isArray(d) && setTaxes(d)).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -78,6 +90,11 @@ export default function MaintenanceView({ maintenanceId }: { maintenanceId: numb
         if (!res.ok) throw new Error()
         const m: MaintenanceDetail = await res.json()
         setViewing(m)
+        setFinanceForm({
+          famount: m.famount ?? '',
+          tax: m.tax ?? '',
+          maintenances_paid_by: m.maintenances_paid_by != null ? String(m.maintenances_paid_by) : '',
+        })
         await loadDocs(maintenanceId)
         if (m.property_id) {
           const pRes = await fetch(`${API}/properties/${m.property_id}`, { headers: headers() })
@@ -94,6 +111,32 @@ export default function MaintenanceView({ maintenanceId }: { maintenanceId: numb
   const removeDoc = async (id: number) => {
     await fetch(`${API}/document/maintenance/${id}`, { method: 'DELETE', headers: headers() })
     await loadDocs(maintenanceId)
+  }
+
+  const financeFinalAmount = ((Number(financeForm.famount) || 0) + (Number(financeForm.famount) || 0) * (Number(financeForm.tax) || 0) / 100).toFixed(2)
+
+  const saveFinance = async () => {
+    if (!viewing) return
+    setSavingFinance(true)
+    try {
+      const res = await fetch(`${API}/maintenance/${viewing.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...headers() },
+        body: JSON.stringify({
+          famount: financeForm.famount || null,
+          tax: financeForm.tax || 0,
+          amount: financeFinalAmount,
+          maintenances_paid_by: financeForm.maintenances_paid_by ? Number(financeForm.maintenances_paid_by) : null,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await fetch(`${API}/maintenance/${viewing.id}`, { headers: headers() }).then(r => r.json())
+      setViewing(updated)
+    } catch {
+      setError('Failed to update amount')
+    } finally {
+      setSavingFinance(false)
+    }
   }
 
   if (loading) {
@@ -156,44 +199,82 @@ export default function MaintenanceView({ maintenanceId }: { maintenanceId: numb
         </div>
 
         {tab === 'Info' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {([
-              ['Title', viewing.title],
-              ['Property', viewing.property_name || '—'],
-              ['Floor', viewing.floor_name || '—'],
-              ['Unit', viewing.unit_name || '—'],
-              ['Type', viewing.type_name || '—'],
-              ['Amount', fmt(viewing.famount)],
-              ['Tax (%)', viewing.tax ? `${viewing.tax}%` : '—'],
-              ['Final Amount', fmt(viewing.amount)],
-              ['Date', formatDateTime(viewing.date)],
-              ['Requested By', REQUESTED_BY[viewing.maintenance_by ?? ''] ?? '—'],
-              ['Maintenance Paid By', REQUESTED_BY[String(viewing.maintenances_paid_by ?? '')] ?? '—'],
-              ['Maintenances Status', MAINTENANCE_STATUS[viewing.maintenances_status] ?? '—'],
-              ['Payment Status', viewing.payment_status === 1 ? 'Paid' : 'Pending'],
-              ['Payment Type', viewing.payment_type || '—'],
-            ] as [string, string][]).map(([k, v]) => (
-              <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {([
+                ['Title', viewing.title],
+                ['Property', viewing.property_name || '—'],
+                ['Floor', viewing.floor_name || '—'],
+                ['Unit', viewing.unit_name || '—'],
+                ['Type', viewing.type_name || '—'],
+                ['Date', formatDateTime(viewing.date)],
+                ['Requested By', REQUESTED_BY[viewing.maintenance_by ?? ''] ?? '—'],
+                ['Maintenances Status', MAINTENANCE_STATUS[viewing.maintenances_status] ?? '—'],
+                ['Payment Status', viewing.payment_status === 1 ? 'Paid' : 'Pending'],
+                ['Payment Type', viewing.payment_type || '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
+              <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Details</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.description || '—'}</div>
               </div>
-            ))}
-            <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
-              <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Details</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.description || '—'}</div>
+              {viewing.maintenances_status === 3 && (
+                <div style={{ background: 'rgba(239,68,68,0.08)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
+                  <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Rejected Reason</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.reject_details || '—'}</div>
+                </div>
+              )}
+              {viewing.receipt_image && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
+                </div>
+              )}
             </div>
-            {viewing.maintenances_status === 3 && (
-              <div style={{ background: 'rgba(239,68,68,0.08)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
-                <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Rejected Reason</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewing.reject_details || '—'}</div>
-              </div>
-            )}
-            {viewing.receipt_image && (
-              <div style={{ gridColumn: '1/-1' }}>
-                <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
-              </div>
-            )}
-          </div>
+
+            {(() => {
+              const locked = viewing.maintenances_status === 2 || viewing.maintenances_status === 3
+              return (
+                <div style={{ marginTop: 20, borderTop: '1px solid var(--border2)', paddingTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Amount</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="af-field">
+                      <label>Amount</label>
+                      <input type="number" min="0" step="0.01" disabled={locked} value={financeForm.famount} onChange={e => setFinanceForm(f => ({ ...f, famount: e.target.value }))} placeholder="0.00" />
+                    </div>
+                    <div className="af-field">
+                      <label>Tax (%)</label>
+                      <select className="af-select" disabled={locked} value={financeForm.tax} onChange={e => setFinanceForm(f => ({ ...f, tax: e.target.value }))}>
+                        <option value="">-- Select Tax --</option>
+                        {taxes.map(t => <option key={t.id} value={t.value}>{t.key} ({t.value}%)</option>)}
+                      </select>
+                    </div>
+                    <div className="af-field">
+                      <label>Final Amount</label>
+                      <input readOnly value={financeFinalAmount} style={{ opacity: 0.75 }} />
+                    </div>
+                    <div className="af-field">
+                      <label>Maintenance Paid By</label>
+                      <select className="af-select" disabled={locked} value={financeForm.maintenances_paid_by} onChange={e => setFinanceForm(f => ({ ...f, maintenances_paid_by: e.target.value }))}>
+                        <option value="">-- Select --</option>
+                        {PAID_BY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {!locked && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+                      <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={saveFinance} disabled={savingFinance}>
+                        {savingFinance ? 'Updating…' : 'Update'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </>
         )}
 
         {tab === 'Properties' && (
