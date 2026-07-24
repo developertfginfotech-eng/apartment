@@ -266,7 +266,7 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
                 {countries.length > 0 ? (
                   <select className="af-select" value={form.country} onChange={e => setField('country', e.target.value)}>
                     <option value="">-- Select Country --</option>
-                    {countries.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 ) : (
                   <input type="text" value={form.country} onChange={e => setField('country', e.target.value)} placeholder="Country" />

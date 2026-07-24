@@ -21,6 +21,7 @@ interface OwnerDetail {
   registration_date: string | null
   id_number: string | null
   country: string | null
+  country_name: string | null
   state: string | null
   city: string | null
   postal_address: string | null
@@ -143,7 +144,7 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
               ['Email', viewing.email || '—'],
               ['Registration Date', formatDate(viewing.registration_date)],
               ['National ID', viewing.id_number || '—'],
-              ['Country', viewing.country || '—'],
+              ['Country', viewing.country_name || viewing.country || '—'],
               ['State', viewing.state || '—'],
               ['City', viewing.city || '—'],
               ['Postal Address', viewing.postal_address || '—'],

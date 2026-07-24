@@ -17,12 +17,14 @@ export class LandlordService {
     return this.ds.query(`
       SELECT
         l.id, l.user_id, l.first_name, l.middle_name, l.last_name, l.phone, l.email,
-        l.registration_date, l.owner_type, l.company_type, l.country, l.id_number,
+        l.registration_date, l.owner_type, l.company_type, l.country,
+        COALESCE(c.name, l.country) AS country_name, l.id_number,
         l.state, l.city, l.postal_address, l.physical_address, l.residential_address,
         l.status, l.created_at, l.updated_at,
         COUNT(DISTINCT p.id) AS total_property,
         COUNT(DISTINCT r.id) AS total_renter
       FROM tbl_landlords l
+      LEFT JOIN country c ON c.id = l.country
       LEFT JOIN tbl_properties p ON p.landlord_id = l.id AND p.status = 1
       LEFT JOIN tbl_renters r ON r.property_id = p.id AND r.status = 1
       GROUP BY l.id
@@ -33,6 +35,10 @@ export class LandlordService {
   async findOne(id: number) {
     const landlord = await this.repo.findOne({ where: { id } });
     if (!landlord) return null;
+
+    const [countryRow] = landlord.country
+      ? await this.ds.query(`SELECT name FROM country WHERE id = ?`, [landlord.country])
+      : [];
 
     const properties = await this.ds.query(
       `SELECT p.id, p.property_name, p.property_code, p.address,
@@ -47,7 +53,7 @@ export class LandlordService {
       [id],
     );
 
-    return { ...landlord, properties };
+    return { ...landlord, country_name: countryRow?.name ?? landlord.country, properties };
   }
 
   async create(dto: Partial<Landlord> & { password?: string }) {

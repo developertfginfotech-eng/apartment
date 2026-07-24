@@ -25,6 +25,7 @@ interface Owner {
   registration_date: string | null
   id_number: string | null
   country: string | null
+  country_name: string | null
   state: string | null
   city: string | null
   postal_address: string | null
