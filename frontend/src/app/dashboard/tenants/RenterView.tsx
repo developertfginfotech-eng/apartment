@@ -141,25 +141,35 @@ export default function RenterView({ renterId }: { renterId: number }) {
         </div>
 
         {tab === 'Info' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {([
-              ['Renter Type', isCompany ? 'Company' : 'Individual'],
-              [isCompany ? 'Company Name' : 'First Name', renter.first_name || '—'],
-              ...(isCompany
-                ? [['Company Type', renter.company_type || '—']]
-                : [['Middle Name', renter.middle_name || '—'], ['Last Name', renter.last_name || '—']]),
-              [isCompany ? 'Company Email' : 'Email', renter.email || '—'],
-              [isCompany ? 'Company Contact' : 'Contact', renter.contact || '—'],
-              ['NID(National ID)', renter.national_id || '—'],
-              ['Address', renter.address || '—'],
-              ['Status', renter.renter_status === 0 ? 'Expired' : 'Active'],
-            ] as [string, string][]).map(([k, v]) => (
-              <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {([
+                ['Renter Type', isCompany ? 'Company' : 'Individual'],
+                ['First Name', renter.first_name || '—'],
+                ['Middle Name', renter.middle_name || '—'],
+                ['Last Name', renter.last_name || '—'],
+                ['Email', renter.email || '—'],
+                ['Contact', renter.contact || '—'],
+                ['NID(National ID)', renter.national_id || '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
+              <div style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px', gridColumn: '1/-1' }}>
+                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Address</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{renter.address || '—'}</div>
               </div>
-            ))}
-          </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 650 }}>Status :</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--text)' }}>
+                <input type="checkbox" checked={renter.renter_status === 0} disabled readOnly />
+                Expired
+              </label>
+            </div>
+          </>
         )}
 
         {tab === 'Properties' && (
