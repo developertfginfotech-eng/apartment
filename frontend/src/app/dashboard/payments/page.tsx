@@ -230,8 +230,8 @@ export default function PaymentsPage() {
             <table className="af-prop-table" style={{ minWidth: 1150 }}>
               <thead>
                 <tr>
-                  <th>Renter</th><th>Property</th><th>Floor</th><th>Units</th><th>Rent Amount</th>
-                  <th>Start Date</th><th>Last Billing</th><th>Overdue</th><th>Payment Status</th><th>Payment Method</th><th>Action</th>
+                  <th>Renter Name</th><th>Property Name</th><th>Floor</th><th>Units</th><th>Rent Amount</th>
+                  <th>Start Date</th><th>Last Billing</th><th>Overdue Payment</th><th>Payment Status</th><th>Payment Method</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>

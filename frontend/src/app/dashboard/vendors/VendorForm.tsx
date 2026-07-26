@@ -72,7 +72,7 @@ export default function VendorForm({ vendorId }: { vendorId?: number }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 820 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field" style={{ gridColumn: 'span 2' }}>
-            <label>Name</label>
+            <label>Name<span style={{ color: '#f87171' }}> *</span></label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Vendor name" autoFocus/>
           </div>
           <div className="af-field" style={{ gridColumn: 'span 2' }}>

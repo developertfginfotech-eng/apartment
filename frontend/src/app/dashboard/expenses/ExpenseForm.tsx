@@ -143,7 +143,7 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
   }
 
   const save = async () => {
-    if (!form.property_id || !form.title || !form.date || !form.famount) return
+    if (!form.property_id || !form.title || !form.date || !form.famount || !form.tax || !form.type) return
     setSaving(true); setError('')
     try {
       const body = {
@@ -186,7 +186,7 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 820 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <div className="af-field">
-            <label>Property</label>
+            <label>Property<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.property_id} onChange={e => onPropertyChange(e.target.value)}>
               <option value="">-- Select Property --</option>
               {properties.map(p => <option key={p.id} value={p.id}>{p.property_name}</option>)}
@@ -212,12 +212,12 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
             <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Expense title" />
           </div>
           <div className="af-field">
-            <label>Date</label>
+            <label>Date<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
           </div>
 
           <div className="af-field">
-            <label>Type</label>
+            <label>Type<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.type} onChange={e => onTypeChange(e.target.value)}>
               <option value="">-- Select Type --</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.display_name || c.name}</option>)}
@@ -231,19 +231,19 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
             </select>
           </div>
           <div className="af-field">
-            <label>Amount</label>
+            <label>Amount<span style={{ color: '#f87171' }}> *</span></label>
             <input type="number" min="0" step="0.01" value={form.famount} onChange={e => setForm(f => ({ ...f, famount: e.target.value }))} placeholder="0.00" />
           </div>
 
           <div className="af-field">
-            <label>Tax (%)</label>
+            <label>Tax (%)<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.tax} onChange={e => setForm(f => ({ ...f, tax: e.target.value }))}>
               <option value="">-- Select Tax --</option>
               {taxes.map(t => <option key={t.id} value={t.value}>{t.key} ({t.value}%)</option>)}
             </select>
           </div>
           <div className="af-field">
-            <label>Final Amount</label>
+            <label>Final Amount<span style={{ color: '#f87171' }}> *</span></label>
             <input readOnly value={finalAmount} style={{ opacity: 0.75 }} />
           </div>
 

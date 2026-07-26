@@ -76,7 +76,7 @@ export default function TaxForm({ taxId }: { taxId?: number }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 440 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="af-field">
-            <label>Name</label>
+            <label>Name<span style={{ color: '#f87171' }}> *</span></label>
             <input
               type="text"
               value={form.key}
@@ -85,7 +85,7 @@ export default function TaxForm({ taxId }: { taxId?: number }) {
             />
           </div>
           <div className="af-field">
-            <label>Tax(%)</label>
+            <label>Tax(%)<span style={{ color: '#f87171' }}> *</span></label>
             <input
               type="number"
               step="0.01"

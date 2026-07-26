@@ -26,7 +26,7 @@ function NewTransactionInner() {
   const backParams = new URLSearchParams({ leaseId, renter, property })
 
   const save = async () => {
-    if (!form.amount || !form.payment_date) return
+    if (!form.amount || !form.payment_date || !form.payment_month.trim() || !form.deposit_amount) return
     setSaving(true); setError('')
     try {
       const res = await fetch(`${API}/payments/lease/${leaseId}/history`, {
@@ -61,7 +61,7 @@ function NewTransactionInner() {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 640 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field">
-            <label>Payment Month</label>
+            <label>Payment Month<span style={{ color: '#f87171' }}> *</span></label>
             <input value={form.payment_month} onChange={e => setForm(f => ({ ...f, payment_month: e.target.value }))} placeholder="e.g. January 2026" />
           </div>
           <div className="af-field">
@@ -75,11 +75,11 @@ function NewTransactionInner() {
             <input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
           </div>
           <div className="af-field">
-            <label>Deposit Amount</label>
+            <label>Deposit Amount<span style={{ color: '#f87171' }}> *</span></label>
             <input type="number" step="0.01" value={form.deposit_amount} onChange={e => setForm(f => ({ ...f, deposit_amount: e.target.value }))} />
           </div>
           <div className="af-field">
-            <label>Payment Date</label>
+            <label>Payment Date<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.payment_date} onChange={v => setForm(f => ({ ...f, payment_date: v }))} />
           </div>
         </div>

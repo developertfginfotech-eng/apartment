@@ -150,6 +150,7 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
 
   const save = async () => {
     if (!leaseId && (!leaseForm.renter_id || !leaseForm.property_id)) return
+    if (!leaseForm.floor_id || leaseForm.unit_ids.length === 0) return
     if (!leaseForm.amount || !leaseForm.start_date || !leaseForm.end_date) return
     setSaving(true); setError('')
     try {
@@ -215,28 +216,28 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
           <div className="af-modal-form">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="af-field">
-                <label>Renter</label>
+                <label>Renter<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" value={leaseForm.renter_id} onChange={e => setLeaseForm(f => ({ ...f, renter_id: e.target.value }))} disabled={!!leaseId}>
                   <option value="">-- Select Renter --</option>
                   {renters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               </div>
               <div className="af-field">
-                <label>Property</label>
+                <label>Property<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" value={leaseForm.property_id} onChange={e => onPropertyChange(e.target.value)}>
                   <option value="">-- Select Property --</option>
                   {properties.map(p => <option key={p.id} value={p.id}>{p.property_name}</option>)}
                 </select>
               </div>
               <div className="af-field">
-                <label>Floor</label>
+                <label>Floor<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" value={leaseForm.floor_id} onChange={e => onFloorChange(e.target.value)}>
                   <option value="">-- Select Floor --</option>
                   {floors.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
               </div>
               <div className="af-field">
-                <label>Unit(s)</label>
+                <label>Unit(s)<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" multiple value={leaseForm.unit_ids} style={{ height: 84 }}
                   onChange={e => setLeaseForm(f => ({ ...f, unit_ids: Array.from(e.target.selectedOptions, o => o.value) }))}>
                   {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -249,7 +250,7 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
                   <option value="Commercial">Commercial</option>
                 </select>
               </div>
-              <div className="af-field"><label>Rent Amount</label><input type="number" min="0" step="0.01" value={leaseForm.amount} onChange={e => setLeaseForm(f => ({ ...f, amount: e.target.value }))} placeholder="10000"/></div>
+              <div className="af-field"><label>Rent Amount<span style={{ color: '#f87171' }}> *</span></label><input type="number" min="0" step="0.01" value={leaseForm.amount} onChange={e => setLeaseForm(f => ({ ...f, amount: e.target.value }))} placeholder="10000"/></div>
               <div className="af-field"><label>Maintenance</label><input type="number" min="0" step="0.01" value={leaseForm.maintenance} onChange={e => setLeaseForm(f => ({ ...f, maintenance: e.target.value }))} placeholder="0"/></div>
               <div className="af-field">
                 <label>VAT (%)</label>
@@ -272,7 +273,7 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
               </div>
               <div className="af-field"><label>Final Amount</label><input readOnly value={finalAmount} style={{ opacity: 0.75 }}/></div>
               <div className="af-field"><label>Start Date</label><DatePicker value={leaseForm.start_date} onChange={v => setLeaseForm(f => ({ ...f, start_date: v }))}/></div>
-              <div className="af-field"><label>End Date</label><DatePicker value={leaseForm.end_date} onChange={v => setLeaseForm(f => ({ ...f, end_date: v }))}/></div>
+              <div className="af-field"><label>End Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={leaseForm.end_date} onChange={v => setLeaseForm(f => ({ ...f, end_date: v }))}/></div>
               <div className="af-field">
                 <label>Due On (Day of Month)</label>
                 <select className="af-select" value={leaseForm.due_on} onChange={e => setLeaseForm(f => ({ ...f, due_on: e.target.value }))}>

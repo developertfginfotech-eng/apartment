@@ -53,18 +53,18 @@ export default function PaymentForm() {
         <div className="af-modal-form">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="af-field" style={{ gridColumn: '1 / -1' }}>
-              <label>Renter ID</label>
+              <label>Renter ID<span style={{ color: '#f87171' }}> *</span></label>
               <input type="number" value={form.renter_id} onChange={e => setForm(f => ({ ...f, renter_id: e.target.value }))} placeholder="e.g. 1" />
             </div>
             <div className="af-field">
-              <label>Month</label>
+              <label>Month<span style={{ color: '#f87171' }}> *</span></label>
               <select className="af-select" value={form.month} onChange={e => setForm(f => ({ ...f, month: e.target.value }))}>
                 <option value="">-- Select --</option>
                 {MONTH_NAMES.slice(1).map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}
               </select>
             </div>
-            <div className="af-field"><label>Year</label><input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} placeholder="2026" /></div>
-            <div className="af-field"><label>Amount</label><input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" /></div>
+            <div className="af-field"><label>Year<span style={{ color: '#f87171' }}> *</span></label><input type="number" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} placeholder="2026" /></div>
+            <div className="af-field"><label>Amount<span style={{ color: '#f87171' }}> *</span></label><input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" /></div>
             <div className="af-field">
               <label>Status</label>
               <select className="af-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

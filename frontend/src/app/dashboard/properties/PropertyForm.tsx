@@ -101,6 +101,7 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
 
   const save = async () => {
     if (!form.property_name.trim() || !form.address.trim()) return
+    if (!form.landlord_id || !form.property_type || !form.property_code.trim() || !form.ownership_percentage) return
     setSaving(true); setError('')
     try {
       const url = propertyId ? `${API}/properties/${propertyId}` : `${API}/properties`
@@ -255,29 +256,29 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Basic Information</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="af-field">
-                <label>Owner</label>
+                <label>Owner<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" value={form.landlord_id} onChange={e => setForm(f => ({ ...f, landlord_id: e.target.value }))}>
                   <option value="">-- Select Owner --</option>
                   {owners.map(o => <option key={o.id} value={o.id}>{o.first_name} {o.last_name ?? ''}</option>)}
                 </select>
               </div>
               <div className="af-field">
-                <label>Property Type</label>
+                <label>Property Type<span style={{ color: '#f87171' }}> *</span></label>
                 <select className="af-select" value={form.property_type} onChange={e => setForm(f => ({ ...f, property_type: e.target.value }))}>
                   <option value="">Property Type</option>
                   {types.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
               </div>
               <div className="af-field">
-                <label>Property Name</label>
+                <label>Property Name<span style={{ color: '#f87171' }}> *</span></label>
                 <input value={form.property_name} onChange={e => setForm(f => ({ ...f, property_name: e.target.value }))} placeholder="Sunrise Towers" />
               </div>
               <div className="af-field">
-                <label>Property Code</label>
+                <label>Property Code<span style={{ color: '#f87171' }}> *</span></label>
                 <input value={form.property_code} onChange={e => setForm(f => ({ ...f, property_code: e.target.value }))} placeholder="PROP-001" />
               </div>
               <div className="af-field">
-                <label>Percent(%) of ownership</label>
+                <label>Percent(%) of ownership<span style={{ color: '#f87171' }}> *</span></label>
                 <input type="number" value={form.ownership_percentage} onChange={e => setForm(f => ({ ...f, ownership_percentage: e.target.value }))} placeholder="100" />
               </div>
               <div className="af-field" style={{ gridColumn: '1 / -1' }}>

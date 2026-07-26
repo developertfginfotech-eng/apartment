@@ -164,7 +164,12 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
   }
 
   const save = async () => {
-    if (!form.first_name || !form.email) return
+    if (!form.first_name || !form.email || !form.contact) return
+    if (form.renter_type === 'company') {
+      if (!form.company_type) return
+    } else {
+      if (!form.middle_name || !form.last_name) return
+    }
     if (!renterId && (!form.password || form.password !== form.confirm_password)) {
       setError('Password and Confirm Password must match')
       return
@@ -228,7 +233,7 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
           <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Contact Information</div>
           <div className="af-modal-form">
             <div className="af-field">
-              <label>Renter Type</label>
+              <label>Renter Type<span style={{ color: '#f87171' }}> *</span></label>
               <select className="af-select" value={form.renter_type} onChange={e => setForm(f => ({ ...f, renter_type: e.target.value }))}>
                 <option value="individual">Individual</option>
                 <option value="company">Company</option>
@@ -236,17 +241,17 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="af-field">
-                <label>{isCompany ? 'Company Name' : 'First Name'}</label>
+                <label>{isCompany ? 'Company Name' : 'First Name'}<span style={{ color: '#f87171' }}> *</span></label>
                 <input value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} placeholder="John" />
               </div>
               {isCompany ? (
                 <div className="af-field">
-                  <label>Company Type</label>
+                  <label>Company Type<span style={{ color: '#f87171' }}> *</span></label>
                   <input value={form.company_type} onChange={e => setForm(f => ({ ...f, company_type: e.target.value }))} placeholder="Retail, Tech…" />
                 </div>
               ) : (
                 <div className="af-field">
-                  <label>Middle Name</label>
+                  <label>Middle Name<span style={{ color: '#f87171' }}> *</span></label>
                   <input value={form.middle_name} onChange={e => setForm(f => ({ ...f, middle_name: e.target.value }))} placeholder="Name" />
                 </div>
               )}
@@ -254,23 +259,23 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {!isCompany && (
                 <div className="af-field">
-                  <label>Last Name</label>
+                  <label>Last Name<span style={{ color: '#f87171' }}> *</span></label>
                   <input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Doe" />
                 </div>
               )}
               <div className="af-field">
-                <label>{isCompany ? 'Company Email' : 'Email'}</label>
+                <label>{isCompany ? 'Company Email' : 'Email'}<span style={{ color: '#f87171' }}> *</span></label>
                 <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="john@example.com" />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="af-field">
-                <label>{isCompany ? 'Company Contact' : 'Contact'}</label>
+                <label>{isCompany ? 'Company Contact' : 'Contact'}<span style={{ color: '#f87171' }}> *</span></label>
                 <input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="+1 555-0100" />
               </div>
               {!renterId && (
                 <div className="af-field">
-                  <label>Password</label>
+                  <label>Password<span style={{ color: '#f87171' }}> *</span></label>
                   <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" />
                 </div>
               )}

@@ -42,7 +42,7 @@ export default function NewPayrollBatchPage() {
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 440 }}>
-        <div className="af-field"><label>Name</label>
+        <div className="af-field"><label>Name<span style={{ color: '#f87171' }}> *</span></label>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. July 1-15 Payroll" autoFocus /></div>
         <div className="af-field"><label>Start Date</label>
           <DatePicker value={form.start_date} onChange={v => setForm(f => ({ ...f, start_date: v }))} /></div>

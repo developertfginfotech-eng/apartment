@@ -111,10 +111,10 @@ export default function AdminForm({ adminId }: { adminId?: string }) {
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 620 }}>
         <div className="af-modal-form">
-          <div className="af-field"><label>Full name</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" /></div>
-          <div className="af-field"><label>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="jane@company.com" /></div>
+          <div className="af-field"><label>Full name<span style={{ color: '#f87171' }}> *</span></label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" /></div>
+          <div className="af-field"><label>Email<span style={{ color: '#f87171' }}> *</span></label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="jane@company.com" /></div>
           {!adminId && (
-            <div className="af-field"><label>Password (8+ chars)</label><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" minLength={8} /></div>
+            <div className="af-field"><label>Password (8+ chars)<span style={{ color: '#f87171' }}> *</span></label><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" minLength={8} /></div>
           )}
 
           <div style={{ marginTop: 4 }}>

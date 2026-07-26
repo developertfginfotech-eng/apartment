@@ -148,18 +148,18 @@ export default function LoanForm({ loanId }: { loanId?: number }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 720 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field" style={{ gridColumn: '1/-1' }}>
-            <label>Employee Name</label>
+            <label>Employee Name<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.employee_id} onChange={e => sf('employee_id', e.target.value)}>
               <option value="">-- Select Employee --</option>
               {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
           </div>
           <div className="af-field">
-            <label>Amount of Loan</label>
+            <label>Amount of Loan<span style={{ color: '#f87171' }}> *</span></label>
             <input type="number" min="0" step="0.01" value={form.amount_of_loan} onChange={e => sf('amount_of_loan', e.target.value)} placeholder="5000"/>
           </div>
           <div className="af-field">
-            <label>Loan From Company</label>
+            <label>Loan From Company<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.loan_from_company} onChange={e => sf('loan_from_company', e.target.value as Loan['loan_from_company'])}>
               <option value="">Select Loan From Company</option>
               {LOAN_FROM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -180,11 +180,11 @@ export default function LoanForm({ loanId }: { loanId?: number }) {
           )}
 
           <div className="af-field">
-            <label>Date of the Loan</label>
+            <label>Date of the Loan<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.date_of_the_loan} onChange={v => sf('date_of_the_loan', v)}/>
           </div>
           <div className="af-field">
-            <label>Payment Date</label>
+            <label>Payment Date<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.payment_date} onChange={v => sf('payment_date', v)}/>
           </div>
           <div className="af-field">
