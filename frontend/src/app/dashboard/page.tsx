@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import SparkleField from '../../components/SparkleField'
+import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -174,11 +175,11 @@ function Calendar() {
               </div>
               <div className="af-field">
                 <label>Start Date</label>
-                <input type="date" value={form.start} onChange={e => setForm(f => ({ ...f, start: e.target.value }))} />
+                <DatePicker value={form.start} onChange={v => setForm(f => ({ ...f, start: v }))} />
               </div>
               <div className="af-field">
                 <label>End Date</label>
-                <input type="date" value={form.end} onChange={e => setForm(f => ({ ...f, end: e.target.value }))} />
+                <DatePicker value={form.end} onChange={v => setForm(f => ({ ...f, end: v }))} />
               </div>
               <div className="af-field">
                 <label>Description</label>

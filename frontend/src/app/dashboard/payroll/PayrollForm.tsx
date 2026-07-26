@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import DatePicker from '@/components/DatePicker'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -41,8 +43,8 @@ export default function PayrollForm({ payrollId }: { payrollId?: number }) {
         const res = await fetch(`${API}/payroll/${payrollId}`, { headers: authHeaders() })
         const p = await res.json()
         setForm({
-          employee_id: '', start_date: p.start_date ?? '', end_date: p.end_date ?? '',
-          payment_date: p.payment_date ?? '',
+          employee_id: '', start_date: toDateInputValue(p.start_date), end_date: toDateInputValue(p.end_date),
+          payment_date: toDateInputValue(p.payment_date),
           basic: String(p.basic ?? 0), ot_pay: String(p.ot_pay ?? 0), rental: String(p.rental ?? 0),
           absences: String(p.absences ?? 0), late: String(p.late ?? 0),
           sss: String(p.sss ?? 0), phic: String(p.phic ?? 0), hdmf: String(p.hdmf ?? 0),
@@ -118,9 +120,9 @@ export default function PayrollForm({ payrollId }: { payrollId?: number }) {
               </select>
             </div>
           )}
-          <div className="af-field"><label>Start Date</label><input type="date" value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/></div>
-          <div className="af-field"><label>End Date</label><input type="date" value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/></div>
-          <div className="af-field"><label>Payment Date</label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
+          <div className="af-field"><label>Start Date</label><DatePicker value={form.start_date} onChange={v=>setForm(f=>({...f,start_date:v}))}/></div>
+          <div className="af-field"><label>End Date</label><DatePicker value={form.end_date} onChange={v=>setForm(f=>({...f,end_date:v}))}/></div>
+          <div className="af-field"><label>Payment Date</label><DatePicker value={form.payment_date} onChange={v=>setForm(f=>({...f,payment_date:v}))}/></div>
 
           <div style={{gridColumn:'span 3',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
 

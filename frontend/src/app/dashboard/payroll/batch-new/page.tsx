@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -44,9 +45,9 @@ export default function NewPayrollBatchPage() {
         <div className="af-field"><label>Name</label>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. July 1-15 Payroll" autoFocus /></div>
         <div className="af-field"><label>Start Date</label>
-          <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
+          <DatePicker value={form.start_date} onChange={v => setForm(f => ({ ...f, start_date: v }))} /></div>
         <div className="af-field"><label>End Date</label>
-          <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+          <DatePicker value={form.end_date} onChange={v => setForm(f => ({ ...f, end_date: v }))} /></div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
           <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => router.push('/dashboard/payroll')} disabled={saving}>Cancel</button>

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Pagination, { usePagination } from '@/components/Pagination'
+import DatePicker from '@/components/DatePicker'
+import { toDateInputValue, formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -64,7 +66,7 @@ export default function EmployeeTab() {
   const openEdit = (r: Employee) => {
     setEditItem(r)
     setForm({
-      name: r.name, date_of_employment: r.date_of_employment, employment_status: r.employment_status,
+      name: r.name, date_of_employment: toDateInputValue(r.date_of_employment), employment_status: r.employment_status,
       payment_type: String(r.payment_type ?? ''), mobile_number: r.mobile_number, bank_name: r.bank_name,
       account_number: r.account_number, SWIFT_BIC_code: r.SWIFT_BIC_code, tincode: r.tincode ?? '',
     })
@@ -141,7 +143,7 @@ export default function EmployeeTab() {
                 <div className="af-field" style={{gridColumn:'span 2'}}><label>Name</label>
                   <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
                 <div className="af-field"><label>Date of Employment</label>
-                  <input type="date" value={form.date_of_employment} onChange={e=>setForm(f=>({...f,date_of_employment:e.target.value}))}/></div>
+                  <DatePicker value={form.date_of_employment} onChange={v=>setForm(f=>({...f,date_of_employment:v}))}/></div>
                 <div className="af-field"><label>Employment Status</label>
                   <select className="af-select" value={form.employment_status} onChange={e=>setForm(f=>({...f,employment_status:e.target.value}))}>
                     <option value="regular">Regular</option>
@@ -179,7 +181,7 @@ export default function EmployeeTab() {
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginTop:10}}>
               {[
                 ['Name', viewItem.name],
-                ['Date of Employment', viewItem.date_of_employment],
+                ['Date of Employment', formatDate(viewItem.date_of_employment)],
                 ['Employment Status', viewItem.employment_status],
                 ['Payment Type', viewItem.payment_type_name],
                 ['Mobile', viewItem.mobile_number],

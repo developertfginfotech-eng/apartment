@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatDate } from '@/lib/date'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -246,9 +247,9 @@ export default function ReportsPage() {
         <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
           {report.dateFilter && <>
             <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>From Date</label>
-              <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{padding:'8px 10px'}}/></div>
+              <DatePicker value={from} onChange={setFrom}/></div>
             <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>To Date</label>
-              <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{padding:'8px 10px'}}/></div>
+              <DatePicker value={to} onChange={setTo}/></div>
           </>}
           {report.search && (
             <div className="af-field" style={{margin:0,minWidth:200}}><label style={{fontSize:11.5}}>Search</label>

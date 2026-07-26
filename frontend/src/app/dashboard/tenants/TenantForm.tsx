@@ -53,6 +53,7 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
   const [newDocType, setNewDocType] = useState('')
   const [newDocFile, setNewDocFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [pendingDocs, setPendingDocs] = useState<{ type: string; file: File | null }[]>([{ type: '', file: null }])
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [loading, setLoading] = useState(!!renterId)
@@ -102,22 +103,26 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
     })()
   }, [renterId, loadDocs])
 
+  const uploadOne = async (id: number, documentType: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const upRes = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body: fd,
+    })
+    const { url } = await upRes.json()
+    await fetch(`${API}/document/renter`, {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ renter_id: id, document_type: parseInt(documentType, 10), document: url }),
+    })
+  }
+
   const uploadDoc = async () => {
     if (!renterId || !newDocType || !newDocFile) return
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', newDocFile)
-      const upRes = await fetch(`${API}/document/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
-        body: fd,
-      })
-      const { url } = await upRes.json()
-      await fetch(`${API}/document/renter`, {
-        method: 'POST', headers: headers(),
-        body: JSON.stringify({ renter_id: renterId, document_type: parseInt(newDocType, 10), document: url }),
-      })
+      await uploadOne(renterId, newDocType, newDocFile)
       setNewDocType(''); setNewDocFile(null)
       await loadDocs(renterId)
     } catch {
@@ -126,6 +131,12 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
       setUploading(false)
     }
   }
+
+  const setPendingDoc = (i: number, patch: Partial<{ type: string; file: File | null }>) => {
+    setPendingDocs(rows => rows.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  }
+  const addPendingDocRow = () => setPendingDocs(rows => [...rows, { type: '', file: null }])
+  const removePendingDocRow = (i: number) => setPendingDocs(rows => rows.length === 1 ? rows : rows.filter((_, idx) => idx !== i))
 
   const removeDoc = async (id: number) => {
     if (!renterId) return
@@ -171,6 +182,15 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
       const method = renterId ? 'PUT' : 'POST'
       const res    = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) })
       if (!res.ok) throw new Error(`Save failed (${res.status})`)
+
+      if (!renterId) {
+        const created = await res.json()
+        const staged = pendingDocs.filter(d => d.type && d.file)
+        for (const d of staged) {
+          if (d.file) await uploadOne(created.id, d.type, d.file)
+        }
+      }
+
       router.push('/dashboard/tenants')
     } catch (err) {
       setError(err instanceof Error ? err.message : (renterId ? 'Failed to update tenant' : 'Failed to create tenant'))
@@ -196,7 +216,7 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: renterId ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'start', maxWidth: 1000 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start', maxWidth: 1000 }}>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
           <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Contact Information</div>
           <div className="af-modal-form">
@@ -271,8 +291,8 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
           </div>
         </div>
 
-        {renterId && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {renterId && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
               <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Change Password</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -296,65 +316,89 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
                 </button>
               </div>
             </div>
+          )}
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
-              <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Documents</div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
-                  <option value="">-- Select Type --</option>
-                  {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                <div style={{ flex: '1 1 160px' }}>
-                  <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </button>
-              </div>
-            </div>
-
-            {docs.length > 0 && (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
-                <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Uploaded Documents</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
-                  {docs.map(d => (
-                    <div key={d.id} style={{ position: 'relative' }}>
-                      <button
-                        onClick={() => removeDoc(d.id)}
-                        title="Remove document"
-                        style={{
-                          position: 'absolute', top: -8, right: -8, zIndex: 1,
-                          background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
-                          width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
-                        }}
-                      >
-                        ✕
-                      </button>
-                      <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
-                        <div style={{
-                          border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
-                          background: 'var(--surface2)', height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>
-                          {isImage(d.document) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <span style={{ fontSize: 32 }}>📄</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {d.document_type_name ?? 'Document'}
-                        </div>
-                      </a>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
+            <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Documents</div>
+            {!renterId ? (
+              <>
+                {pendingDocs.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <select className="af-select" value={row.type} onChange={e => setPendingDoc(i, { type: e.target.value })} style={{ flex: '1 1 140px' }}>
+                      <option value="">-- Select Type --</option>
+                      {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                    <div style={{ flex: '1 1 160px' }}>
+                      <FileDropInput value={row.file} onChange={file => setPendingDoc(i, { file })} placeholder="Choose a document or drag it here" />
                     </div>
-                  ))}
+                    {pendingDocs.length > 1 && (
+                      <button onClick={() => removePendingDocRow(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={addPendingDocRow} style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 0 }}>
+                  + Add More
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
+                    <option value="">-- Select Type --</option>
+                    {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                  <div style={{ flex: '1 1 160px' }}>
+                    <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
+                  </div>
                 </div>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
+                    {uploading ? 'Uploading…' : 'Upload'}
+                  </button>
+                </div>
+              </>
             )}
           </div>
-        )}
+
+          {renterId && docs.length > 0 && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
+              <div style={{ fontSize: 15, fontWeight: 750, marginBottom: 18 }}>Uploaded Documents</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 16 }}>
+                {docs.map(d => (
+                  <div key={d.id} style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => removeDoc(d.id)}
+                      title="Remove document"
+                      style={{
+                        position: 'absolute', top: -8, right: -8, zIndex: 1,
+                        background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: '50%',
+                        width: 22, height: 22, color: '#ef4444', cursor: 'pointer', fontSize: 12, lineHeight: 1,
+                      }}
+                    >
+                      ✕
+                    </button>
+                    <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ display: 'block', textDecoration: 'none' }}>
+                      <div style={{
+                        border: '1px solid var(--border2)', borderRadius: 10, overflow: 'hidden',
+                        background: 'var(--surface2)', height: 130, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {isImage(d.document) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={`${API}${d.document}`} alt={d.document_type_name ?? 'Document'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: 32 }}>📄</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {d.document_type_name ?? 'Document'}
+                      </div>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </main>
   )

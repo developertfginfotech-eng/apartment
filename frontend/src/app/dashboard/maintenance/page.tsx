@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable'
 import Pagination, { usePagination } from '@/components/Pagination'
 import FileDropInput from '@/components/FileDropInput'
 import ToggleSwitch from '@/components/ToggleSwitch'
+import DatePicker from '@/components/DatePicker'
 import { formatDateTime } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -414,7 +415,7 @@ export default function MaintenancePage() {
                   </div>
                   <div className="af-field">
                     <label>Pdc Cheque Date</label>
-                    <input type="date" value={collectForm.pdc_cheque_date} onChange={e => setCollectForm(f => ({ ...f, pdc_cheque_date: e.target.value }))} />
+                    <DatePicker value={collectForm.pdc_cheque_date} onChange={v => setCollectForm(f => ({ ...f, pdc_cheque_date: v }))} />
                   </div>
                 </div>
               )}

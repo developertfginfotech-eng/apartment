@@ -8,6 +8,7 @@ import SalaryStructureTab from './SalaryStructureTab'
 import EmployeeTab from './EmployeeTab'
 import ManagePayrollTab from './ManagePayrollTab'
 import PayslipTab from './PayslipTab'
+import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -213,11 +214,11 @@ export default function PayrollPage() {
         </div>
         <div className="af-field" style={{margin:0,minWidth:140}}>
           <label style={{fontSize:11.5}}>From Date</label>
-          <input type="date" value={filterFrom} onChange={e=>{setFilterFrom(e.target.value);setPage(1)}} style={{padding:'8px 10px'}}/>
+          <DatePicker value={filterFrom} onChange={v=>{setFilterFrom(v);setPage(1)}}/>
         </div>
         <div className="af-field" style={{margin:0,minWidth:140}}>
           <label style={{fontSize:11.5}}>To Date</label>
-          <input type="date" value={filterTo} onChange={e=>{setFilterTo(e.target.value);setPage(1)}} style={{padding:'8px 10px'}}/>
+          <DatePicker value={filterTo} onChange={v=>{setFilterTo(v);setPage(1)}}/>
         </div>
         {(filterMonth||filterFrom||filterTo) && (
           <button onClick={()=>{setFilterMonth('');setFilterFrom('');setFilterTo('');setPage(1)}} style={{alignSelf:'flex-end',padding:'8px 14px',borderRadius:8,background:'none',border:'1px solid var(--border2)',color:'var(--muted)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>

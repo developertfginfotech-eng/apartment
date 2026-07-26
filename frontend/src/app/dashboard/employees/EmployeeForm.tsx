@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { loadEmployees, saveEmployees, DEPARTMENTS } from './store'
+import DatePicker from '@/components/DatePicker'
 
 const EMPTY_FORM = { name: '', position: '', department: DEPARTMENTS[0], email: '', phone: '', salary: '', joinDate: '' }
 
@@ -82,7 +83,7 @@ export default function EmployeeForm({ employeeId }: { employeeId?: string }) {
           </div>
           <div className="af-field">
             <label>Join date</label>
-            <input type="date" value={form.joinDate} onChange={e => setForm(f => ({ ...f, joinDate: e.target.value }))} />
+            <DatePicker value={form.joinDate} onChange={v => setForm(f => ({ ...f, joinDate: v }))} />
           </div>
         </div>
 

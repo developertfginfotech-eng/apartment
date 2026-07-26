@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import Pagination, { usePagination } from '@/components/Pagination'
+import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -61,12 +62,12 @@ export default function PayslipTab() {
   return (
     <>
       <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
-        <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>From Date</label>
-          <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{padding:'8px 10px'}}/></div>
-        <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>To Date</label>
-          <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{padding:'8px 10px'}}/></div>
-        <div className="af-field" style={{margin:0,minWidth:180}}><label style={{fontSize:11.5}}>Search</label>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, basic, date…" style={{padding:'8px 10px'}}/></div>
+        <div className="af-field" style={{margin:0,minWidth:140}}>
+          <DatePicker value={from} onChange={setFrom} placeholder="MM-DD-YYYY" /></div>
+        <div className="af-field" style={{margin:0,minWidth:140}}>
+          <DatePicker value={to} onChange={setTo} placeholder="MM-DD-YYYY" /></div>
+        <div className="af-field" style={{margin:0,minWidth:180}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{padding:'8px 10px'}}/></div>
         <button className="af-btn-primary" style={{cursor:'pointer',border:'none',padding:'9px 22px'}} onClick={runSearch}>Search</button>
       </div>
 

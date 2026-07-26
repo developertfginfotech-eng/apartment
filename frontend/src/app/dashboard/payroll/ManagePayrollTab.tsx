@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
+import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -85,9 +86,9 @@ export default function ManagePayrollTab() {
 
         <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
           <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>From Date</label>
-            <input type="date" value={detailFrom} onChange={e=>setDetailFrom(e.target.value)} style={{padding:'8px 10px'}}/></div>
+            <DatePicker value={detailFrom} onChange={setDetailFrom}/></div>
           <div className="af-field" style={{margin:0,minWidth:140}}><label style={{fontSize:11.5}}>To Date</label>
-            <input type="date" value={detailTo} onChange={e=>setDetailTo(e.target.value)} style={{padding:'8px 10px'}}/></div>
+            <DatePicker value={detailTo} onChange={setDetailTo}/></div>
           <div className="af-field" style={{margin:0,minWidth:180}}><label style={{fontSize:11.5}}>Search</label>
             <input value={detailSearch} onChange={e=>setDetailSearch(e.target.value)} placeholder="Name, basic, net pay…" style={{padding:'8px 10px'}}/></div>
         </div>
