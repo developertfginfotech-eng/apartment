@@ -20,20 +20,20 @@ interface ReportDef {
 
 const ROWS: ReportDef[][] = [
   [
-    { key:'property',    icon:'🏢', label:'Property Report',     desc:'Floors, units, and renters per property',      endpoint:'property',    dateFilter:false, search:false },
-    { key:'outstanding', icon:'⚠️', label:'Property Outstanding', desc:'Amounts owed vs paid per lease',               endpoint:'outstanding', dateFilter:true,  search:true },
+    { key:'property',    icon:'🏢', label:'Property Report',     desc:'Floors, units, and renters per property',      endpoint:'property',    dateFilter:false, search:false, paginated:true },
+    { key:'outstanding', icon:'⚠️', label:'Property Outstanding', desc:'Amounts owed vs paid per lease',               endpoint:'outstanding', dateFilter:true,  search:true,  paginated:true },
     { key:'ledger',      icon:'📒', label:'Ledger',               desc:'Net outstanding per lease with payments recorded', endpoint:'outstanding', dateFilter:true, search:true, paginated:true, totalColumn:'Outstanding' },
-    { key:'financial',   icon:'📈', label:'Financial Report',    desc:'Revenue, costs, and profit per property',      endpoint:'financial',   dateFilter:true,  search:false },
-    { key:'collection',  icon:'💳', label:'Collection Report',   desc:'Rent payments collected per lease',            endpoint:'collection',  dateFilter:true,  search:true },
-    { key:'utility',     icon:'⚡', label:'Utility Report',      desc:'Utility bills summary per property',           endpoint:'utility',     dateFilter:true,  search:false },
-    { key:'expenses',    icon:'💰', label:'Expenses Report',     desc:'All expenses by property and category',        endpoint:'expenses',    dateFilter:true,  search:true },
+    { key:'financial',   icon:'📈', label:'Financial Report',    desc:'Revenue, costs, and profit per property',      endpoint:'financial',   dateFilter:true,  search:false, paginated:true },
+    { key:'collection',  icon:'💳', label:'Collection Report',   desc:'Rent payments collected per lease',            endpoint:'collection',  dateFilter:true,  search:true,  paginated:true },
+    { key:'utility',     icon:'⚡', label:'Utility Report',      desc:'Utility bills summary per property',           endpoint:'utility',     dateFilter:true,  search:false, paginated:true },
+    { key:'expenses',    icon:'💰', label:'Expenses Report',     desc:'All expenses by property and category',        endpoint:'expenses',    dateFilter:true,  search:true,  paginated:true },
   ],
   [
-    { key:'wtax-expenses', icon:'🧾', label:'Withholding Expenses Report', desc:'Expenses tagged as withholding',      endpoint:'wtax-expenses', dateFilter:true, search:true },
-    { key:'vat',           icon:'🧮', label:'VAT Report',                  desc:'VAT amounts collected per lease',     endpoint:'vat',           dateFilter:true, search:true },
-    { key:'wtax-income',   icon:'📉', label:'Withholding Income Report',   desc:'Withholding tax amounts per lease',   endpoint:'wtax-income',   dateFilter:true, search:true },
-    { key:'parking',       icon:'🅿️', label:'Parking Income Report',       desc:'Parking payments per renter',         endpoint:'parking',       dateFilter:true, search:true },
-    { key:'refund-deposit',icon:'🔁', label:'Refund Deposit Report',       desc:'Security deposit refunds per lease',  endpoint:'refund-deposit',dateFilter:true, search:true },
+    { key:'wtax-expenses', icon:'🧾', label:'Withholding Expenses Report', desc:'Expenses tagged as withholding',      endpoint:'wtax-expenses', dateFilter:true, search:true, paginated:true },
+    { key:'vat',           icon:'🧮', label:'VAT Report',                  desc:'VAT amounts collected per lease',     endpoint:'vat',           dateFilter:true, search:true, paginated:true },
+    { key:'wtax-income',   icon:'📉', label:'Withholding Income Report',   desc:'Withholding tax amounts per lease',   endpoint:'wtax-income',   dateFilter:true, search:true, paginated:true },
+    { key:'parking',       icon:'🅿️', label:'Parking Income Report',       desc:'Parking payments per renter',         endpoint:'parking',       dateFilter:true, search:true, paginated:true },
+    { key:'refund-deposit',icon:'🔁', label:'Refund Deposit Report',       desc:'Security deposit refunds per lease',  endpoint:'refund-deposit',dateFilter:true, search:true, paginated:true },
   ],
 ]
 const ALL_REPORTS = ROWS.flat()
@@ -82,7 +82,7 @@ export default function ReportsPage() {
       { label:'Total Floor', get:r=>r.total_floor },
       { label:'Total Unit', get:r=>r.total_unit },
       { label:'Total Renter', get:r=>r.total_renter },
-      { label:'Status', get:r=>Number(r.total_renter)>0?'On Rent':'Available' },
+      { label:'Status', get:r=>Number(r.available_units)>0?'Available':'On Rent' },
     ],
     outstanding: [
       { label:'Lease No', get:r=>r.lease_no },
@@ -105,12 +105,15 @@ export default function ReportsPage() {
     ],
     financial: [
       { label:'Property', get:r=>r.property_name },
-      { label:'Rent Collected', get:r=>fmt(r.pay_amount) },
-      { label:'Owner Maintenance', get:r=>fmt(r.owner_maintenance) },
-      { label:'Renter Maintenance', get:r=>fmt(r.renter_maintenance) },
-      { label:'Expenses', get:r=>fmt(r.expenses) },
-      { label:'Deposit', get:r=>fmt(r.deposit) },
-      { label:'Net Profit', get:r=>fmt(Number(r.pay_amount??0)-Number(r.expenses??0)-Number(r.owner_maintenance??0)+Number(r.renter_maintenance??0)) },
+      { label:'Property Total Rent Collected', get:r=>fmt(r.pay_amount) },
+      { label:'Owner Profit', get:r=>fmt(r.own_revenue) },
+      { label:'Company Profit', get:r=>fmt(r.company_revenue) },
+      { label:'Maintenances by owner', get:r=>fmt(r.owner_maintenance) },
+      { label:'Maintenances by renter', get:r=>fmt(r.renter_maintenance) },
+      { label:'Expenses by owner', get:r=>fmt(r.expenses) },
+      { label:'Deposit by renter', get:r=>fmt(r.deposit) },
+      { label:'Profit', get:r=>fmt(r.profit) },
+      { label:'Loss', get:r=>fmt(r.loss) },
     ],
     collection: [
       { label:'Lease No', get:r=>r.lease_no },
@@ -181,7 +184,7 @@ export default function ReportsPage() {
   }
 
   const cols = columns[active]
-  const numericCols = new Set(['Total Rent','Paid','Balance','Outstanding','Rent Collected','Owner Maintenance','Renter Maintenance','Expenses','Deposit','Net Profit','Amount','VAT Amount','WHT Amount','MCWD (Water)','VECO (Gas)','Security','Telephone','Other','Total'])
+  const numericCols = new Set(['Total Rent','Paid','Balance','Outstanding','Property Total Rent Collected','Owner Profit','Company Profit','Maintenances by owner','Maintenances by renter','Expenses by owner','Deposit by renter','Profit','Loss','Amount','VAT Amount','WHT Amount','MCWD (Water)','VECO (Gas)','Security','Telephone','Other','Total'])
 
   // Ledger mirrors Laravel's ledger.blade.php: only leases with at least one recorded
   // payment, paginated 50/page, with a Total Amount footer summed across all matching rows

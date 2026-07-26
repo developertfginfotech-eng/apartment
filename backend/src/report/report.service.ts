@@ -14,11 +14,14 @@ export class ReportService {
         p.id, p.property_name, p.property_code, p.address,
         COUNT(DISTINCT pf.id) AS total_floor,
         COUNT(DISTINCT pu.id) AS total_unit,
-        COUNT(DISTINCT r.id)  AS total_renter
+        (SELECT COUNT(*) FROM tbl_leases l WHERE l.property_id = p.id) AS total_renter,
+        (SELECT COUNT(*) FROM tbl_property_units pu2
+           WHERE pu2.property_id = p.id
+             AND NOT EXISTS (SELECT 1 FROM tbl_lease_units lu WHERE lu.unit_id = pu2.id)
+        ) AS available_units
       FROM tbl_properties p
-      LEFT JOIN tbl_property_floors pf ON pf.property_id = p.id AND pf.status = 1
-      LEFT JOIN tbl_property_units pu  ON pu.property_id = p.id AND pu.status = 1
-      LEFT JOIN tbl_renters r ON r.property_id = p.id AND r.status = 1
+      LEFT JOIN tbl_property_floors pf ON pf.property_id = p.id
+      LEFT JOIN tbl_property_units pu  ON pu.property_id = p.id
       WHERE p.status = 1
       GROUP BY p.id
       ORDER BY p.id ASC
@@ -64,11 +67,15 @@ export class ReportService {
     return this.ds.query(`
       SELECT
         p.id, p.property_name, p.ownership_percentage,
-        COALESCE(pay.pay_amount, 0)   AS pay_amount,
-        COALESCE(exp.expenses, 0)     AS expenses,
+        COALESCE(pay.pay_amount, 0) AS pay_amount,
+        ROUND(COALESCE(pay.pay_amount, 0) * (COALESCE(p.ownership_percentage, 0) / 100), 2) AS own_revenue,
+        ROUND(COALESCE(pay.pay_amount, 0) - COALESCE(pay.pay_amount, 0) * (COALESCE(p.ownership_percentage, 0) / 100), 2) AS company_revenue,
         COALESCE(m.owner_maintenance, 0)  AS owner_maintenance,
         COALESCE(m.renter_maintenance, 0) AS renter_maintenance,
-        COALESCE(dep.deposit, 0)      AS deposit
+        COALESCE(exp.expenses, 0)     AS expenses,
+        COALESCE(dep.deposit, 0)      AS deposit,
+        ROUND(COALESCE(pay.pay_amount, 0) - COALESCE(exp.expenses, 0) - COALESCE(m.owner_maintenance, 0) + COALESCE(m.renter_maintenance, 0), 2) AS profit,
+        ROUND(COALESCE(exp.expenses, 0) + COALESCE(m.owner_maintenance, 0), 2) AS loss
       FROM tbl_properties p
       LEFT JOIN (SELECT property_id, SUM(amount) AS pay_amount FROM tbl_pay_rents GROUP BY property_id) pay ON pay.property_id = p.id
       LEFT JOIN (SELECT property_id, SUM(amount) AS expenses FROM tbl_expenses GROUP BY property_id) exp ON exp.property_id = p.id
