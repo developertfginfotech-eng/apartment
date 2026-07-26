@@ -239,15 +239,15 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
                 </div>
               ) : (
                 <div className="af-field">
-                  <label>Last Name</label>
-                  <input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Doe" />
+                  <label>Middle Name</label>
+                  <input value={form.middle_name} onChange={e => setForm(f => ({ ...f, middle_name: e.target.value }))} placeholder="Name" />
                 </div>
               )}
             </div>
             {!isCompany && (
               <div className="af-field">
-                <label>Middle Name</label>
-                <input value={form.middle_name} onChange={e => setForm(f => ({ ...f, middle_name: e.target.value }))} placeholder="Name" />
+                <label>Last Name</label>
+                <input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Doe" />
               </div>
             )}
             <div className="af-field">
