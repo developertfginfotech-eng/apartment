@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { formatDate } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -16,18 +15,6 @@ interface Lease {
   units: string | null
   rent_amount: string | number
   rent_deposit: string | number | null
-}
-
-interface Transaction {
-  id: number
-  lease_id: number
-  amount: string | number
-  title: string
-  reason: string | null
-  type: 'add' | 'deduct'
-  payment_date: string
-  payment_type: string | null
-  receipt_image: string | null
 }
 
 export default function SecurityMoneyPage() {
@@ -43,10 +30,6 @@ export default function SecurityMoneyPage() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [search, setSearch] = useState('')
-
-  const [selectedLease, setSelectedLease] = useState<Lease | null>(null)
-  const [history, setHistory] = useState<Transaction[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -94,50 +77,14 @@ export default function SecurityMoneyPage() {
     doc.save('security-money.pdf')
   }
 
-  const historyExportHeaders = ['#', 'Title', 'Type', 'Payment Date', 'Reason']
-  const historyExportRows = () => history.map((t, i) => [i + 1, t.title || '-', t.type, formatDate(t.payment_date), t.reason || '-'])
-
-  const exportHistoryCSV = () => {
-    const csv = [historyExportHeaders, ...historyExportRows()].map(r => r.join(',')).join('\n')
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'security-money-history.csv' })
-    a.click()
-  }
-
-  const exportHistoryPDF = () => {
-    const doc = new jsPDF()
-    doc.setFontSize(14)
-    doc.text('Security Money History', 14, 14)
-    autoTable(doc, {
-      head: [historyExportHeaders],
-      body: historyExportRows().map(r => r.map(String)),
-      startY: 20,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [34, 197, 94] },
-    })
-    doc.save('security-money-history.pdf')
-  }
-
-  const fetchHistory = useCallback(async (leaseId: number) => {
-    setHistoryLoading(true)
-    try {
-      const res = await fetch(`${API}/security-money/${leaseId}/history`, { headers: authHeaders() })
-      const data = await res.json()
-      setHistory(Array.isArray(data) ? data : [])
-    } catch { setHistory([]) }
-    finally { setHistoryLoading(false) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const openHistory = (lease: Lease) => { setSelectedLease(lease); fetchHistory(lease.id) }
-  const closeHistory = () => { setSelectedLease(null); setHistory([]) }
-
-  const openAdd = (lease: Lease) => {
+  const openHistory = (lease: Lease) => {
     const params = new URLSearchParams({
       lease_id: String(lease.id),
       renter_name: lease.renter_name?.trim() || '',
       property_name: lease.property_name || '',
       rent_deposit: String(lease.rent_deposit ?? ''),
     })
-    router.push(`/dashboard/security-money/new?${params}`)
+    router.push(`/dashboard/security-money/history?${params}`)
   }
 
   const getPageNums = () => {
@@ -220,11 +167,11 @@ export default function SecurityMoneyPage() {
                   <td style={{ fontWeight: 700, color: '#22c55e', fontVariantNumeric: 'tabular-nums' }}>{fmt(l.rent_deposit)}</td>
                   <td>
                     <button
-                      className="af-btn-secondary"
-                      style={{ cursor: 'pointer', padding: '6px 12px', fontSize: 12.5 }}
+                      className="af-prop-act edit"
+                      title="Edit / History"
                       onClick={() => openHistory(l)}
                     >
-                      Edit / History
+                      ✏️
                     </button>
                   </td>
                 </tr>
@@ -256,78 +203,6 @@ export default function SecurityMoneyPage() {
         <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10 }}>Showing {leases.length} of {total} entries</div>
       )}
 
-      {/* History Modal */}
-      {selectedLease && (
-        <div className="af-modal-overlay" onClick={closeHistory}>
-          <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-              <div>
-                <h2 className="af-modal-title">Security Money History</h2>
-                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-                  {selectedLease.renter_name?.trim()} · {selectedLease.property_name} · Deposit: <strong style={{ color: '#22c55e' }}>{fmt(selectedLease.rent_deposit)}</strong>
-                </p>
-              </div>
-              <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none', flexShrink: 0 }} onClick={() => openAdd(selectedLease)}>+ Add New</button>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <button onClick={exportHistoryCSV} style={{ padding: '6px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Export To Excel</button>
-              <button onClick={exportHistoryPDF} style={{ padding: '6px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontWeight: 600, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Export To Pdf</button>
-            </div>
-
-            {historyLoading ? (
-              <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '24px 0' }}>Loading…</p>
-            ) : (
-              <div className="af-prop-table-wrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
-                <table className="af-prop-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Title</th>
-                      <th>Type</th>
-                      <th>Amount</th>
-                      <th>Payment Date</th>
-                      <th>Reason</th>
-                      <th>Receipt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.length === 0 ? (
-                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No transactions found.</td></tr>
-                    ) : history.map((tx, i) => (
-                      <tr key={tx.id}>
-                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                        <td style={{ fontWeight: 650 }}>{tx.title}</td>
-                        <td>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100,
-                            background: tx.type === 'add' ? 'rgba(34,197,94,0.14)' : 'rgba(239,68,68,0.14)',
-                            color: tx.type === 'add' ? '#22c55e' : '#ef4444',
-                            textTransform: 'uppercase',
-                          }}>
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: tx.type === 'add' ? '#22c55e' : '#ef4444' }}>
-                          {tx.type === 'add' ? '+' : '-'}{fmt(tx.amount)}
-                        </td>
-                        <td style={{ fontSize: 13 }}>{formatDate(tx.payment_date)}</td>
-                        <td style={{ fontSize: 13, color: 'var(--muted)' }}>{tx.reason || '—'}</td>
-                        <td style={{ fontSize: 13 }}>
-                          {tx.receipt_image ? <a href={`${API}${tx.receipt_image}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>View</a> : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={closeHistory}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

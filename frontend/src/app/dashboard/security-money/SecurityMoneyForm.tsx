@@ -33,6 +33,11 @@ export default function SecurityMoneyForm({ leaseId, renterName, propertyName, r
 
   const fmt = (v: string | number | null | undefined) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+  const backParams = new URLSearchParams({
+    lease_id: String(leaseId), renter_name: renterName ?? '', property_name: propertyName ?? '', rent_deposit: rentDeposit ?? '',
+  })
+  const backHref = `/dashboard/security-money/history?${backParams}`
+
   const uploadReceipt = async (file: File): Promise<string | null> => {
     const body = new FormData()
     body.append('file', file)
@@ -66,7 +71,7 @@ export default function SecurityMoneyForm({ leaseId, renterName, propertyName, r
         }),
       })
       if (!res.ok) throw new Error()
-      router.push('/dashboard/security-money')
+      router.push(backHref)
     } catch { setError('Failed to save transaction') }
     finally { setSaving(false) }
   }
@@ -83,7 +88,7 @@ export default function SecurityMoneyForm({ leaseId, renterName, propertyName, r
             </p>
           )}
         </div>
-        <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => router.push('/dashboard/security-money')}>← Back to Security Money</button>
+        <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => router.push(backHref)}>← Back to History</button>
       </div>
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
@@ -126,7 +131,7 @@ export default function SecurityMoneyForm({ leaseId, renterName, propertyName, r
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-          <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => router.push('/dashboard/security-money')} disabled={saving}>Cancel</button>
+          <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => router.push(backHref)} disabled={saving}>Cancel</button>
           <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={save} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
