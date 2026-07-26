@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
@@ -34,6 +35,45 @@ const VIEW_TABS = ['Info', 'Renters', 'Floors', 'Units', 'Financial Report', 'Do
 type ViewTab = typeof VIEW_TABS[number]
 
 const isImage = (url: string) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)
+
+function useTableSearch<T>(items: T[], filterFn: (item: T, q: string) => boolean) {
+  const [search, setSearch] = useState('')
+  const [pageSize, setPageSize] = useState(10)
+  const filtered = search ? items.filter(i => filterFn(i, search.toLowerCase())) : items
+  const { page, setPage, pageItems } = usePagination(filtered, pageSize)
+  return { search, setSearch, pageSize, setPageSize, page, setPage, filtered, pageItems }
+}
+
+function ListControls({ pageSize, setPageSize, search, setSearch, setPage }: {
+  pageSize: number; setPageSize: (n: number) => void
+  search: string; setSearch: (s: string) => void
+  setPage: (p: number) => void
+}) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
+      <div className="af-field" style={{ margin: 0, minWidth: 90 }}>
+        <label style={{ fontSize: 11.5 }}>Show</label>
+        <select
+          className="af-select"
+          value={pageSize}
+          onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+          style={{ padding: '8px 10px' }}
+        >
+          {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </div>
+      <div className="af-field" style={{ margin: 0 }}>
+        <label style={{ fontSize: 11.5 }}>Search</label>
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1) }}
+          placeholder="Search…"
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 220 }}
+        />
+      </div>
+    </div>
+  )
+}
 
 export default function PropertyView({ propertyId }: { propertyId: number }) {
   const router = useRouter()
@@ -72,6 +112,13 @@ export default function PropertyView({ propertyId }: { propertyId: number }) {
     await loadDocs(propertyId)
   }
 
+  const allUnits = (viewing?.floors ?? []).flatMap(f => f.units.map(u => ({ ...u, floor_name: f.name })))
+
+  const floorsQ = useTableSearch(viewing?.floors ?? [], (f, q) => f.name.toLowerCase().includes(q))
+  const unitsQ = useTableSearch(allUnits, (u, q) => u.name.toLowerCase().includes(q) || u.floor_name.toLowerCase().includes(q))
+  const rentersQ = useTableSearch(viewing?.renters ?? [], (r, q) =>
+    (r.name || '').toLowerCase().includes(q) || (r.contact || '').toLowerCase().includes(q) || (r.email || '').toLowerCase().includes(q))
+
   if (loading) {
     return <main className="af-db-main"><div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading…</div></main>
   }
@@ -85,7 +132,6 @@ export default function PropertyView({ propertyId }: { propertyId: number }) {
   }
 
   const totalUnits = viewing.floors.reduce((n, f) => n + f.units.length, 0)
-  const allUnits = viewing.floors.flatMap(f => f.units.map(u => ({ ...u, floor_name: f.name })))
   const ownerLine = viewing.owner_name?.trim()
     ? `${viewing.owner_name.trim()} - ${Number(viewing.ownership_percentage ?? 0)}%`
     : 'No owners available.'
@@ -157,62 +203,74 @@ export default function PropertyView({ propertyId }: { propertyId: number }) {
           )}
 
           {tab === 'Renters' && (
-            <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
-              <table className="af-prop-table">
-                <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Email</th></tr></thead>
-                <tbody>
-                  {viewing.renters.length === 0 ? (
-                    <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No renters found</td></tr>
-                  ) : viewing.renters.map((r, i) => (
-                    <tr key={r.id}>
-                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontWeight: 600 }}>{r.name?.trim() || '—'}</td>
-                      <td style={{ fontSize: 13 }}>{r.contact || '—'}</td>
-                      <td style={{ fontSize: 13 }}>{r.email || '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <ListControls pageSize={rentersQ.pageSize} setPageSize={rentersQ.setPageSize} search={rentersQ.search} setSearch={rentersQ.setSearch} setPage={rentersQ.setPage} />
+              <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
+                <table className="af-prop-table">
+                  <thead><tr><th>#</th><th>Name</th><th>Contact</th><th>Email</th></tr></thead>
+                  <tbody>
+                    {rentersQ.filtered.length === 0 ? (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No renters found</td></tr>
+                    ) : rentersQ.pageItems.map((r, i) => (
+                      <tr key={r.id}>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(rentersQ.page - 1) * rentersQ.pageSize + i + 1}</td>
+                        <td style={{ fontWeight: 600 }}>{r.name?.trim() || '—'}</td>
+                        <td style={{ fontSize: 13 }}>{r.contact || '—'}</td>
+                        <td style={{ fontSize: 13 }}>{r.email || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination page={rentersQ.page} pageSize={rentersQ.pageSize} totalItems={rentersQ.filtered.length} onPageChange={rentersQ.setPage} />
+              </div>
+            </>
           )}
 
           {tab === 'Floors' && (
-            <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
-              <table className="af-prop-table">
-                <thead><tr><th>#</th><th>Name</th><th>Area (m²)</th></tr></thead>
-                <tbody>
-                  {viewing.floors.length === 0 ? (
-                    <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No floors found</td></tr>
-                  ) : viewing.floors.map((f, i) => (
-                    <tr key={f.id}>
-                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontWeight: 600 }}>{f.name}</td>
-                      <td style={{ fontSize: 13 }}>{f.area}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <ListControls pageSize={floorsQ.pageSize} setPageSize={floorsQ.setPageSize} search={floorsQ.search} setSearch={floorsQ.setSearch} setPage={floorsQ.setPage} />
+              <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
+                <table className="af-prop-table">
+                  <thead><tr><th>#</th><th>Name</th><th>Area (m²)</th></tr></thead>
+                  <tbody>
+                    {floorsQ.filtered.length === 0 ? (
+                      <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No floors found</td></tr>
+                    ) : floorsQ.pageItems.map((f, i) => (
+                      <tr key={f.id}>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(floorsQ.page - 1) * floorsQ.pageSize + i + 1}</td>
+                        <td style={{ fontWeight: 600 }}>{f.name}</td>
+                        <td style={{ fontSize: 13 }}>{f.area}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination page={floorsQ.page} pageSize={floorsQ.pageSize} totalItems={floorsQ.filtered.length} onPageChange={floorsQ.setPage} />
+              </div>
+            </>
           )}
 
           {tab === 'Units' && (
-            <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
-              <table className="af-prop-table">
-                <thead><tr><th>#</th><th>Floor</th><th>Name</th><th>Area (m²)</th></tr></thead>
-                <tbody>
-                  {allUnits.length === 0 ? (
-                    <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No units found</td></tr>
-                  ) : allUnits.map((u, i) => (
-                    <tr key={u.id}>
-                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                      <td style={{ fontSize: 13 }}>{u.floor_name}</td>
-                      <td style={{ fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ fontSize: 13 }}>{u.area}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <ListControls pageSize={unitsQ.pageSize} setPageSize={unitsQ.setPageSize} search={unitsQ.search} setSearch={unitsQ.setSearch} setPage={unitsQ.setPage} />
+              <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
+                <table className="af-prop-table">
+                  <thead><tr><th>#</th><th>Floor</th><th>Name</th><th>Area (m²)</th></tr></thead>
+                  <tbody>
+                    {unitsQ.filtered.length === 0 ? (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No units found</td></tr>
+                    ) : unitsQ.pageItems.map((u, i) => (
+                      <tr key={u.id}>
+                        <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(unitsQ.page - 1) * unitsQ.pageSize + i + 1}</td>
+                        <td style={{ fontSize: 13 }}>{u.floor_name}</td>
+                        <td style={{ fontWeight: 600 }}>{u.name}</td>
+                        <td style={{ fontSize: 13 }}>{u.area}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination page={unitsQ.page} pageSize={unitsQ.pageSize} totalItems={unitsQ.filtered.length} onPageChange={unitsQ.setPage} />
+              </div>
+            </>
           )}
 
           {tab === 'Financial Report' && (
