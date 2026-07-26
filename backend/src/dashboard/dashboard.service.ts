@@ -39,7 +39,8 @@ export class DashboardService {
       let cursor = new Date(start.getFullYear(), start.getMonth(), dueOn);
       while (cursor <= end) {
         const paid = payMap.get(`${lease.id}|${ymKey(cursor)}`);
-        total += paid !== undefined ? monthlyRent - paid : monthlyRent;
+        const due = paid !== undefined ? monthlyRent - paid : monthlyRent;
+        total += Math.max(0, due);
         cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, dueOn);
       }
     }
@@ -54,7 +55,7 @@ export class DashboardService {
            [utilDue], [utilReceived], [maintDue], [maintReceived], [expense],
            dueRent] = await Promise.all([
       q(`SELECT COUNT(*) as total FROM tbl_properties`),
-      q(`SELECT COUNT(*) as total FROM tbl_renters WHERE status=1`),
+      q(`SELECT COUNT(*) as total FROM tbl_renters`),
       q(`SELECT COUNT(*) as total FROM tbl_leases WHERE status=1`),
       q(`SELECT COUNT(DISTINCT pu.property_id) as total
          FROM tbl_property_units pu
@@ -85,7 +86,7 @@ export class DashboardService {
       q(`SELECT COUNT(*) as cnt, COALESCE(SUM(total_rent),0) as total FROM tbl_utilities WHERE payment_status=1`),
       q(`SELECT COUNT(*) as cnt, COALESCE(SUM(CAST(amount AS DECIMAL(15,2))),0) as total FROM tbl_maintenances WHERE payment_status=0`),
       q(`SELECT COUNT(*) as cnt, COALESCE(SUM(CAST(amount AS DECIMAL(15,2))),0) as total FROM tbl_maintenances WHERE payment_status=1`),
-      q(`SELECT COALESCE(SUM(amount),0) as total FROM tbl_expenses`),
+      q(`SELECT COALESCE(SUM(amount),0) as total FROM tbl_expenses WHERE status=1`),
       this.totalDueRent(),
     ]);
 
