@@ -194,12 +194,27 @@ export default function LeasesPage() {
                   <td style={{ fontSize: 12.5 }}>{formatDate(l.lastbill_date)}</td>
                   <td><span className="af-status-pill" style={{ background: STA[bucket].bg, color: STA[bucket].color }}>{STA[bucket].label}</span></td>
                   <td>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, width: 52 }}>
-                      <button title="View" onClick={() => router.push(`/dashboard/leases/view?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>👁</button>
-                      <button title="Edit" onClick={() => router.push(`/dashboard/leases/edit?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>✏️</button>
-                      <button title="Rent Escalation" onClick={() => router.push(`/dashboard/leases/escalate?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🏠</button>
-                      <button title="Delete" onClick={() => deleteLease(l.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🗑️</button>
-                    </div>
+                    {bucket === 'inactive' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          title="Renew"
+                          onClick={() => router.push(`/dashboard/leases/renew?id=${l.id}`)}
+                          style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 650, cursor: 'pointer' }}
+                        >
+                          Renew
+                        </button>
+                        <button title="View" onClick={() => router.push(`/dashboard/leases/view?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>👁</button>
+                        <button title="Edit" onClick={() => router.push(`/dashboard/leases/edit?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>✏️</button>
+                        <button title="Delete" onClick={() => deleteLease(l.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🗑️</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, width: 52 }}>
+                        <button title="View" onClick={() => router.push(`/dashboard/leases/view?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>👁</button>
+                        <button title="Edit" onClick={() => router.push(`/dashboard/leases/edit?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>✏️</button>
+                        <button title="Rent Escalation" onClick={() => router.push(`/dashboard/leases/escalate?id=${l.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🏠</button>
+                        <button title="Delete" onClick={() => deleteLease(l.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>🗑️</button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

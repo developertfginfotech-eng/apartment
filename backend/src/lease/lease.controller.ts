@@ -15,5 +15,6 @@ export class LeaseController {
   @Post()              create(@Body() dto: any)                           { return this.svc.create(dto); }
   @Put(':id')          update(@Param('id') id: string, @Body() dto: any)  { return this.svc.update(+id, dto); }
   @Post(':id/escalate') escalate(@Param('id') id: string, @Body() dto: any) { return this.svc.escalate(+id, dto); }
+  @Post(':id/renew')    renew(@Param('id') id: string, @Body() dto: any)    { return this.svc.renew(+id, dto); }
   @Delete(':id')       remove(@Param('id') id: string)                    { return this.svc.remove(+id); }
 }

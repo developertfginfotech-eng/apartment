@@ -54,9 +54,10 @@ export default function MessagesPage() {
 
   useEffect(() => { load(); loadRecipients() }, [load, loadRecipients])
 
-  const matchingRecipients = form.to.trim()
-    ? recipients.filter(r => r.name.toLowerCase().includes(form.to.trim().toLowerCase())).slice(0, 8)
-    : []
+  const matchingRecipients = (form.to.trim()
+    ? recipients.filter(r => r.name.toLowerCase().includes(form.to.trim().toLowerCase()))
+    : recipients
+  ).slice(0, 50)
 
   const unread = messages.filter(m => !m.read).length
   const filtered = messages.filter(m => filter==='all' ? true : filter==='unread' ? !m.read : m.read)
@@ -153,11 +154,11 @@ export default function MessagesPage() {
                   onChange={e=>{ setForm(f=>({...f,to:e.target.value})); setShowSuggestions(true) }}
                   onFocus={()=>setShowSuggestions(true)}
                   onBlur={()=>setTimeout(()=>setShowSuggestions(false), 150)}
-                  placeholder="Start typing a renter or owner name…"
+                  placeholder="Select or search a renter or owner…"
                   autoComplete="off"
                 />
                 {showSuggestions && matchingRecipients.length > 0 && (
-                  <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,marginTop:4,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:8,maxHeight:180,overflowY:'auto',boxShadow:'0 8px 24px rgba(0,0,0,0.25)'}}>
+                  <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,marginTop:4,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:8,maxHeight:260,overflowY:'auto',boxShadow:'0 8px 24px rgba(0,0,0,0.25)'}}>
                     {matchingRecipients.map((r,i) => (
                       <div
                         key={`${r.name}-${i}`}

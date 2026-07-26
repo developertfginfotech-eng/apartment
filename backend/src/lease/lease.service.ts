@@ -153,6 +153,44 @@ export class LeaseService implements OnModuleInit {
     return updated;
   }
 
+  async renew(id: number, dto: any) {
+    const lease = await this.repo.findOne({ where: { id } });
+    if (!lease) throw new NotFoundException();
+    if (!dto.amount || !dto.end_date) {
+      throw new BadRequestException('Rent Amount and End Date are required');
+    }
+
+    await this.ds.query(
+      `INSERT INTO lease_agreement_histories
+        (lease_id, lease_no, amount, type, tax, wtax_applicable, wtax, maintenance, rent_amount, document_image, start_date, end_date, total_rent, status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id, lease.lease_no, lease.amount, 'Renew', lease.tax, lease.wtax_applicable, lease.wtax,
+        lease.maintenance, lease.rent_amount, lease.document_image, lease.start_date, lease.end_date, lease.total_rent, lease.status,
+      ],
+    );
+
+    const updated = await this.repo.save({
+      ...lease,
+      start_date: dto.start_date || lease.start_date,
+      end_date: dto.end_date,
+      amount: dto.amount,
+      rent_amount: dto.rent_amount,
+      tax: dto.tax,
+      wtax_applicable: dto.wtax_applicable,
+      wtax: dto.wtax,
+      maintenance: dto.maintenance,
+      status: 1,
+    });
+
+    const [renter] = await this.ds.query(
+      `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
+      [lease.renter_id],
+    );
+    await this.notifications.notify('lease', 'Lease renewed', `Lease for ${renter?.name ?? 'a renter'} was renewed`);
+    return updated;
+  }
+
   async findSummary(status: number, search?: string) {
     const conditions: string[] = ['l.status = ?'];
     const bindings: any[] = [status];
