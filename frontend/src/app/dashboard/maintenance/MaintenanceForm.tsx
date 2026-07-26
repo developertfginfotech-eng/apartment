@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import FileDropInput from '@/components/FileDropInput'
+import DatePicker from '@/components/DatePicker'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -252,7 +253,7 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
             </div>
             <div className="af-field">
               <label>Date<span style={{ color: '#f87171' }}> *</span></label>
-              <input type="datetime-local" className="af-select" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+              <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="MM-DD-YYYY HH:MM" showTime />
             </div>
             <div className="af-field">
               <label>Requested By</label>

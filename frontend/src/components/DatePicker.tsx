@@ -8,6 +8,7 @@ interface DatePickerProps {
   onChange: (v: string) => void
   placeholder?: string
   style?: React.CSSProperties
+  showTime?: boolean
 }
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
@@ -16,9 +17,15 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
+function splitValue(v: string): { datePart: string; timePart: string } {
+  if (!v) return { datePart: '', timePart: '' }
+  const [datePart, timePart] = v.split('T')
+  return { datePart: datePart ?? '', timePart: timePart ?? '' }
+}
+
 function parseYMD(v: string): Date | null {
   if (!v) return null
-  const [y, m, d] = v.split('-').map(Number)
+  const [y, m, d] = splitValue(v).datePart.split('-').map(Number)
   if (!y || !m || !d) return null
   return new Date(y, m - 1, d)
 }
@@ -27,18 +34,25 @@ function toYMD(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function formatDisplay(v: string): string {
+function formatDisplay(v: string, showTime?: boolean): string {
   const d = parseYMD(v)
   if (!d) return ''
   // Pinned to 'en-US' so month/day/year order stays fixed regardless of browser locale.
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  const dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  if (!showTime) return dateStr
+  const timePart = splitValue(v).timePart
+  if (!timePart) return dateStr
+  const [hh, mm] = timePart.split(':').map(Number)
+  const t = new Date(2000, 0, 1, hh || 0, mm || 0)
+  return `${dateStr}, ${t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
 }
 
-export default function DatePicker({ value, onChange, placeholder = 'Select date', style }: DatePickerProps) {
+export default function DatePicker({ value, onChange, placeholder = 'Select date', style, showTime }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const [mounted, setMounted] = useState(false)
   const selected = parseYMD(value)
+  const timePart = splitValue(value).timePart
   const today = new Date()
   const [cursor, setCursor] = useState(() => selected ?? today)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -97,7 +111,11 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
 
   const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 
-  const pick = (d: Date) => { onChange(toYMD(d)); setOpen(false) }
+  const pick = (d: Date) => {
+    onChange(showTime ? `${toYMD(d)}T${timePart || '00:00'}` : toYMD(d))
+    if (!showTime) setOpen(false)
+  }
+  const pickTime = (t: string) => onChange(`${toYMD(selected ?? today)}T${t}`)
   const goMonth = (delta: number) => setCursor(new Date(year, month + delta, 1))
 
   const panel = open && (
@@ -126,9 +144,20 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
           )
         })}
       </div>
+      {showTime && (
+        <div style={{ padding: '8px 10px 0' }}>
+          <input
+            type="time"
+            className="af-select"
+            value={timePart}
+            onChange={e => pickTime(e.target.value)}
+            style={{ width: '100%' }}
+          />
+        </div>
+      )}
       <div className="af-datepicker-footer">
         <button type="button" className="af-datepicker-link" onClick={() => { onChange(''); setOpen(false) }}>Clear</button>
-        <button type="button" className="af-datepicker-link" onClick={() => pick(today)}>Today</button>
+        <button type="button" className="af-datepicker-link" onClick={() => { pick(today); if (showTime) setOpen(false) }}>Today</button>
       </div>
     </div>
   )
@@ -140,7 +169,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Select date
         onClick={() => setOpen(o => !o)}
         className="af-datepicker-trigger"
       >
-        <span style={{ color: value ? 'var(--text)' : 'var(--muted)' }}>{value ? formatDisplay(value) : placeholder}</span>
+        <span style={{ color: value ? 'var(--text)' : 'var(--muted)' }}>{value ? formatDisplay(value, showTime) : placeholder}</span>
         <span aria-hidden style={{ fontSize: 14, opacity: 0.7 }}>📅</span>
       </button>
 
