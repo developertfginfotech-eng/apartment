@@ -10,7 +10,8 @@ interface Notice {
   id: string
   title: string
   desc: string
-  recipient: 'All' | 'Tenants' | 'Owners' | 'Staff'
+  recipient: string
+  attachment: string | null
   sender: string | null
   date: string
   status: 'active' | 'inactive'
@@ -49,7 +50,7 @@ export default function NoticeBoardPage() {
 
   useEffect(() => { fetchNotices() }, [fetchNotices])
 
-  const filtered = filter === 'All Types' ? notices : notices.filter(n => n.recipient === filter)
+  const filtered = filter === 'All Types' ? notices : notices.filter(n => n.recipient === filter || n.recipient.split(',').includes(filter))
   const { page, setPage, pageSize, pageItems } = usePagination(filtered, 10)
 
   const del = async (id: string) => {
@@ -99,15 +100,28 @@ export default function NoticeBoardPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--muted)', padding: '36px 0' }}>No notices found</td></tr>
               ) : pageItems.map((n, i) => {
-                const rc = RECIPIENT_COLORS[n.recipient] ?? RECIPIENT_COLORS['All']
+                const recipients = n.recipient === 'All' ? ['All'] : n.recipient.split(',').filter(Boolean)
                 return (
                   <tr key={n.id}>
                     <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                     <td style={{ fontWeight: 650 }}>{n.title}</td>
                     <td style={{ fontSize: 13 }}>{n.sender || 'Admin'}</td>
-                    <td><span style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, ...rc }}>{n.recipient}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {recipients.map(r => {
+                          const rc = RECIPIENT_COLORS[r] ?? RECIPIENT_COLORS['All']
+                          return <span key={r} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100, ...rc }}>{r}</span>
+                        })}
+                      </div>
+                    </td>
                     <td style={{ fontSize: 13, color: 'var(--muted)', maxWidth: 260 }}>{truncate(n.desc, 80)}</td>
-                    <td style={{ fontSize: 13, color: 'var(--muted)' }}>—</td>
+                    <td style={{ fontSize: 13 }}>
+                      {n.attachment ? (
+                        <a href={`${API}${n.attachment}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>📎</a>
+                      ) : (
+                        <span style={{ color: 'var(--muted)' }}>—</span>
+                      )}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/notice-board/edit?id=${n.id}`)}>✏️</button>
