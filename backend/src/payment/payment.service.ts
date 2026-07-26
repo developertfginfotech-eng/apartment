@@ -120,6 +120,46 @@ export class PaymentService {
     );
   }
 
+  // ── Due-month breakdown for the Add/Edit Payment History "Select Months" picker ──
+  async findLeaseMonths(leaseId: number) {
+    const [lease] = await this.ds.query(
+      `SELECT rent_amount, start_date, end_date, due_on FROM tbl_leases WHERE id = ?`,
+      [leaseId],
+    );
+    if (!lease) throw new NotFoundException('Lease not found');
+    if (!lease.start_date) return [];
+
+    const rows = await this.ds.query(
+      `SELECT payment_month, SUM(amount) AS paid FROM tbl_pay_rents
+       WHERE lease_id = ? AND payment_month IS NOT NULL GROUP BY payment_month`,
+      [leaseId],
+    );
+    const paidMap = new Map<string, number>();
+    for (const r of rows) paidMap.set(r.payment_month, parseFloat(r.paid) || 0);
+
+    const monthlyRent = parseFloat(lease.rent_amount) || 0;
+    const dueOn = parseInt(lease.due_on, 10) || 1;
+    const start = new Date(lease.start_date);
+    const now = new Date();
+    const end = lease.end_date && new Date(lease.end_date) < now ? new Date(lease.end_date) : now;
+
+    const months: { ym: string; label: string; rent_amount: number; paid_amount: number; remaining_amount: number }[] = [];
+    let cursor = new Date(start.getFullYear(), start.getMonth(), dueOn);
+    while (cursor <= end) {
+      const ym = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+      const paid = paidMap.get(ym) ?? 0;
+      months.push({
+        ym,
+        label: cursor.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        rent_amount: monthlyRent,
+        paid_amount: paid,
+        remaining_amount: Math.max(0, monthlyRent - paid),
+      });
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, dueOn);
+    }
+    return months.reverse();
+  }
+
   async findHistoryOne(id: number) {
     const rows = await this.ds.query(
       `SELECT pr.id, pr.lease_id, pr.renter_id, pr.month, pr.payment_month, pr.year, pr.amount,
@@ -154,14 +194,22 @@ export class PaymentService {
     const [lease] = await this.ds.query(`SELECT renter_id, property_id FROM tbl_leases WHERE id = ?`, [leaseId]);
     if (!lease) throw new NotFoundException('Lease not found');
     await this.ds.query(
-      `INSERT INTO tbl_pay_rents (lease_id, renter_id, property_id, payment_month, amount, deposit_amount, payment_type, payment_date, status)
-       VALUES (?,?,?,?,?,?,?,?,1)`,
+      `INSERT INTO tbl_pay_rents (
+         lease_id, renter_id, property_id, payment_month, amount, deposit_amount, payment_type, payment_date,
+         receipt_image, remark, cheque_details, cheque_image, online_details, online_image,
+         pdc_cheque_details, pdc_cheque_image, pdc_cheque_date, status
+       ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
       [
         leaseId, lease.renter_id, lease.property_id,
         body.payment_month ?? null, body.amount ?? 0, body.deposit_amount ?? 0,
         body.payment_type ?? 'Cash', body.payment_date ?? null,
+        body.receipt_image ?? null, body.remark ?? null,
+        body.cheque_details ?? null, body.cheque_image ?? null,
+        body.online_details ?? null, body.online_image ?? null,
+        body.pdc_cheque_details ?? null, body.pdc_cheque_image ?? null, body.pdc_cheque_date ?? null,
       ],
     );
+    await this.ds.query(`UPDATE tbl_leases SET lastbill_date = NOW() WHERE id = ?`, [leaseId]);
     const [renter] = await this.ds.query(
       `SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), name) AS name FROM tbl_renters WHERE id = ?`,
       [lease.renter_id],

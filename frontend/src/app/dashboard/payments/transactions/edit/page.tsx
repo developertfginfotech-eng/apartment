@@ -12,6 +12,7 @@ const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
 interface HistoryRow {
   id: number
   lease_id: number | null
+  payment_month: string | null
   amount: string | number
   payment_date: string | null
   payment_type: string | null
@@ -24,6 +25,8 @@ interface HistoryRow {
   pdc_cheque_date: string | null
 }
 
+interface LeaseMonth { ym: string; label: string; rent_amount: number; paid_amount: number; remaining_amount: number }
+
 function EditTransactionInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -33,6 +36,7 @@ function EditTransactionInner() {
   const property = searchParams.get('property') ?? ''
 
   const [row, setRow] = useState<HistoryRow | null>(null)
+  const [months, setMonths] = useState<LeaseMonth[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -70,6 +74,16 @@ function EditTransactionInner() {
       .catch(() => setError('Failed to load payment'))
       .finally(() => setLoading(false))
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!leaseId) return
+    fetch(`${API}/payments/lease/${leaseId}/months`, { headers: authHeaders() })
+      .then(res => res.json())
+      .then(d => Array.isArray(d) && setMonths(d))
+      .catch(() => {})
+  }, [leaseId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedMonth = months.find(m => m.ym === row?.payment_month)
 
   const uploadFile = async (file: File): Promise<string | null> => {
     const body = new FormData()
@@ -130,7 +144,15 @@ function EditTransactionInner() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field">
             <label>Rent Amount</label>
-            <input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            <input value={form.amount} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+          </div>
+          <div className="af-field">
+            <label>Select Months</label>
+            <input value={selectedMonth?.label ?? row.payment_month ?? '—'} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+          </div>
+          <div className="af-field">
+            <label>Remaining Amount</label>
+            <input value={selectedMonth ? selectedMonth.remaining_amount.toFixed(2) : '0.00'} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
           </div>
           <div className="af-field">
             <label>Deposit Amount</label>

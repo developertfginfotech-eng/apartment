@@ -1,11 +1,14 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DatePicker from '@/components/DatePicker'
+import FileDropInput from '@/components/FileDropInput'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const PAYMENT_TYPES = ['Cash', 'Cheque', 'Pdc Cheque', 'Online']
+
+interface LeaseMonth { ym: string; label: string; rent_amount: number; paid_amount: number; remaining_amount: number }
 
 function NewTransactionInner() {
   const router = useRouter()
@@ -14,7 +17,14 @@ function NewTransactionInner() {
   const renter = searchParams.get('renter') ?? ''
   const property = searchParams.get('property') ?? ''
 
-  const [form, setForm] = useState({ payment_month: '', amount: '', deposit_amount: '', payment_type: 'Cash', payment_date: '' })
+  const [months, setMonths] = useState<LeaseMonth[]>([])
+  const [form, setForm] = useState({
+    payment_month: '', deposit_amount: '', payment_type: 'Cash', payment_date: '', remark: '',
+    cheque_details: '', cheque_image: null as File | null,
+    online_details: '', online_image: null as File | null,
+    pdc_cheque_details: '', pdc_cheque_image: null as File | null, pdc_cheque_date: '',
+    receipt_image: null as File | null,
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,19 +35,55 @@ function NewTransactionInner() {
 
   const backParams = new URLSearchParams({ leaseId, renter, property })
 
+  useEffect(() => {
+    if (!leaseId) return
+    fetch(`${API}/payments/lease/${leaseId}/months`, { headers: authHeaders() })
+      .then(res => res.json())
+      .then(d => Array.isArray(d) && setMonths(d))
+      .catch(() => {})
+  }, [leaseId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedMonth = months.find(m => m.ym === form.payment_month)
+
+  const uploadFile = async (file: File): Promise<string | null> => {
+    const body = new FormData()
+    body.append('file', file)
+    const res = await fetch(`${API}/document/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+      body,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.url ?? null
+  }
+
   const save = async () => {
-    if (!form.amount || !form.payment_date || !form.payment_month.trim() || !form.deposit_amount) return
+    if (!form.payment_month || !form.payment_date || !form.deposit_amount) return
     setSaving(true); setError('')
     try {
+      const body: Record<string, unknown> = {
+        payment_month: form.payment_month,
+        amount: selectedMonth?.rent_amount ?? 0,
+        deposit_amount: parseFloat(form.deposit_amount) || 0,
+        payment_type: form.payment_type,
+        payment_date: form.payment_date,
+        remark: form.remark,
+      }
+      if (form.receipt_image) body.receipt_image = await uploadFile(form.receipt_image)
+      if (form.payment_type === 'Cheque') {
+        body.cheque_details = form.cheque_details
+        if (form.cheque_image) body.cheque_image = await uploadFile(form.cheque_image)
+      } else if (form.payment_type === 'Pdc Cheque') {
+        body.pdc_cheque_details = form.pdc_cheque_details
+        body.pdc_cheque_date = form.pdc_cheque_date
+        if (form.pdc_cheque_image) body.pdc_cheque_image = await uploadFile(form.pdc_cheque_image)
+      } else if (form.payment_type === 'Online') {
+        body.online_details = form.online_details
+        if (form.online_image) body.online_image = await uploadFile(form.online_image)
+      }
       const res = await fetch(`${API}/payments/lease/${leaseId}/history`, {
-        method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({
-          payment_month: form.payment_month,
-          amount: parseFloat(form.amount) || 0,
-          deposit_amount: parseFloat(form.deposit_amount) || 0,
-          payment_type: form.payment_type,
-          payment_date: form.payment_date,
-        }),
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error(`Save failed (${res.status})`)
       router.push(`/dashboard/payments/transactions?${backParams}`)
@@ -58,31 +104,103 @@ function NewTransactionInner() {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 640 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 700 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field">
-            <label>Payment Month<span style={{ color: '#f87171' }}> *</span></label>
-            <input value={form.payment_month} onChange={e => setForm(f => ({ ...f, payment_month: e.target.value }))} placeholder="e.g. January 2026" />
+            <label>Rent Amount</label>
+            <input value={selectedMonth ? selectedMonth.rent_amount.toFixed(2) : ''} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
           </div>
           <div className="af-field">
-            <label>Payment Type</label>
-            <select className="af-select" value={form.payment_type} onChange={e => setForm(f => ({ ...f, payment_type: e.target.value }))}>
-              {PAYMENT_TYPES.map(pt => <option key={pt} value={pt}>{pt}</option>)}
+            <label>Select Months<span style={{ color: '#f87171' }}> *</span></label>
+            <select className="af-select" value={form.payment_month} onChange={e => setForm(f => ({ ...f, payment_month: e.target.value }))}>
+              <option value="">-- Select Months --</option>
+              {months.map(m => (
+                <option key={m.ym} value={m.ym}>{m.label}{m.remaining_amount <= 0 ? ' (Paid)' : ''}</option>
+              ))}
             </select>
           </div>
           <div className="af-field">
-            <label>Rent Amount</label>
-            <input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-          </div>
-          <div className="af-field">
-            <label>Deposit Amount<span style={{ color: '#f87171' }}> *</span></label>
-            <input type="number" step="0.01" value={form.deposit_amount} onChange={e => setForm(f => ({ ...f, deposit_amount: e.target.value }))} />
+            <label>Remaining Amount</label>
+            <input value={selectedMonth ? selectedMonth.remaining_amount.toFixed(2) : '0.00'} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
           </div>
           <div className="af-field">
             <label>Payment Date<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.payment_date} onChange={v => setForm(f => ({ ...f, payment_date: v }))} />
           </div>
         </div>
+
+        <div className="af-field" style={{ marginTop: 4 }}>
+          <label>Select Mode</label>
+          <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+            {PAYMENT_TYPES.map(pt => (
+              <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="new_payment_type" checked={form.payment_type === pt} onChange={() => setForm(f => ({ ...f, payment_type: pt }))} />
+                {pt}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {form.payment_type === 'Cheque' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+            <div className="af-field">
+              <label>Cheque Details</label>
+              <textarea rows={3} value={form.cheque_details} onChange={e => setForm(f => ({ ...f, cheque_details: e.target.value }))} />
+            </div>
+            <div className="af-field">
+              <label>Cheque Image</label>
+              <FileDropInput accept="image/*,.pdf" value={form.cheque_image} onChange={file => setForm(f => ({ ...f, cheque_image: file }))} />
+            </div>
+          </div>
+        )}
+
+        {form.payment_type === 'Pdc Cheque' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+            <div className="af-field">
+              <label>Pdc Cheque Details</label>
+              <textarea rows={3} value={form.pdc_cheque_details} onChange={e => setForm(f => ({ ...f, pdc_cheque_details: e.target.value }))} />
+            </div>
+            <div className="af-field">
+              <label>Pdc Cheque Image</label>
+              <FileDropInput accept="image/*,.pdf" value={form.pdc_cheque_image} onChange={file => setForm(f => ({ ...f, pdc_cheque_image: file }))} />
+            </div>
+            <div className="af-field">
+              <label>Pdc Cheque Date</label>
+              <DatePicker value={form.pdc_cheque_date} onChange={v => setForm(f => ({ ...f, pdc_cheque_date: v }))} />
+            </div>
+          </div>
+        )}
+
+        {form.payment_type === 'Online' && (
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+            <div className="af-field">
+              <label>Online Details</label>
+              <textarea rows={3} value={form.online_details} onChange={e => setForm(f => ({ ...f, online_details: e.target.value }))} />
+            </div>
+            <div className="af-field">
+              <label>Online Image</label>
+              <FileDropInput accept="image/*,.pdf" value={form.online_image} onChange={file => setForm(f => ({ ...f, online_image: file }))} />
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--border2)', paddingTop: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="af-field">
+              <label>Deposit Amount<span style={{ color: '#f87171' }}> *</span></label>
+              <input type="number" step="0.01" value={form.deposit_amount} onChange={e => setForm(f => ({ ...f, deposit_amount: e.target.value }))} />
+            </div>
+            <div className="af-field">
+              <label>Receipt Image</label>
+              <FileDropInput accept="image/*,.pdf" value={form.receipt_image} onChange={file => setForm(f => ({ ...f, receipt_image: file }))} />
+            </div>
+          </div>
+          <div className="af-field">
+            <label>Remark</label>
+            <textarea rows={2} value={form.remark} onChange={e => setForm(f => ({ ...f, remark: e.target.value }))} />
+          </div>
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
           <button className="af-btn-primary" style={{ cursor: 'pointer', border: 'none' }} onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Add Payment'}</button>
         </div>
