@@ -140,21 +140,6 @@ export default function MaintenancePage() {
     }
   }
 
-  const deleteRecord = async (id: number) => {
-    if (!confirm('Delete this maintenance record?')) return
-    setError('')
-    try {
-      const res = await fetch(`${API}/maintenance/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-      })
-      if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
-      await fetchRecords()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete record')
-    }
-  }
-
   const changeMaintenanceStatus = async (r: Maintenance, status: number) => {
     if (status === 2 && !r.amount) { alert('Please add maintenance amount first!'); return }
     if (status === 3) {
@@ -349,8 +334,6 @@ export default function MaintenancePage() {
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
                       <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/maintenance/view?id=${r.id}`)}>👁</button>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/maintenance/edit?id=${r.id}`)}>✏️</button>
-                      <button className="af-prop-act delete" title="Delete" onClick={() => deleteRecord(r.id)}>🗑️</button>
                     </td>
                     <td>
                       {showPayNow
