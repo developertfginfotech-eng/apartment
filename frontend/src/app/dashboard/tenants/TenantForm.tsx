@@ -20,6 +20,7 @@ type FormState = {
   national_id: string
   address: string
   password: string
+  confirm_password: string
   renter_status: string
 }
 
@@ -34,6 +35,7 @@ const EMPTY_FORM: FormState = {
   national_id: '',
   address: '',
   password: '',
+  confirm_password: '',
   renter_status: '1',
 }
 
@@ -92,6 +94,7 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
           national_id:   r.national_id ?? '',
           address:       r.address ?? '',
           password:      '',
+          confirm_password: '',
           renter_status: String(r.renter_status),
         })
         await loadDocs(renterId)
@@ -162,6 +165,10 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
 
   const save = async () => {
     if (!form.first_name || !form.email) return
+    if (!renterId && (!form.password || form.password !== form.confirm_password)) {
+      setError('Password and Confirm Password must match')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -244,40 +251,56 @@ export default function TenantForm({ renterId }: { renterId?: number }) {
                 </div>
               )}
             </div>
-            {!isCompany && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {!isCompany && (
+                <div className="af-field">
+                  <label>Last Name</label>
+                  <input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Doe" />
+                </div>
+              )}
               <div className="af-field">
-                <label>Last Name</label>
-                <input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} placeholder="Doe" />
+                <label>{isCompany ? 'Company Email' : 'Email'}</label>
+                <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="john@example.com" />
               </div>
-            )}
-            <div className="af-field">
-              <label>{isCompany ? 'Company Email' : 'Email'}</label>
-              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="john@example.com" />
             </div>
-            <div className="af-field">
-              <label>{isCompany ? 'Company Contact' : 'Contact'}</label>
-              <input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="+1 555-0100" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="af-field">
+                <label>{isCompany ? 'Company Contact' : 'Contact'}</label>
+                <input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} placeholder="+1 555-0100" />
+              </div>
+              {!renterId && (
+                <div className="af-field">
+                  <label>Password</label>
+                  <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" />
+                </div>
+              )}
             </div>
-            <div className="af-field">
-              <label>NID(National ID)</label>
-              <input value={form.national_id} onChange={e => setForm(f => ({ ...f, national_id: e.target.value }))} placeholder="NID(National ID)" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {!renterId && (
+                <div className="af-field">
+                  <label>Confirm Password</label>
+                  <input type="password" value={form.confirm_password} onChange={e => setForm(f => ({ ...f, confirm_password: e.target.value }))} placeholder="Confirm Password" />
+                </div>
+              )}
+              <div className="af-field">
+                <label>NID(National ID)</label>
+                <input value={form.national_id} onChange={e => setForm(f => ({ ...f, national_id: e.target.value }))} placeholder="NID(National ID)" />
+              </div>
             </div>
             <div className="af-field">
               <label>Address</label>
               <textarea className="af-select" rows={2} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Address" />
             </div>
-            {!renterId && (
-              <div className="af-field">
-                <label>Password</label>
-                <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Password" />
-              </div>
-            )}
-            <div className="af-field">
-              <label>Status</label>
-              <select className="af-select" value={form.renter_status} onChange={e => setForm(f => ({ ...f, renter_status: e.target.value }))}>
-                <option value="1">Active</option>
-                <option value="0">Expired</option>
-              </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 650 }}>Status :</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--text)' }}>
+                <input
+                  type="checkbox"
+                  checked={form.renter_status === '0'}
+                  onChange={e => setForm(f => ({ ...f, renter_status: e.target.checked ? '0' : '1' }))}
+                />
+                Expired
+              </label>
             </div>
 
             <div style={{ display: 'flex', gap: 10, marginTop: 8, justifyContent: 'flex-end' }}>
