@@ -49,6 +49,7 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
   const [error, setError]     = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [propSearch, setPropSearch] = useState('')
+  const [propPageSize, setPropPageSize] = useState(10)
 
   const loadDocs = useCallback(async (id: number) => {
     const res = await fetch(`${API}/document/landlord?landlord_id=${id}`, { headers: headers() })
@@ -81,7 +82,7 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
     ? allProperties.filter(p =>
         [p.property_code, p.property_name, p.address].some(v => v?.toLowerCase().includes(propSearch.toLowerCase())))
     : allProperties
-  const { page: propPage, setPage: setPropPage, pageSize: propPageSize, pageItems: propPageItems } = usePagination(filteredProperties, 10)
+  const { page: propPage, setPage: setPropPage, pageItems: propPageItems } = usePagination(filteredProperties, propPageSize)
 
   if (loading) {
     return <main className="af-db-main"><div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading…</div></main>
@@ -147,8 +148,7 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
             {([
               ['Owner Type', viewing.owner_type || '—'],
               ['First Name', viewing.first_name],
-              [viewing.owner_type === 'company' ? 'Company Type' : 'Middle Name',
-                (viewing.owner_type === 'company' ? viewing.company_type : viewing.middle_name) || '—'],
+              ['Middle Name', viewing.middle_name || '—'],
               ['Last Name', viewing.last_name || '—'],
               ['Phone', viewing.phone || '—'],
               ['Email', viewing.email || '—'],
@@ -171,13 +171,27 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
 
         {tab === 'Properties' && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-              <input
-                value={propSearch}
-                onChange={e => { setPropSearch(e.target.value); setPropPage(1) }}
-                placeholder="Search…"
-                style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 220 }}
-              />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
+              <div className="af-field" style={{ margin: 0, minWidth: 90 }}>
+                <label style={{ fontSize: 11.5 }}>Show</label>
+                <select
+                  className="af-select"
+                  value={propPageSize}
+                  onChange={e => { setPropPageSize(Number(e.target.value)); setPropPage(1) }}
+                  style={{ padding: '8px 10px' }}
+                >
+                  {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="af-field" style={{ margin: 0 }}>
+                <label style={{ fontSize: 11.5 }}>Search</label>
+                <input
+                  value={propSearch}
+                  onChange={e => { setPropSearch(e.target.value); setPropPage(1) }}
+                  placeholder="Search…"
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 220 }}
+                />
+              </div>
             </div>
             <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
               <table className="af-prop-table">

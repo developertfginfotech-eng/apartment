@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import FileDropInput from '@/components/FileDropInput'
 
@@ -12,6 +12,10 @@ interface Doc { id: number; document_type: number; document: string; document_ty
 interface Owner { id: number; first_name: string; last_name: string | null }
 interface PropertyType { id: number; name: string }
 interface DocType { id: number; name: string }
+
+interface PendingUnit { key: string; name: string; area: string }
+interface PendingFloor { key: string; name: string; area: string; units: PendingUnit[] }
+interface PendingDoc { key: string; docType: string; file: File }
 
 type FormState = {
   landlord_id: string
@@ -47,10 +51,15 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
   const [floors, setFloors] = useState<Floor[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
   const [newFloor, setNewFloor] = useState({ name: '', area: '' })
-  const [newUnit, setNewUnit] = useState<Record<number, { name: string; area: string }>>({})
+  const [newUnit, setNewUnit] = useState<Record<string, { name: string; area: string }>>({})
   const [newDocType, setNewDocType] = useState('')
   const [newDocFile, setNewDocFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+
+  const [pendingFloors, setPendingFloors] = useState<PendingFloor[]>([])
+  const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([])
+  const nextKey = useRef(0)
+  const makeKey = () => String(++nextKey.current)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -99,6 +108,39 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
       const body = { ...form, landlord_id: form.landlord_id ? parseInt(form.landlord_id, 10) : null }
       const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) })
       if (!res.ok) throw new Error()
+
+      if (!propertyId) {
+        const created = await res.json()
+        const newId = created.id
+        for (const floor of pendingFloors) {
+          const fRes = await fetch(`${API}/property-floor`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ property_id: newId, name: floor.name, area: parseFloat(floor.area) || 0 }),
+          })
+          const { id: floorId } = await fRes.json()
+          for (const unit of floor.units) {
+            await fetch(`${API}/property-unit`, {
+              method: 'POST', headers: authHeaders(),
+              body: JSON.stringify({ property_id: newId, floor_id: floorId, name: unit.name, area: parseFloat(unit.area) || 0 }),
+            })
+          }
+        }
+        for (const doc of pendingDocs) {
+          const fd = new FormData()
+          fd.append('file', doc.file)
+          const upRes = await fetch(`${API}/document/upload`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${localStorage.getItem('apt_token')}` },
+            body: fd,
+          })
+          const { url: docUrl } = await upRes.json()
+          await fetch(`${API}/document/property`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ property_id: newId, document_type: parseInt(doc.docType, 10), document: docUrl }),
+          })
+        }
+      }
+
       router.push('/dashboard/properties')
     } catch { setError(propertyId ? 'Failed to update property' : 'Failed to create property') }
     finally { setSaving(false) }
@@ -166,6 +208,32 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
     await loadDetail(propertyId)
   }
 
+  const addPendingFloor = () => {
+    if (!newFloor.name.trim()) return
+    setPendingFloors(fs => [...fs, { key: makeKey(), name: newFloor.name, area: newFloor.area, units: [] }])
+    setNewFloor({ name: '', area: '' })
+  }
+
+  const removePendingFloor = (key: string) => setPendingFloors(fs => fs.filter(f => f.key !== key))
+
+  const addPendingUnit = (floorKey: string) => {
+    const u = newUnit[floorKey]
+    if (!u?.name.trim()) return
+    setPendingFloors(fs => fs.map(f => f.key === floorKey ? { ...f, units: [...f.units, { key: makeKey(), name: u.name, area: u.area }] } : f))
+    setNewUnit(m => ({ ...m, [floorKey]: { name: '', area: '' } }))
+  }
+
+  const removePendingUnit = (floorKey: string, unitKey: string) =>
+    setPendingFloors(fs => fs.map(f => f.key === floorKey ? { ...f, units: f.units.filter(u => u.key !== unitKey) } : f))
+
+  const addPendingDoc = () => {
+    if (!newDocType || !newDocFile) return
+    setPendingDocs(ds => [...ds, { key: makeKey(), docType: newDocType, file: newDocFile }])
+    setNewDocType(''); setNewDocFile(null)
+  }
+
+  const removePendingDoc = (key: string) => setPendingDocs(ds => ds.filter(d => d.key !== key))
+
   if (loading) {
     return <main className="af-db-main"><div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading…</div></main>
   }
@@ -181,8 +249,8 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
 
       {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: propertyId ? '1fr 1fr' : '1fr', gap: 24, alignItems: 'start' }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: propertyId ? undefined : 820 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
           <div className="af-modal-form">
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Basic Information</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -227,32 +295,50 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
           </div>
         </div>
 
-        {propertyId && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Documents</div>
             <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
               <select className="af-select" value={newDocType} onChange={e => setNewDocType(e.target.value)} style={{ flex: '1 1 140px' }}>
-                <option value="">-- Select Type --</option>
+                <option value="">Select Type</option>
                 {docTypes.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
               <div style={{ flex: '1 1 160px' }}>
                 <FileDropInput value={newDocFile} onChange={setNewDocFile} placeholder="Choose a document or drag it here" />
               </div>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
-                {uploading ? 'Uploading…' : 'Upload'}
-              </button>
+              {propertyId ? (
+                <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={uploadDoc} disabled={uploading || !newDocType || !newDocFile}>
+                  {uploading ? 'Uploading…' : 'Upload'}
+                </button>
+              ) : (
+                <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={addPendingDoc} disabled={!newDocType || !newDocFile}>
+                  Add
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-              {docs.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 4 }}>
+              {docs.length === 0 && pendingDocs.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13 }}>No documents uploaded</div>}
               {docs.map(d => (
                 <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
                   <a href={`${API}${d.document}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{d.document_type_name ?? 'Document'}</a>
                   <button onClick={() => removeDoc(d.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
                 </div>
               ))}
+              {pendingDocs.map(d => (
+                <div key={d.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface2)', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+                  <span>{docTypes.find(t => String(t.id) === d.docType)?.name ?? 'Document'} — {d.file.name}</span>
+                  <button onClick={() => removePendingDoc(d.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
+                </div>
+              ))}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="af-link-btn" style={{ cursor: 'pointer', color: 'var(--accent)', background: 'none', border: 'none', fontSize: 13, padding: '4px 0' }} onClick={propertyId ? undefined : addPendingDoc}>+ Add More</button>
+            </div>
+          </div>
 
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Floor/Unit</div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Floor/Unit</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Area to be (m²)</div>
             {floors.map(f => (
               <div key={f.id} style={{ background: 'var(--surface2)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -266,19 +352,38 @@ export default function PropertyForm({ propertyId }: { propertyId?: number }) {
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: 6, marginTop: 6, paddingLeft: 14 }}>
-                  <input placeholder="Unit" value={newUnit[f.id]?.name ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.id]: { name: e.target.value, area: m[f.id]?.area ?? '' } }))} style={{ flex: 1, fontSize: 12, padding: '5px 8px' }} />
-                  <input placeholder="Area" type="number" value={newUnit[f.id]?.area ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.id]: { name: m[f.id]?.name ?? '', area: e.target.value } }))} style={{ width: 70, fontSize: 12, padding: '5px 8px' }} />
+                  <input placeholder="Unit" value={newUnit[String(f.id)]?.name ?? ''} onChange={e => setNewUnit(m => ({ ...m, [String(f.id)]: { name: e.target.value, area: m[String(f.id)]?.area ?? '' } }))} style={{ flex: 1, fontSize: 12, padding: '5px 8px' }} />
+                  <input placeholder="Area" type="number" value={newUnit[String(f.id)]?.area ?? ''} onChange={e => setNewUnit(m => ({ ...m, [String(f.id)]: { name: m[String(f.id)]?.name ?? '', area: e.target.value } }))} style={{ width: 70, fontSize: 12, padding: '5px 8px' }} />
                   <button className="af-btn-secondary" style={{ cursor: 'pointer', fontSize: 12, padding: '4px 10px' }} onClick={() => addUnit(f.id)}>+ Add More Unit</button>
+                </div>
+              </div>
+            ))}
+            {pendingFloors.map(f => (
+              <div key={f.key} style={{ background: 'var(--surface2)', borderRadius: 10, padding: 12, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 650, fontSize: 13 }}>{f.name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({f.area || 0} m²)</span></div>
+                  <button onClick={() => removePendingFloor(f.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
+                </div>
+                {f.units.map(u => (
+                  <div key={u.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0 4px 14px', fontSize: 12.5 }}>
+                    <span>{u.name} ({u.area || 0} m²)</span>
+                    <button onClick={() => removePendingUnit(f.key, u.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, paddingLeft: 14 }}>
+                  <input placeholder="Unit" value={newUnit[f.key]?.name ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.key]: { name: e.target.value, area: m[f.key]?.area ?? '' } }))} style={{ flex: 1, fontSize: 12, padding: '5px 8px' }} />
+                  <input placeholder="Area" type="number" value={newUnit[f.key]?.area ?? ''} onChange={e => setNewUnit(m => ({ ...m, [f.key]: { name: m[f.key]?.name ?? '', area: e.target.value } }))} style={{ width: 70, fontSize: 12, padding: '5px 8px' }} />
+                  <button className="af-btn-secondary" style={{ cursor: 'pointer', fontSize: 12, padding: '4px 10px' }} onClick={() => addPendingUnit(f.key)}>+ Add More Unit</button>
                 </div>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 6 }}>
               <input placeholder="Floor" value={newFloor.name} onChange={e => setNewFloor(f => ({ ...f, name: e.target.value }))} style={{ flex: 1, fontSize: 13, padding: '7px 10px' }} />
               <input placeholder="Area (m²)" type="number" value={newFloor.area} onChange={e => setNewFloor(f => ({ ...f, area: e.target.value }))} style={{ width: 90, fontSize: 13, padding: '7px 10px' }} />
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={addFloor}>+ Add More Floor</button>
+              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={propertyId ? addFloor : addPendingFloor}>+ Add More Floor</button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </main>
   )
