@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Pagination, { usePagination } from '@/components/Pagination'
 import DatePicker from '@/components/DatePicker'
-import { toDateInputValue, formatDate } from '@/lib/date'
+import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
@@ -33,13 +34,13 @@ const authHeaders = () => ({
 })
 
 export default function EmployeeTab() {
+  const router = useRouter()
   const [rows, setRows]           = useState<Employee[]>([])
   const [salaryStructures, setSalaryStructures] = useState<{id:number;name:string}[]>([])
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [search, setSearch]       = useState('')
   const [showForm, setShowForm]   = useState(false)
-  const [viewItem, setViewItem]   = useState<Employee|null>(null)
   const [editItem, setEditItem]   = useState<Employee|null>(null)
   const [form, setForm]           = useState(EMPTY_FORM)
 
@@ -123,7 +124,7 @@ export default function EmployeeTab() {
                   <td>{r.mobile_number}</td>
                   <td>
                     <button onClick={()=>openEdit(r)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',marginRight:10}}>✎</button>
-                    <button onClick={()=>setViewItem(r)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'#3b82f6',marginRight:10}}>👁</button>
+                    <button onClick={()=>router.push(`/dashboard/payroll/employee/view?id=${r.id}`)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'#3b82f6',marginRight:10}}>👁</button>
                     <button onClick={()=>remove(r)} title="Delete" style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444'}}>🗑</button>
                   </td>
                 </tr>
@@ -169,35 +170,6 @@ export default function EmployeeTab() {
             <div style={{display:'flex',gap:10,marginTop:22,justifyContent:'flex-end'}}>
               <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>setShowForm(false)}>Cancel</button>
               <button className="af-auth-submit" style={{width:'auto',padding:'10px 28px'}} onClick={save}>{editItem?'Save Changes':'Add'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewItem && (
-        <div className="af-modal-overlay" onClick={()=>setViewItem(null)}>
-          <div className="af-modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
-            <h2 className="af-modal-title">Employee Details</h2>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginTop:10}}>
-              {[
-                ['Name', viewItem.name],
-                ['Date of Employment', formatDate(viewItem.date_of_employment)],
-                ['Employment Status', viewItem.employment_status],
-                ['Payment Type', viewItem.payment_type_name],
-                ['Mobile', viewItem.mobile_number],
-                ['Bank Name', viewItem.bank_name],
-                ['Account Number', viewItem.account_number],
-                ['SWIFT/BIC Code', viewItem.SWIFT_BIC_code],
-                ['TIN Code', viewItem.tincode],
-              ].map(([k,v])=>(
-                <div key={k}>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>{k}</div>
-                  <div style={{fontSize:14,fontWeight:600}}>{v || '—'}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{display:'flex',justifyContent:'flex-end',marginTop:22}}>
-              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>setViewItem(null)}>Close</button>
             </div>
           </div>
         </div>

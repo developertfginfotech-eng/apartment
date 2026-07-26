@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Pagination, { usePagination } from '@/components/Pagination'
 import DatePicker from '@/components/DatePicker'
 import { formatDate } from '@/lib/date'
@@ -50,6 +50,8 @@ export default function PayslipTab() {
     } catch { setError('Failed to load payslips') }
     finally { setLoading(false) }
   }, [from, to, search])
+
+  useEffect(() => { runSearch() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openPayslip = async (r: PayslipRow) => {
     const res = await fetch(`${API}/payroll/${r.id}`, { headers: authHeaders() })

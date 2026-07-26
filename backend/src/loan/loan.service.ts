@@ -30,6 +30,31 @@ export class LoanService {
     }));
   }
 
+  async findOne(id: number) {
+    const [row] = await this.ds.query(
+      `SELECT
+         l.id, l.employee_id, l.amount_of_loan, l.loan_from_company, l.date_of_the_loan,
+         l.name_of_bank, l.interest_of_bank, l.status, l.payment_date, l.payment_status, l.payment_type,
+         l.receipt_image,
+         e.name AS employee_name,
+         (SELECT p.payment_date FROM payrolls p WHERE p.loan_id = l.id ORDER BY p.payment_date DESC LIMIT 1) AS latest_payment_date,
+         (SELECT p.cash_advance FROM payrolls p WHERE p.loan_id = l.id ORDER BY p.payment_date DESC LIMIT 1) AS latest_payment_amount,
+         (SELECT SUM(p2.cash_advance) FROM payrolls p2 WHERE p2.loan_id = l.id) AS total_paid
+       FROM loans l
+       LEFT JOIN employees e ON e.id = l.employee_id
+       WHERE l.id = ?`,
+      [id],
+    );
+    if (!row) return null;
+    return {
+      ...row,
+      available_balance:
+        row.loan_from_company === 'EPERC'
+          ? Number(row.amount_of_loan) - Number(row.total_paid || 0)
+          : null,
+    };
+  }
+
   async create(body: any) {
     const res = await this.ds.query(
       `INSERT INTO loans

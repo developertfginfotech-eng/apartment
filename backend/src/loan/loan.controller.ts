@@ -10,6 +10,11 @@ export class LoanController {
     return this.svc.findAll();
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.svc.findOne(parseInt(id, 10));
+  }
+
   @Post()
   create(@Body() body: any, @Request() req: any) {
     return this.svc.create({ ...body, user_id: req.user?.id });

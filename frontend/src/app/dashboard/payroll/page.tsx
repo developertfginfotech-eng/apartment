@@ -68,7 +68,6 @@ export default function PayrollPage() {
   const [signatories, setSignatories] = useState<{id:number; name:string}[]>([])
 
   const [activeTab, setActiveTab] = useState('Payroll')
-  const [viewItem, setViewItem]   = useState<Payroll|null>(null)
 
   const [page, setPage]           = useState(1)
   const [limit, setLimit]         = useState(50)
@@ -313,7 +312,7 @@ export default function PayrollPage() {
                   </td>
                   <td>
                     <div style={{display:'flex',gap:8}}>
-                      <button onClick={()=>setViewItem(p)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:16,padding:2}}>👁</button>
+                      <button onClick={()=>router.push(`/dashboard/payroll/view?id=${p.id}`)} title="View" style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:16,padding:2}}>👁</button>
                       <button onClick={()=>router.push(`/dashboard/payroll/edit?id=${p.id}`)} title="Edit" style={{background:'none',border:'none',cursor:'pointer',color:'#60a5fa',fontSize:16,padding:2}}>✏️</button>
                       <button onClick={()=>deletePayroll(p.id)} title="Delete" style={{background:'none',border:'none',cursor:'pointer',color:'#ef4444',fontSize:16,padding:2}}>🗑️</button>
                     </div>
@@ -346,45 +345,6 @@ export default function PayrollPage() {
 
       {!loading && pages <= 1 && (
         <div style={{fontSize:12,color:'var(--muted)',marginTop:10}}>Showing {payrolls.length} of {total} entries</div>
-      )}
-
-      {/* View modal */}
-      {viewItem && (
-        <div className="af-modal-overlay" onClick={()=>setViewItem(null)}>
-          <div className="af-modal" style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
-            <h2 className="af-modal-title">Payroll Detail</h2>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-              {([
-                ['Employee',   viewItem.employee_name||'—'],
-                ['Start Date', formatDate(viewItem.start_date)],
-                ['End Date',   formatDate(viewItem.end_date)],
-                ['Pay Date',   formatDate(viewItem.payment_date)],
-                ['Basic',      fmt(viewItem.basic)],
-                ['Allowance',  fmt(viewItem.allowance)],
-                ['OT Pay',     fmt(viewItem.ot_pay)],
-                ['Absences',   fmt(viewItem.absences)],
-                ['Gross Pay',  fmt(viewItem.gross_pay)],
-                ['SSS',        fmt(viewItem.sss)],
-                ['PhilHealth', fmt(viewItem.phic)],
-                ['Pag-IBIG',   fmt(viewItem.hdmf)],
-                ['SSS Loan',   fmt(viewItem.sss_loan)],
-                ['HDMF Loan',  fmt(viewItem.hdmf_loan)],
-                ['Cash Advance',fmt(viewItem.cash_advance)],
-                ['Net Pay',    fmt(viewItem.net_pay)],
-                ['Checked By', viewItem.checked_by_name||'—'],
-                ['Approved By',viewItem.approved_by_name||'—'],
-              ] as [string,string][]).map(([k,v])=>(
-                <div key={k} style={{background:'var(--surface2)',borderRadius:9,padding:'10px 14px'}}>
-                  <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>{k}</div>
-                  <div style={{fontSize:14,fontWeight:600,color:k==='Net Pay'?'#22c55e':'var(--text)'}}>{v}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{display:'flex',justifyContent:'flex-end'}}>
-              <button className="af-btn-secondary" style={{cursor:'pointer'}} onClick={()=>setViewItem(null)}>Close</button>
-            </div>
-          </div>
-        </div>
       )}
       </>}
     </main>

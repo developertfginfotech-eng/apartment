@@ -36,7 +36,6 @@ export default function LoanPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [viewing, setViewing] = useState<Loan | null>(null)
 
   const authHeaders = () => ({
     'Content-Type': 'application/json',
@@ -201,7 +200,7 @@ export default function LoanPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="View" onClick={() => setViewing(l)}>👁</button>
+                      <button className="af-prop-act edit" title="View" onClick={() => router.push(`/dashboard/loan/view?id=${l.id}`)}>👁</button>
                       <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/loan/edit?id=${l.id}`)}>✏️</button>
                       <button className="af-prop-act del" title="Delete" onClick={() => del(l.id)}>🗑️</button>
                     </div>
@@ -211,39 +210,6 @@ export default function LoanPage() {
             </tbody>
           </table>
           <Pagination page={page} pageSize={pageSize} totalItems={filteredLoans.length} onPageChange={setPage} />
-        </div>
-      )}
-
-      {/* View Modal */}
-      {viewing && (
-        <div className="af-modal-overlay" onClick={() => setViewing(null)}>
-          <div className="af-modal" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
-            <h2 className="af-modal-title">Loan Details</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-              {([
-                ['Employee', viewing.employee_name || '—'],
-                ['Amount of Loan', fmt(viewing.amount_of_loan)],
-                ['Loan From Company', viewing.loan_from_company],
-                ['Date of the Loan', formatDate(viewing.date_of_the_loan)],
-                ['Payment Date', formatDate(viewing.payment_date)],
-                ['Payment Type', viewing.payment_type || '—'],
-                ['Payment Status', viewing.payment_status],
-                ['Status', viewing.status === 1 ? 'Active' : 'Inactive'],
-                ...(viewing.loan_from_company === 'BANK' ? [['Name of Bank', viewing.name_of_bank || '—'], ['Interest of Bank', viewing.interest_of_bank ? `${viewing.interest_of_bank}%` : '—']] : []),
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} style={{ background: 'var(--surface2)', borderRadius: 9, padding: '10px 14px' }}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{k}</div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-            {viewing.receipt_image && (
-              <a href={`${API}${viewing.receipt_image}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: 'var(--accent)' }}>View Receipt Image</a>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-              <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={() => setViewing(null)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
     </main>

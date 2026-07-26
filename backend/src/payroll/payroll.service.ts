@@ -65,7 +65,7 @@ export class PayrollService {
        LEFT JOIN users    cb  ON cb.id = p.checked_by
        LEFT JOIN users    ab  ON ab.id = p.approved_by
        ${where}
-       ORDER BY p.id DESC
+       ORDER BY p.id ASC
        LIMIT ? OFFSET ?`,
       [...bindings, limit, offset],
     );
