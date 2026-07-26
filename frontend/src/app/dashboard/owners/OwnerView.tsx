@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDate } from '@/lib/date'
+import Pagination, { usePagination } from '@/components/Pagination'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 const headers = () => ({ Authorization: `Bearer ${localStorage.getItem('apt_token')}` })
@@ -47,6 +48,7 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [propSearch, setPropSearch] = useState('')
 
   const loadDocs = useCallback(async (id: number) => {
     const res = await fetch(`${API}/document/landlord?landlord_id=${id}`, { headers: headers() })
@@ -73,6 +75,13 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
     await fetch(`${API}/document/landlord/${id}`, { method: 'DELETE', headers: headers() })
     await loadDocs(ownerId)
   }
+
+  const allProperties = viewing?.properties ?? []
+  const filteredProperties = propSearch
+    ? allProperties.filter(p =>
+        [p.property_code, p.property_name, p.address].some(v => v?.toLowerCase().includes(propSearch.toLowerCase())))
+    : allProperties
+  const { page: propPage, setPage: setPropPage, pageSize: propPageSize, pageItems: propPageItems } = usePagination(filteredProperties, 10)
 
   if (loading) {
     return <main className="af-db-main"><div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading…</div></main>
@@ -137,14 +146,15 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {([
               ['Owner Type', viewing.owner_type || '—'],
-              ['Company Type', viewing.company_type || '—'],
               ['First Name', viewing.first_name],
+              [viewing.owner_type === 'company' ? 'Company Type' : 'Middle Name',
+                (viewing.owner_type === 'company' ? viewing.company_type : viewing.middle_name) || '—'],
               ['Last Name', viewing.last_name || '—'],
               ['Phone', viewing.phone || '—'],
               ['Email', viewing.email || '—'],
               ['Registration Date', formatDate(viewing.registration_date)],
-              ['National ID', viewing.id_number || '—'],
               ['Country', viewing.country_name || viewing.country || '—'],
+              ['National ID or Passport', viewing.id_number || '—'],
               ['State', viewing.state || '—'],
               ['City', viewing.city || '—'],
               ['Postal Address', viewing.postal_address || '—'],
@@ -160,25 +170,36 @@ export default function OwnerView({ ownerId }: { ownerId: number }) {
         )}
 
         {tab === 'Properties' && (
-          <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
-            <table className="af-prop-table">
-              <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Location</th><th>Floors</th><th>Units</th></tr></thead>
-              <tbody>
-                {viewing.properties.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No properties found</td></tr>
-                ) : viewing.properties.map((p, i) => (
-                  <tr key={p.id}>
-                    <td style={{ color: 'var(--muted)', fontSize: 12 }}>{i + 1}</td>
-                    <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
-                    <td style={{ fontWeight: 600 }}>{p.property_name}</td>
-                    <td style={{ fontSize: 13 }}>{p.address}</td>
-                    <td style={{ fontSize: 13 }}>{p.total_floor}</td>
-                    <td style={{ fontSize: 13 }}>{p.total_unit}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <input
+                value={propSearch}
+                onChange={e => { setPropSearch(e.target.value); setPropPage(1) }}
+                placeholder="Search…"
+                style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 8, padding: '8px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', width: 220 }}
+              />
+            </div>
+            <div className="af-prop-table-wrap" style={{ overflowX: 'auto' }}>
+              <table className="af-prop-table">
+                <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Location</th><th>Floors</th><th>Units</th></tr></thead>
+                <tbody>
+                  {filteredProperties.length === 0 ? (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--muted)', padding: 24 }}>No properties found</td></tr>
+                  ) : propPageItems.map((p, i) => (
+                    <tr key={p.id}>
+                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(propPage - 1) * propPageSize + i + 1}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{p.property_code}</td>
+                      <td style={{ fontWeight: 600 }}>{p.property_name}</td>
+                      <td style={{ fontSize: 13 }}>{p.address}</td>
+                      <td style={{ fontSize: 13 }}>{p.total_floor}</td>
+                      <td style={{ fontSize: 13 }}>{p.total_unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination page={propPage} pageSize={propPageSize} totalItems={filteredProperties.length} onPageChange={setPropPage} />
+            </div>
+          </>
         )}
 
         {tab === 'Documents' && (
