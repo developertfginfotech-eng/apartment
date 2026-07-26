@@ -100,12 +100,8 @@ export default function UtilitiesPage() {
     doc.save('utility-bills.pdf')
   }
 
-  const del = async (id: number) => {
-    if (!confirm('Delete this utility bill?')) return
-    try { await fetch(`${API}/utility/${id}`, { method: 'DELETE', headers: authHeaders() }); fetchBills() }
-    catch { setError('Failed to delete') }
-  }
-  const markPaid = async (id: number) => {
+  const markPaid = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
     try { await fetch(`${API}/utility/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ payment_status: 1 }) }); fetchBills() }
     catch { setError('Failed to update') }
   }
@@ -157,40 +153,46 @@ export default function UtilitiesPage() {
           <table className="af-prop-table">
             <thead>
               <tr>
-                <th>#</th><th>Renter Name</th><th>Property</th><th>Floor</th><th>Unit</th><th>Month</th>
-                <th>Water Bill</th><th>Electric Bill</th><th>Cusa</th><th>Other</th><th>Total Utility</th>
-                <th>Status</th><th>Interest</th><th>Pay Date</th><th>Action</th>
+                <th rowSpan={2}>#</th><th rowSpan={2}>Renter Name</th><th rowSpan={2}>Property</th>
+                <th rowSpan={2}>Floor</th><th rowSpan={2}>Unit</th><th rowSpan={2}>Month</th>
+                <th colSpan={2} style={{ textAlign: 'center' }}>Water Bill</th>
+                <th colSpan={2} style={{ textAlign: 'center' }}>Electric Bill</th>
+                <th rowSpan={2}>Cusa</th><th rowSpan={2}>Other</th><th rowSpan={2}>Total Utility</th>
+                <th rowSpan={2}>Status</th><th rowSpan={2}>Interest</th><th rowSpan={2}>Pay Date</th>
+              </tr>
+              <tr>
+                <th style={{ fontSize: 11, fontWeight: 500 }}>From Date</th>
+                <th style={{ fontSize: 11, fontWeight: 500 }}>To Date</th>
+                <th style={{ fontSize: 11, fontWeight: 500 }}>From Date</th>
+                <th style={{ fontSize: 11, fontWeight: 500 }}>To Date</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={15} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
+                <tr><td colSpan={16} style={{ textAlign: 'center', color: 'var(--muted)', padding: 32 }}>No bills found</td></tr>
               ) : pageItems.map((b, i) => (
-                <tr key={b.id} className="af-row-in" style={{ animationDelay: `${Math.min(i, 12) * 0.03}s` }}>
+                <tr
+                  key={b.id}
+                  className="af-row-in"
+                  style={{ animationDelay: `${Math.min(i, 12) * 0.03}s`, cursor: 'pointer' }}
+                  onClick={() => router.push(`/dashboard/utilities/edit?id=${b.id}`)}
+                >
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{(page - 1) * pageSize + i + 1}</td>
                   <td style={{ fontWeight: 650 }}>{b.renter_name?.trim() || '—'}</td>
                   <td style={{ fontSize: 13 }}>{b.property_name || '—'}</td>
                   <td style={{ fontSize: 13 }}>{b.floor_name || '—'}</td>
                   <td><span className="af-prop-badge type">{b.unit_name || '—'}</span></td>
                   <td style={{ fontSize: 13 }}>{b.month || '—'}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(b.water_bill)}
-                    {(b.water_bill_due_from || b.water_bill_due_to) && (
-                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{formatDate(b.water_bill_due_from)} → {formatDate(b.water_bill_due_to)}</div>
-                    )}
-                  </td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {fmt(b.electric_bill)}
-                    {(b.electric_bill_due_from || b.electric_bill_due_to) && (
-                      <div style={{ fontSize: 10, color: 'var(--muted)' }}>{formatDate(b.electric_bill_due_from)} → {formatDate(b.electric_bill_due_to)}</div>
-                    )}
-                  </td>
+                  <td style={{ fontSize: 12 }}>{formatDate(b.water_bill_due_from)}</td>
+                  <td style={{ fontSize: 12 }}>{formatDate(b.water_bill_due_to)}</td>
+                  <td style={{ fontSize: 12 }}>{formatDate(b.electric_bill_due_from)}</td>
+                  <td style={{ fontSize: 12 }}>{formatDate(b.electric_bill_due_to)}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.cusa)}</td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(b.other_bill)}</td>
                   <td style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(billTotal(b))}</td>
                   <td>
                     <span
-                      onClick={() => b.payment_status !== 1 && markPaid(b.id)}
+                      onClick={e => b.payment_status !== 1 && markPaid(b.id, e)}
                       className={`af-status-pill ${b.payment_status !== 1 ? 'af-pulse' : ''}`}
                       style={{ background: b.payment_status === 1 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: b.payment_status === 1 ? '#22c55e' : '#ef4444', cursor: b.payment_status === 1 ? 'default' : 'pointer' }}
                       title={b.payment_status === 1 ? '' : 'Click to mark as paid'}
@@ -200,12 +202,6 @@ export default function UtilitiesPage() {
                   </td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{b.interest ? fmt(b.interest) : '—'}</td>
                   <td style={{ fontSize: 13 }}>{formatDate(b.issue_date)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => router.push(`/dashboard/utilities/edit?id=${b.id}`)}>✏️</button>
-                      <button className="af-prop-act del" title="Delete" onClick={() => del(b.id)}>🗑️</button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>

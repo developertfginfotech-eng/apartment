@@ -26,24 +26,55 @@ export class UtilityService {
     );
   }
 
+  async findOne(id: number) {
+    const [row] = await this.ds.query(`SELECT * FROM tbl_utilities WHERE id = ?`, [id]);
+    return row ?? null;
+  }
+
+  async renterByUnit(unitId: number) {
+    const [row] = await this.ds.query(
+      `SELECT l.renter_id,
+         TRIM(CONCAT(r.first_name, ' ', COALESCE(r.last_name,''))) AS renter_name
+       FROM tbl_lease_units lu
+       JOIN tbl_leases l ON l.id = lu.lease_id AND l.status = 1
+       LEFT JOIN tbl_renters r ON r.id = l.renter_id
+       WHERE lu.unit_id = ? AND lu.status = 1
+       ORDER BY l.id DESC LIMIT 1`,
+      [unitId],
+    );
+    return row ?? null;
+  }
+
   async create(body: any) {
     const res = await this.ds.query(
       `INSERT INTO tbl_utilities
         (renter_id, property_id, floor_id, unit_id, month,
-         water_bill, water_bill_due_from, water_bill_due_to,
-         electric_bill, electric_bill_due_from, electric_bill_due_to,
-         gas_bill, security_bill, cusa, other_bill, total_rent, interest,
-         issue_date, payment_type, payment_mode, payment_status, status)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
+         water_bill, water_bill_doc, water_bill_due_from, water_bill_due_to,
+         electric_bill, electric_bill_doc, electric_bill_due_from, electric_bill_due_to,
+         gas_bill, security_bill,
+         cusa, cusa_due, cusa_doc,
+         utility_bill, utility_bill_doc, utility_bill_due,
+         other_bill, other_bill_doc, other_bill_due,
+         total_rent, interest, issue_date,
+         payment_type, payment_mode, payment_status,
+         cheque_details, cheque_image,
+         pdc_cheque_details, pdc_cheque_image, pdc_cheque_date,
+         online_details, online_image, status)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)`,
       [
         body.renter_id ?? null, body.property_id ?? null, body.floor_id ?? null, body.unit_id ?? null,
         body.month ?? null,
-        body.water_bill ?? 0, body.water_bill_due_from ?? null, body.water_bill_due_to ?? null,
-        body.electric_bill ?? 0, body.electric_bill_due_from ?? null, body.electric_bill_due_to ?? null,
-        body.gas_bill ?? 0, body.security_bill ?? 0, body.cusa ?? 0, body.other_bill ?? 0,
-        body.total_rent ?? 0, body.interest ?? null,
-        body.issue_date ?? null, body.payment_type ?? '', body.payment_mode ?? null,
-        body.payment_status ?? 0,
+        body.water_bill ?? 0, body.water_bill_doc ?? null, body.water_bill_due_from ?? null, body.water_bill_due_to ?? null,
+        body.electric_bill ?? 0, body.electric_bill_doc ?? null, body.electric_bill_due_from ?? null, body.electric_bill_due_to ?? null,
+        body.gas_bill ?? 0, body.security_bill ?? 0,
+        body.cusa ?? 0, body.cusa_due ?? null, body.cusa_doc ?? null,
+        body.utility_bill ?? 0, body.utility_bill_doc ?? null, body.utility_bill_due ?? null,
+        body.other_bill ?? 0, body.other_bill_doc ?? null, body.other_bill_due ?? null,
+        body.total_rent ?? 0, body.interest ?? null, body.issue_date ?? null,
+        body.payment_type ?? '', body.payment_mode ?? null, body.payment_status ?? 0,
+        body.cheque_details ?? null, body.cheque_image ?? null,
+        body.pdc_cheque_details ?? null, body.pdc_cheque_image ?? null, body.pdc_cheque_date ?? null,
+        body.online_details ?? null, body.online_image ?? null,
       ],
     );
     return { id: res.insertId };
