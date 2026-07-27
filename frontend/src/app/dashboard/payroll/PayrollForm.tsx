@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import DatePicker from '@/components/DatePicker'
 import { toDateInputValue } from '@/lib/date'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
@@ -120,9 +119,9 @@ export default function PayrollForm({ payrollId }: { payrollId?: number }) {
               </select>
             </div>
           )}
-          <div className="af-field"><label>Start Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.start_date} onChange={v=>setForm(f=>({...f,start_date:v}))}/></div>
-          <div className="af-field"><label>End Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.end_date} onChange={v=>setForm(f=>({...f,end_date:v}))}/></div>
-          <div className="af-field"><label>Payment Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.payment_date} onChange={v=>setForm(f=>({...f,payment_date:v}))}/></div>
+          <div className="af-field"><label>Start Date<span style={{ color: '#f87171' }}> *</span></label><input type="date" value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/></div>
+          <div className="af-field"><label>End Date<span style={{ color: '#f87171' }}> *</span></label><input type="date" value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/></div>
+          <div className="af-field"><label>Payment Date<span style={{ color: '#f87171' }}> *</span></label><input type="date" value={form.payment_date} onChange={e=>setForm(f=>({...f,payment_date:e.target.value}))}/></div>
 
           <div style={{gridColumn:'span 3',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
 

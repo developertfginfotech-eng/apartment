@@ -6,6 +6,21 @@ import { DataSource } from 'typeorm';
 export class PayrollService {
   constructor(@InjectDataSource() private readonly ds: DataSource) {}
 
+  private async syncExpense(payrollId: number, employeeId: number | null, netPay: number, paymentDate: string | null) {
+    const [employee] = employeeId ? await this.ds.query(`SELECT name FROM employees WHERE id = ?`, [employeeId]) : [null];
+    const title = `Payroll - ${employee?.name ?? 'Employee'}`;
+    const marker = `Payroll:${payrollId}`;
+    const [existing] = await this.ds.query(`SELECT id FROM tbl_expenses WHERE description = ?`, [marker]);
+    if (existing) {
+      await this.ds.query(`UPDATE tbl_expenses SET title = ?, amount = ?, date = ?, status = 1 WHERE id = ?`, [title, netPay, paymentDate, existing.id]);
+    } else {
+      await this.ds.query(
+        `INSERT INTO tbl_expenses (title, amount, date, description, status) VALUES (?,?,?,?,1)`,
+        [title, netPay, paymentDate, marker],
+      );
+    }
+  }
+
   async findAll(params: {
     page: number;
     limit: number;
@@ -101,7 +116,9 @@ export class PayrollService {
         body.checked_by ?? null, body.approved_by ?? null, body.prepared_by ?? null,
       ],
     );
-    return { id: res.insertId };
+    const payrollId = res.insertId;
+    await this.syncExpense(payrollId, body.employee_id ?? null, body.net_pay ?? 0, body.payment_date ?? null);
+    return { id: payrollId };
   }
 
   async update(id: number, body: any) {
@@ -112,13 +129,17 @@ export class PayrollService {
     const values = Object.keys(body)
       .filter(k => !['id'].includes(k))
       .map(k => body[k]);
-    if (!fields) return { ok: true };
-    await this.ds.query(`UPDATE payrolls SET ${fields} WHERE id = ?`, [...values, id]);
+    if (fields) {
+      await this.ds.query(`UPDATE payrolls SET ${fields} WHERE id = ?`, [...values, id]);
+    }
+    const [row] = await this.ds.query(`SELECT employee_id, net_pay, payment_date FROM payrolls WHERE id = ?`, [id]);
+    if (row) await this.syncExpense(id, row.employee_id, row.net_pay, row.payment_date);
     return { ok: true };
   }
 
   async remove(id: number) {
     await this.ds.query(`UPDATE payrolls SET status = 1 WHERE id = ?`, [id]);
+    await this.ds.query(`UPDATE tbl_expenses SET status = 0 WHERE description = ?`, [`Payroll:${id}`]);
     return { ok: true };
   }
 

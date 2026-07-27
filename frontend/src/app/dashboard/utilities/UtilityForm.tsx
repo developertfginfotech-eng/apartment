@@ -20,7 +20,6 @@ const EMPTY_FORM = {
   water_bill: '', water_bill_due_from: '', water_bill_due_to: '',
   electric_bill: '', electric_bill_due_from: '', electric_bill_due_to: '',
   cusa: '', cusa_due: '',
-  utility_bill: '', utility_bill_due: '',
   other_bill: '', other_bill_due: '',
   interest: '', issue_date: '',
   payment_mode: '',
@@ -28,7 +27,7 @@ const EMPTY_FORM = {
 }
 
 const EMPTY_FILES: Record<string, File | null> = {
-  water_bill_doc: null, electric_bill_doc: null, cusa_doc: null, utility_bill_doc: null, other_bill_doc: null,
+  water_bill_doc: null, electric_bill_doc: null, cusa_doc: null, other_bill_doc: null,
   cheque_image: null, pdc_cheque_image: null, online_image: null,
 }
 
@@ -91,7 +90,6 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
           water_bill: String(b.water_bill ?? 0), water_bill_due_from: b.water_bill_due_from ?? '', water_bill_due_to: b.water_bill_due_to ?? '',
           electric_bill: String(b.electric_bill ?? 0), electric_bill_due_from: b.electric_bill_due_from ?? '', electric_bill_due_to: b.electric_bill_due_to ?? '',
           cusa: String(b.cusa ?? 0), cusa_due: b.cusa_due ?? '',
-          utility_bill: String(b.utility_bill ?? 0), utility_bill_due: b.utility_bill_due ?? '',
           other_bill: String(b.other_bill ?? 0), other_bill_due: b.other_bill_due ?? '',
           interest: b.interest != null ? String(b.interest) : '', issue_date: b.issue_date ?? '',
           payment_mode: b.payment_mode ?? '',
@@ -100,7 +98,7 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
         })
         setExistingDocs({
           water_bill_doc: b.water_bill_doc ?? '', electric_bill_doc: b.electric_bill_doc ?? '', cusa_doc: b.cusa_doc ?? '',
-          utility_bill_doc: b.utility_bill_doc ?? '', other_bill_doc: b.other_bill_doc ?? '',
+          other_bill_doc: b.other_bill_doc ?? '',
           cheque_image: b.cheque_image ?? '', pdc_cheque_image: b.pdc_cheque_image ?? '', online_image: b.online_image ?? '',
         })
       } catch { setError('Failed to load utility bill') }
@@ -132,7 +130,7 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
   }
 
   const fmt = (v: string | number) => `₱ ${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  const total = (Number(form.water_bill) || 0) + (Number(form.electric_bill) || 0) + (Number(form.cusa) || 0) + (Number(form.utility_bill) || 0) + (Number(form.other_bill) || 0)
+  const total = (Number(form.water_bill) || 0) + (Number(form.electric_bill) || 0) + (Number(form.cusa) || 0) + (Number(form.other_bill) || 0)
 
   const uploadFile = async (file: File): Promise<string | null> => {
     const fd = new FormData()
@@ -160,7 +158,6 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
         water_bill: form.water_bill || 0, water_bill_due_from: form.water_bill_due_from || null, water_bill_due_to: form.water_bill_due_to || null,
         electric_bill: form.electric_bill || 0, electric_bill_due_from: form.electric_bill_due_from || null, electric_bill_due_to: form.electric_bill_due_to || null,
         cusa: form.cusa || 0, cusa_due: form.cusa_due || null,
-        utility_bill: form.utility_bill || 0, utility_bill_due: form.utility_bill_due || null,
         other_bill: form.other_bill || 0, other_bill_due: form.other_bill_due || null,
         total_rent: total, interest: form.interest || 0, issue_date: form.issue_date || null,
         payment_mode: form.payment_mode || null,
@@ -200,7 +197,7 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
     return <main className="af-db-main"><div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>Loading…</div></main>
   }
 
-  const billRow = (label: string, amountKey: 'water_bill' | 'electric_bill' | 'cusa' | 'utility_bill' | 'other_bill', docKey: keyof typeof files, dueFields: { key: string; label: string }[]) => (
+  const billRow = (label: string, amountKey: 'water_bill' | 'electric_bill' | 'cusa' | 'other_bill', docKey: keyof typeof files, dueFields: { key: string; label: string }[]) => (
     <div style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: 14, marginBottom: 12 }}>
       <div style={{ fontWeight: 650, fontSize: 13, marginBottom: 10 }}>{label}</div>
       <div style={{ display: 'grid', gridTemplateColumns: `1fr repeat(${dueFields.length}, 1fr) 1.4fr`, gap: 10, alignItems: 'end' }}>
@@ -278,12 +275,11 @@ export default function UtilityForm({ utilityId }: { utilityId?: number }) {
         {billRow('Water Bill', 'water_bill', 'water_bill_doc', [{ key: 'water_bill_due_from', label: 'Due From' }, { key: 'water_bill_due_to', label: 'Due To' }])}
         {billRow('Electric Bill', 'electric_bill', 'electric_bill_doc', [{ key: 'electric_bill_due_from', label: 'Due From' }, { key: 'electric_bill_due_to', label: 'Due To' }])}
         {billRow('Cusa', 'cusa', 'cusa_doc', [{ key: 'cusa_due', label: 'Due Date' }])}
-        {billRow('Utility Bill', 'utility_bill', 'utility_bill_doc', [{ key: 'utility_bill_due', label: 'Due Date' }])}
         {billRow('Other Bill', 'other_bill', 'other_bill_doc', [{ key: 'other_bill_due', label: 'Due Date' }])}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 4, marginBottom: 4, alignItems: 'end' }}>
           <div className="af-field">
-            <label>Total Utility Rent</label>
+            <label>Total Utility Bill</label>
             <input value={fmt(total)} readOnly disabled />
           </div>
           <div className="af-field">
