@@ -113,7 +113,7 @@ export default function EscalationForm({ leaseId }: { leaseId: number }) {
             <div className="af-field"><label>Property</label><input value={lease.property_name ?? ''} disabled/></div>
             <div className="af-field"><label>Floor</label><input value={lease.floor_name ?? ''} disabled/></div>
             <div className="af-field"><label>Unit(s)</label><input value={lease.unit_ids?.join(', ') ?? ''} disabled/></div>
-            <div className="af-field"><label>Rent Amount</label><input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}/></div>
+            <div className="af-field"><label>Rent Amount<span style={{ color: '#f87171' }}> *</span></label><input type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}/></div>
             <div className="af-field"><label>Maintenance</label><input type="number" min="0" step="0.01" value={form.maintenance} onChange={e => setForm(f => ({ ...f, maintenance: e.target.value }))}/></div>
             <div className="af-field">
               <label>VAT (%)</label>

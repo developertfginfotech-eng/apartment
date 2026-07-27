@@ -96,22 +96,22 @@ export default function SecurityMoneyForm({ leaseId, renterName, propertyName, r
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 720 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field" style={{ gridColumn: 'span 2' }}>
-            <label>Title</label>
+            <label>Title<span style={{ color: '#f87171' }}> *</span></label>
             <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Security Deposit Refund" />
           </div>
           <div className="af-field">
-            <label>Type</label>
+            <label>Type<span style={{ color: '#f87171' }}> *</span></label>
             <select className="af-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value as 'add' | 'deduct' }))}>
               <option value="add">Add</option>
               <option value="deduct">Deduct</option>
             </select>
           </div>
           <div className="af-field">
-            <label>Amount</label>
+            <label>Amount<span style={{ color: '#f87171' }}> *</span></label>
             <input type="number" step="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
           </div>
           <div className="af-field">
-            <label>Payment Date</label>
+            <label>Payment Date<span style={{ color: '#f87171' }}> *</span></label>
             <DatePicker value={form.payment_date} onChange={v => setForm(f => ({ ...f, payment_date: v }))} />
           </div>
           <div className="af-field">

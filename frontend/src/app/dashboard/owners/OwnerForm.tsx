@@ -238,7 +238,7 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
               </div>
 
               <div className="af-field">
-                <label>{form.owner_type === 'company' ? 'Company Type' : 'Middle Name'}</label>
+                <label>{form.owner_type === 'company' ? 'Company Type' : 'Middle Name'}{form.owner_type === 'company' && <span style={{ color: '#f87171' }}> *</span>}</label>
                 {form.owner_type === 'company' ? (
                   <input type="text" value={form.company_type} onChange={e => setField('company_type', e.target.value)} placeholder="Corporation, LLC…" />
                 ) : (

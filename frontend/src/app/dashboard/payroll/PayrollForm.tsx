@@ -113,21 +113,21 @@ export default function PayrollForm({ payrollId }: { payrollId?: number }) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
           {employees.length>0 && (
             <div className="af-field" style={{gridColumn:'span 3'}}>
-              <label>Employee</label>
+              <label>Employee<span style={{ color: '#f87171' }}> *</span></label>
               <select className="af-select" value={form.employee_id} onChange={e=>setForm(f=>({...f,employee_id:e.target.value}))}>
                 <option value="">-- Select Employee --</option>
                 {employees.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             </div>
           )}
-          <div className="af-field"><label>Start Date</label><DatePicker value={form.start_date} onChange={v=>setForm(f=>({...f,start_date:v}))}/></div>
-          <div className="af-field"><label>End Date</label><DatePicker value={form.end_date} onChange={v=>setForm(f=>({...f,end_date:v}))}/></div>
-          <div className="af-field"><label>Payment Date</label><DatePicker value={form.payment_date} onChange={v=>setForm(f=>({...f,payment_date:v}))}/></div>
+          <div className="af-field"><label>Start Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.start_date} onChange={v=>setForm(f=>({...f,start_date:v}))}/></div>
+          <div className="af-field"><label>End Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.end_date} onChange={v=>setForm(f=>({...f,end_date:v}))}/></div>
+          <div className="af-field"><label>Payment Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={form.payment_date} onChange={v=>setForm(f=>({...f,payment_date:v}))}/></div>
 
           <div style={{gridColumn:'span 3',borderTop:'1px solid var(--border2)',paddingTop:10,fontSize:10,fontWeight:700,color:'var(--muted)',letterSpacing:'0.06em',textTransform:'uppercase'}}>Earnings</div>
 
           {([['basic','Basic Pay'],['ot_pay','OT Pay'],['rental','Rental'],['absences','Absences'],['late','Late']] as const).map(([k,l])=>(
-            <div key={k} className="af-field"><label>{l}</label>
+            <div key={k} className="af-field"><label>{l}{k==='basic' && <span style={{ color: '#f87171' }}> *</span>}</label>
               <input type="number" step="0.01" value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder="0.00"/></div>
           ))}
           <div className="af-field">

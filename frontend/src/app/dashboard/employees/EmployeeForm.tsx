@@ -56,11 +56,11 @@ export default function EmployeeForm({ employeeId }: { employeeId?: string }) {
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 820 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field" style={{ gridColumn: 'span 2' }}>
-            <label>Full name</label>
+            <label>Full name<span style={{ color: '#f87171' }}> *</span></label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Carlos Mendez" />
           </div>
           <div className="af-field">
-            <label>Position / Job title</label>
+            <label>Position / Job title<span style={{ color: '#f87171' }}> *</span></label>
             <input value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} placeholder="Property Manager" />
           </div>
           <div className="af-field">

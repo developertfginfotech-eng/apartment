@@ -300,7 +300,7 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
 
         {wizardStep === 'Deposits' && (
           <div className="af-modal-form">
-            <div className="af-field"><label>Rent Deposit Amount</label><input type="number" min="0" step="0.01" value={depositForm.rent_deposit} onChange={e => setDepositForm(f => ({ ...f, rent_deposit: e.target.value }))} placeholder="20000"/></div>
+            <div className="af-field"><label>Rent Deposit Amount<span style={{ color: '#f87171' }}> *</span></label><input type="number" min="0" step="0.01" value={depositForm.rent_deposit} onChange={e => setDepositForm(f => ({ ...f, rent_deposit: e.target.value }))} placeholder="20000"/></div>
             <div style={{ marginTop: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Utility Deposits</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>

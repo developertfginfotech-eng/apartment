@@ -88,7 +88,7 @@ export default function CollectForm({ kind, id, amount, title }: CollectFormProp
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 620 }}>
         <div className="af-modal-form">
           <div className="af-field" style={{ marginBottom: 4 }}>
-            <label>Select Mode</label>
+            <label>Select Mode<span style={{ color: '#f87171' }}> *</span></label>
             <div style={{ display: 'flex', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
               {PAYMENT_TYPES.map(pt => (
                 <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
