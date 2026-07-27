@@ -67,9 +67,9 @@ export default function LoanForm({ loanId }: { loanId?: number }) {
     (async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API}/loan`, { headers: authHeaders() })
-        const data = await res.json()
-        const l = Array.isArray(data) ? data.find((x: Loan) => x.id === loanId) : null
+        const res = await fetch(`${API}/loan/${loanId}`, { headers: authHeaders() })
+        if (!res.ok) throw new Error()
+        const l: Loan | null = await res.json()
         if (!l) throw new Error()
         setForm({
           employee_id: String(l.employee_id), amount_of_loan: String(l.amount_of_loan),

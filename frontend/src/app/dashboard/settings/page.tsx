@@ -91,11 +91,39 @@ function SystemTab() {
   )
 }
 
+/* ---------- shared edit modal (matches legacy's "Edit X" popup) ---------- */
+
+interface EditField { label: string; value: string; onChange: (v: string) => void; type?: string }
+
+function EditModal({ title, fields, onClose, onSave }: { title: string; fields: EditField[]; onClose: () => void; onSave: () => void }) {
+  return (
+    <div className="af-modal-overlay" onClick={onClose}>
+      <div className="af-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <h2 className="af-modal-title">{title}</h2>
+        <div className="af-modal-form">
+          <div style={{ display: 'grid', gridTemplateColumns: fields.length > 1 ? '1fr 1fr' : '1fr', gap: 12 }}>
+            {fields.map(f => (
+              <div key={f.label} className="af-field">
+                <label>{f.label}</label>
+                <input type={f.type || 'text'} value={f.value} onChange={e => f.onChange(e.target.value)} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
+          <button className="af-btn-secondary" style={{ cursor: 'pointer' }} onClick={onClose}>Close</button>
+          <button className="af-auth-submit" style={{ width: 'auto', padding: '10px 24px' }} onClick={onSave}>Update</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---------- generic name/display_name/description CRUD tab (Property Master, Maintenance Master) ---------- */
 
 interface MasterRow { id: number; name: string; display_name: string | null; description: string | null; status: number }
 
-function MasterListTab({ basePath }: { basePath: string }) {
+function MasterListTab({ basePath, label }: { basePath: string; label: string }) {
   const [rows, setRows] = useState<MasterRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -172,19 +200,9 @@ function MasterListTab({ basePath }: { basePath: string }) {
             ) : rows.map((r, i) => (
               <tr key={r.id}>
                 <td>{i + 1}</td>
-                {editingId === r.id ? (
-                  <>
-                    <td><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={{ width: '100%' }} /></td>
-                    <td><input value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))} style={{ width: '100%' }} /></td>
-                    <td><input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} style={{ width: '100%' }} /></td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ fontWeight: 600 }}>{r.name}</td>
-                    <td style={{ fontSize: 13 }}>{r.display_name || '—'}</td>
-                    <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.description || '—'}</td>
-                  </>
-                )}
+                <td style={{ fontWeight: 600 }}>{r.name}</td>
+                <td style={{ fontSize: 13 }}>{r.display_name || '—'}</td>
+                <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.description || '—'}</td>
                 <td>
                   <button
                     type="button" role="switch" aria-checked={r.status === 1} onClick={() => toggleStatus(r)}
@@ -194,23 +212,29 @@ function MasterListTab({ basePath }: { basePath: string }) {
                   </button>
                 </td>
                 <td>
-                  {editingId === r.id ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => saveEdit(r.id)}>💾</button>
-                      <button className="af-prop-act del" onClick={() => setEditingId(null)}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
-                      <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
+                    <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editingId != null && (
+        <EditModal
+          title={`Edit ${label}`}
+          onClose={() => setEditingId(null)}
+          onSave={() => saveEdit(editingId)}
+          fields={[
+            { label: 'Name', value: editForm.name, onChange: v => setEditForm(f => ({ ...f, name: v })) },
+            { label: 'Display Name', value: editForm.display_name, onChange: v => setEditForm(f => ({ ...f, display_name: v })) },
+            { label: 'Description', value: editForm.description, onChange: v => setEditForm(f => ({ ...f, description: v })) },
+          ]}
+        />
+      )}
     </div>
   )
 }
@@ -277,35 +301,31 @@ function WtaxesTab() {
             ) : rows.map((r, i) => (
               <tr key={r.id}>
                 <td>{i + 1}</td>
-                {editingId === r.id ? (
-                  <>
-                    <td><input value={editForm.key} onChange={e => setEditForm(f => ({ ...f, key: e.target.value }))} /></td>
-                    <td><input type="number" value={editForm.value} onChange={e => setEditForm(f => ({ ...f, value: e.target.value }))} /></td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ fontWeight: 600 }}>{r.key}</td>
-                    <td>{r.value}%</td>
-                  </>
-                )}
+                <td style={{ fontWeight: 600 }}>{r.key}</td>
+                <td>{r.value}%</td>
                 <td>
-                  {editingId === r.id ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => saveEdit(r.id)}>💾</button>
-                      <button className="af-prop-act del" onClick={() => setEditingId(null)}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
-                      <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
+                    <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editingId != null && (
+        <EditModal
+          title="Edit WTax"
+          onClose={() => setEditingId(null)}
+          onSave={() => saveEdit(editingId)}
+          fields={[
+            { label: 'Name', value: editForm.key, onChange: v => setEditForm(f => ({ ...f, key: v })) },
+            { label: 'Tax(%)', value: editForm.value, onChange: v => setEditForm(f => ({ ...f, value: v })), type: 'number' },
+          ]}
+        />
+      )}
     </div>
   )
 }
@@ -371,9 +391,7 @@ function DocumentsTab() {
             ) : rows.map((r, i) => (
               <tr key={r.id}>
                 <td>{i + 1}</td>
-                <td style={{ fontWeight: 600 }}>
-                  {editingId === r.id ? <input value={editName} onChange={e => setEditName(e.target.value)} /> : r.name}
-                </td>
+                <td style={{ fontWeight: 600 }}>{r.name}</td>
                 <td>
                   <button
                     type="button" role="switch" aria-checked={r.status === 1} onClick={() => toggleStatus(r)}
@@ -383,23 +401,25 @@ function DocumentsTab() {
                   </button>
                 </td>
                 <td>
-                  {editingId === r.id ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" onClick={() => saveEdit(r.id)}>💾</button>
-                      <button className="af-prop-act del" onClick={() => setEditingId(null)}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="af-prop-act edit" title="Edit" onClick={() => { setEditingId(r.id); setEditName(r.name) }}>✏️</button>
-                      <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="af-prop-act edit" title="Edit" onClick={() => { setEditingId(r.id); setEditName(r.name) }}>✏️</button>
+                    <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editingId != null && (
+        <EditModal
+          title="Edit Document"
+          onClose={() => setEditingId(null)}
+          onSave={() => saveEdit(editingId)}
+          fields={[{ label: 'Name', value: editName, onChange: setEditName }]}
+        />
+      )}
     </div>
   )
 }
@@ -453,32 +473,15 @@ function GeneralExpensesTab() {
   const renderRow = (r: GERow, i: number, showParent: boolean) => (
     <tr key={r.id}>
       <td>{i + 1}</td>
-      {editingId === r.id ? (
-        <>
-          <td><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></td>
-          <td><input value={editForm.display_name} onChange={e => setEditForm(f => ({ ...f, display_name: e.target.value }))} /></td>
-          <td><input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} /></td>
-        </>
-      ) : (
-        <>
-          <td style={{ fontWeight: 600 }}>{r.name}</td>
-          {!showParent && <td style={{ fontSize: 13 }}>{r.display_name || '—'}</td>}
-          <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.description || '—'}</td>
-        </>
-      )}
+      <td style={{ fontWeight: 600 }}>{r.name}</td>
+      {!showParent && <td style={{ fontSize: 13 }}>{r.display_name || '—'}</td>}
+      <td style={{ fontSize: 13, color: 'var(--muted)' }}>{r.description || '—'}</td>
       {showParent && <td style={{ fontSize: 13 }}>{categoryName(r.parent_id)}</td>}
       <td>
-        {editingId === r.id ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="af-prop-act edit" onClick={() => saveEdit(r.id)}>💾</button>
-            <button className="af-prop-act del" onClick={() => setEditingId(null)}>✕</button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
-            <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="af-prop-act edit" title="Edit" onClick={() => startEdit(r)}>✏️</button>
+          <button className="af-prop-act del" title="Delete" onClick={() => remove(r.id)}>🗑️</button>
+        </div>
       </td>
     </tr>
   )
@@ -540,6 +543,19 @@ function GeneralExpensesTab() {
           </tbody>
         </table>
       </div>
+
+      {editingId != null && (
+        <EditModal
+          title="Edit General Expense"
+          onClose={() => setEditingId(null)}
+          onSave={() => saveEdit(editingId)}
+          fields={[
+            { label: 'Name', value: editForm.name, onChange: v => setEditForm(f => ({ ...f, name: v })) },
+            { label: 'Display Name', value: editForm.display_name, onChange: v => setEditForm(f => ({ ...f, display_name: v })) },
+            { label: 'Description', value: editForm.description, onChange: v => setEditForm(f => ({ ...f, description: v })) },
+          ]}
+        />
+      )}
     </div>
   )
 }
@@ -597,8 +613,8 @@ export default function SettingsPage() {
         <div style={{ flex: '1 1 640px', background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 12, padding: 22, minWidth: 0 }}>
           {tab === 'System' && <SystemTab />}
           {tab === 'Wtaxes' && <WtaxesTab />}
-          {tab === 'Property Master' && <MasterListTab basePath="property-type" />}
-          {tab === 'Maintenance Master' && <MasterListTab basePath="maintenance-type" />}
+          {tab === 'Property Master' && <MasterListTab basePath="property-type" label="Property Type" />}
+          {tab === 'Maintenance Master' && <MasterListTab basePath="maintenance-type" label="Maintenance Type" />}
           {tab === 'General Expenses Master' && <GeneralExpensesTab />}
           {tab === 'Documents' && <DocumentsTab />}
           {tab === 'User & Roles' && <UserRolesTab />}
