@@ -6,7 +6,14 @@ import { MODULES, MODULE_LABELS, ACTIONS, Admin } from './permissions'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
 
-const EMPTY_FORM = { name: '', email: '', password: '' }
+const EMPTY_FORM = { firstName: '', middleName: '', lastName: '', email: '', password: '' }
+
+function splitName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' }
+  if (parts.length === 1) return { firstName: parts[0], middleName: '', lastName: '' }
+  return { firstName: parts[0], middleName: parts.slice(1, -1).join(' '), lastName: parts[parts.length - 1] }
+}
 
 export default function AdminForm({ adminId }: { adminId?: string }) {
   const router = useRouter()
@@ -30,7 +37,11 @@ export default function AdminForm({ adminId }: { adminId?: string }) {
       .then((data: Admin[]) => {
         const a = Array.isArray(data) ? data.find(x => x.id === adminId) : null
         if (a) {
-          setForm({ name: a.name, email: a.email, password: '' })
+          const hasSplitName = a.firstName || a.lastName
+          setForm({
+            ...(hasSplitName ? { firstName: a.firstName, middleName: a.middleName, lastName: a.lastName } : splitName(a.name)),
+            email: a.email, password: '',
+          })
           setPerms(Object.fromEntries(a.permissions.map(p => [p.module, p.actions])))
         } else {
           setError('Admin not found')
@@ -66,25 +77,26 @@ export default function AdminForm({ adminId }: { adminId?: string }) {
 
   const saveAdmin = async () => {
     const permissions = Object.entries(perms).filter(([, a]) => a.length > 0).map(([module, actions]) => ({ module, actions }))
+    const { firstName, middleName, lastName, email } = form
     setSaving(true); setError('')
     try {
       if (adminId) {
-        if (!form.name || !form.email) { setError('Name and email are required'); setSaving(false); return }
+        if (!firstName || !lastName || !email) { setError('First name, last name, and email are required'); setSaving(false); return }
         const res = await fetch(`${API}/auth/admins/${adminId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: form.name, email: form.email, permissions }),
+          body: JSON.stringify({ firstName, middleName, lastName, email, permissions }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.message ?? 'Failed')
       } else {
-        if (!form.name || !form.email || form.password.length < 8) {
-          setError('Name, email, and password (8+ chars) are required'); setSaving(false); return
+        if (!firstName || !lastName || !email || form.password.length < 8) {
+          setError('First name, last name, email, and password (8+ chars) are required'); setSaving(false); return
         }
         const res = await fetch(`${API}/auth/admins`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ...form, permissions }),
+          body: JSON.stringify({ firstName, middleName, lastName, email, password: form.password, permissions }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.message ?? 'Failed')
@@ -111,7 +123,11 @@ export default function AdminForm({ adminId }: { adminId?: string }) {
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 14, padding: 24, maxWidth: 620 }}>
         <div className="af-modal-form">
-          <div className="af-field"><label>Full name<span style={{ color: '#f87171' }}> *</span></label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="af-field"><label>First Name<span style={{ color: '#f87171' }}> *</span></label><input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} placeholder="Jane" /></div>
+            <div className="af-field"><label>Middle Name</label><input value={form.middleName} onChange={e => setForm(f => ({ ...f, middleName: e.target.value }))} /></div>
+          </div>
+          <div className="af-field"><label>Last Name<span style={{ color: '#f87171' }}> *</span></label><input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} placeholder="Smith" /></div>
           <div className="af-field"><label>Email<span style={{ color: '#f87171' }}> *</span></label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="jane@company.com" /></div>
           {!adminId && (
             <div className="af-field"><label>Password (8+ chars)<span style={{ color: '#f87171' }}> *</span></label><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" minLength={8} /></div>

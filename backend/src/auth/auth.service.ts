@@ -15,7 +15,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const user = await this.usersService.create(dto.name, dto.email, dto.password);
+    const user = await this.usersService.create(dto.name, '', '', dto.email, dto.password);
     const token = this.signToken(user.id, user.email, user.role);
     return { user, token };
   }
@@ -34,7 +34,9 @@ export class AuthService {
 
   async createAdmin(
     creatorId: string,
-    name: string,
+    firstName: string,
+    middleName: string,
+    lastName: string,
     email: string,
     password: string,
     permissions: Permission[],
@@ -44,7 +46,7 @@ export class AuthService {
       throw new ForbiddenException('Only Super Admin can create admin accounts');
     }
     const user = await this.usersService.create(
-      name, email, password, UserRole.ADMIN, permissions, creatorId,
+      firstName, middleName, lastName, email, password, UserRole.ADMIN, permissions, creatorId,
     );
     const token = this.signToken(user.id, user.email, user.role);
     return { user, token };

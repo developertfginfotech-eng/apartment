@@ -15,6 +15,9 @@ export const ACTIONS = ['read', 'create', 'update', 'delete']
 export interface Admin {
   id: string
   name: string
+  firstName: string
+  middleName: string
+  lastName: string
   email: string
   role: string
   permissions: { module: string; actions: string[] }[]

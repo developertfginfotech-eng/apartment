@@ -61,7 +61,7 @@ export class AuthController {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createAdmin(@Request() req: any, @Body() dto: CreateAdminDto) {
     return this.authService.createAdmin(
-      req.user.sub, dto.name, dto.email, dto.password, dto.permissions,
+      req.user.sub, dto.firstName, dto.middleName ?? '', dto.lastName, dto.email, dto.password, dto.permissions,
     );
   }
 
@@ -83,9 +83,9 @@ export class AuthController {
   @Put('admins/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN)
-  async updateAdmin(@Param('id') id: string, @Body() body: { name?: string; email?: string; permissions?: Permission[] }) {
+  async updateAdmin(@Param('id') id: string, @Body() body: { firstName?: string; middleName?: string; lastName?: string; email?: string; permissions?: Permission[] }) {
     if (body.permissions) await this.usersService.updatePermissions(id, body.permissions);
-    return this.usersService.updateAdmin(id, { name: body.name, email: body.email });
+    return this.usersService.updateAdmin(id, { firstName: body.firstName, middleName: body.middleName, lastName: body.lastName, email: body.email });
   }
 
   @Delete('admins/:id')

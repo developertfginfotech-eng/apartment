@@ -18,12 +18,19 @@ export interface Permission {
 export interface User {
   id: string;
   name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   email: string;
   passwordHash: string;
   role: UserRole;
   permissions: Permission[];
   createdAt: Date;
   createdBy?: string;
+}
+
+function joinName(firstName: string, middleName?: string, lastName?: string): string {
+  return [firstName, middleName, lastName].map(p => (p ?? '').trim()).filter(Boolean).join(' ');
 }
 
 export type SafeUser = Omit<User, 'passwordHash'>;
@@ -43,6 +50,9 @@ export class UsersService implements OnModuleInit {
           CREATE TABLE IF NOT EXISTS \`app_users\` (
             \`id\` varchar(64) NOT NULL,
             \`name\` varchar(255) NOT NULL,
+            \`first_name\` varchar(120) NOT NULL DEFAULT '',
+            \`middle_name\` varchar(120) NOT NULL DEFAULT '',
+            \`last_name\` varchar(120) NOT NULL DEFAULT '',
             \`email\` varchar(255) NOT NULL,
             \`password_hash\` varchar(255) NOT NULL,
             \`role\` varchar(50) NOT NULL DEFAULT 'staff',
@@ -53,6 +63,7 @@ export class UsersService implements OnModuleInit {
             UNIQUE KEY \`uq_app_users_email\` (\`email\`)
           )
         `);
+        await this.addNameColumnsIfMissing();
         await this.seedSuperAdmin();
         console.log('[UsersService] app_users table ready');
         return;
@@ -65,6 +76,18 @@ export class UsersService implements OnModuleInit {
     console.error('[UsersService] Could not initialize app_users table after 5 attempts');
   }
 
+  private async addNameColumnsIfMissing() {
+    // app_users pre-dates the first_name/middle_name/last_name split — add the columns
+    // for tables created before this change (both EC2's local MySQL and Render's Aiven DB).
+    for (const col of ['first_name', 'middle_name', 'last_name']) {
+      try {
+        await this.ds.query(`ALTER TABLE app_users ADD COLUMN \`${col}\` varchar(120) NOT NULL DEFAULT ''`);
+      } catch {
+        // column already exists — ignore
+      }
+    }
+  }
+
   private async seedSuperAdmin() {
     const rows = await this.ds.query(
       'SELECT id FROM app_users WHERE email = ?',
@@ -73,8 +96,8 @@ export class UsersService implements OnModuleInit {
     if (rows.length) return;
     const hash = await bcrypt.hash('superadmin123', 10);
     await this.ds.query(
-      'INSERT INTO app_users (id, name, email, password_hash, role, permissions) VALUES (?,?,?,?,?,?)',
-      ['super-admin-seed', 'Super Admin', 'admin@apartment.local', hash, UserRole.SUPER_ADMIN, '[]'],
+      'INSERT INTO app_users (id, name, first_name, last_name, email, password_hash, role, permissions) VALUES (?,?,?,?,?,?,?,?)',
+      ['super-admin-seed', 'Super Admin', 'Super', 'Admin', 'admin@apartment.local', hash, UserRole.SUPER_ADMIN, '[]'],
     );
   }
 
@@ -82,6 +105,9 @@ export class UsersService implements OnModuleInit {
     return {
       id:           row.id,
       name:         row.name,
+      firstName:    row.first_name ?? '',
+      middleName:   row.middle_name ?? '',
+      lastName:     row.last_name ?? '',
       email:        row.email,
       passwordHash: row.password_hash,
       role:         row.role as UserRole,
@@ -94,7 +120,9 @@ export class UsersService implements OnModuleInit {
   }
 
   async create(
-    name: string,
+    firstName: string,
+    middleName: string,
+    lastName: string,
     email: string,
     password: string,
     role: UserRole = UserRole.STAFF,
@@ -105,11 +133,12 @@ export class UsersService implements OnModuleInit {
     const existing = await this.ds.query('SELECT id FROM app_users WHERE email = ?', [lc]);
     if (existing.length) throw new ConflictException('An account with this email already exists');
 
+    const name = joinName(firstName, middleName, lastName);
     const id   = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const hash = await bcrypt.hash(password, 10);
     await this.ds.query(
-      'INSERT INTO app_users (id, name, email, password_hash, role, permissions, created_by) VALUES (?,?,?,?,?,?,?)',
-      [id, name, lc, hash, role, JSON.stringify(permissions), createdBy ?? null],
+      'INSERT INTO app_users (id, name, first_name, middle_name, last_name, email, password_hash, role, permissions, created_by) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [id, name, firstName, middleName ?? '', lastName, lc, hash, role, JSON.stringify(permissions), createdBy ?? null],
     );
     const rows = await this.ds.query('SELECT * FROM app_users WHERE id = ?', [id]);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -149,10 +178,17 @@ export class UsersService implements OnModuleInit {
     return safe;
   }
 
-  async updateAdmin(id: string, updates: { name?: string; email?: string }): Promise<SafeUser> {
+  async updateAdmin(id: string, updates: { firstName?: string; middleName?: string; lastName?: string; email?: string }): Promise<SafeUser> {
     const fields: string[] = [];
     const values: unknown[] = [];
-    if (updates.name !== undefined) { fields.push('name = ?'); values.push(updates.name); }
+    if (updates.firstName !== undefined || updates.middleName !== undefined || updates.lastName !== undefined) {
+      const current = await this.findById(id);
+      const firstName = updates.firstName ?? current?.firstName ?? '';
+      const middleName = updates.middleName ?? current?.middleName ?? '';
+      const lastName = updates.lastName ?? current?.lastName ?? '';
+      fields.push('name = ?', 'first_name = ?', 'middle_name = ?', 'last_name = ?');
+      values.push(joinName(firstName, middleName, lastName), firstName, middleName, lastName);
+    }
     if (updates.email !== undefined) { fields.push('email = ?'); values.push(updates.email.toLowerCase()); }
     if (fields.length) {
       await this.ds.query(`UPDATE app_users SET ${fields.join(', ')} WHERE id = ?`, [...values, id]);

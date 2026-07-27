@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsArray, ValidateNested } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, IsOptional, MinLength, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class PermissionDto {
@@ -13,7 +13,15 @@ class PermissionDto {
 export class CreateAdminDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  firstName: string;
+
+  @IsString()
+  @IsOptional()
+  middleName?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  lastName: string;
 
   @IsEmail()
   email: string;
