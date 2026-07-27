@@ -134,7 +134,7 @@ export default function EscalationForm({ leaseId }: { leaseId: number }) {
                 </select>
               )}
             </div>
-            <div className="af-field"><label>Final Amount</label><input readOnly value={finalAmount} style={{ opacity: 0.75 }}/></div>
+            <div className="af-field"><label>Final Amount</label><input readOnly value={`₱ ${finalAmount}`} style={{ opacity: 0.75 }}/></div>
             <div className="af-field"><label>When to start</label><DatePicker value={form.end_date} onChange={v => setForm(f => ({ ...f, end_date: v }))}/></div>
           </div>
           {error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 10 }}>{error}</div>}

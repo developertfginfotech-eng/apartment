@@ -254,7 +254,7 @@ export default function MaintenanceView({ maintenanceId }: { maintenanceId: numb
                     </div>
                     <div className="af-field">
                       <label>Final Amount</label>
-                      <input readOnly value={financeFinalAmount} style={{ opacity: 0.75 }} />
+                      <input readOnly value={`₱ ${financeFinalAmount}`} style={{ opacity: 0.75 }} />
                     </div>
                     <div className="af-field">
                       <label>Maintenance Paid By</label>

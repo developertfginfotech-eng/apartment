@@ -271,7 +271,7 @@ export default function LeaseForm({ leaseId }: { leaseId?: number }) {
                   </select>
                 )}
               </div>
-              <div className="af-field"><label>Final Amount</label><input readOnly value={finalAmount} style={{ opacity: 0.75 }}/></div>
+              <div className="af-field"><label>Final Amount</label><input readOnly value={`₱ ${finalAmount}`} style={{ opacity: 0.75 }}/></div>
               <div className="af-field"><label>Start Date</label><DatePicker value={leaseForm.start_date} onChange={v => setLeaseForm(f => ({ ...f, start_date: v }))}/></div>
               <div className="af-field"><label>End Date<span style={{ color: '#f87171' }}> *</span></label><DatePicker value={leaseForm.end_date} onChange={v => setLeaseForm(f => ({ ...f, end_date: v }))}/></div>
               <div className="af-field">

@@ -108,7 +108,7 @@ function NewTransactionInner() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="af-field">
             <label>Rent Amount</label>
-            <input value={selectedMonth ? selectedMonth.rent_amount.toFixed(2) : ''} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+            <input value={selectedMonth ? `₱ ${selectedMonth.rent_amount.toFixed(2)}` : ''} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
           </div>
           <div className="af-field">
             <label>Select Months<span style={{ color: '#f87171' }}> *</span></label>
@@ -121,7 +121,7 @@ function NewTransactionInner() {
           </div>
           <div className="af-field">
             <label>Remaining Amount</label>
-            <input value={selectedMonth ? selectedMonth.remaining_amount.toFixed(2) : '0.00'} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+            <input value={`₱ ${selectedMonth ? selectedMonth.remaining_amount.toFixed(2) : '0.00'}`} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
           </div>
           <div className="af-field">
             <label>Payment Date<span style={{ color: '#f87171' }}> *</span></label>

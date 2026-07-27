@@ -244,7 +244,7 @@ export default function ExpenseForm({ expenseId }: { expenseId?: number }) {
           </div>
           <div className="af-field">
             <label>Final Amount<span style={{ color: '#f87171' }}> *</span></label>
-            <input readOnly value={finalAmount} style={{ opacity: 0.75 }} />
+            <input readOnly value={`₱ ${finalAmount}`} style={{ opacity: 0.75 }} />
           </div>
 
           <div className="af-field" style={{ gridColumn: 'span 3' }}>
