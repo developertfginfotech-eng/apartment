@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import SalaryStructureTab from './SalaryStructureTab'
 import EmployeeTab from './EmployeeTab'
 import ManagePayrollTab from './ManagePayrollTab'
@@ -123,23 +121,7 @@ export default function PayrollPage() {
     a.click()
   }
 
-  const exportPDF = () => {
-    const doc = new jsPDF({ orientation:'landscape' })
-    doc.setFontSize(14)
-    doc.text('Payroll', 14, 14)
-    autoTable(doc, {
-      head: [exportHeaders],
-      body: exportRows().map(r => r.map(String)),
-      startY: 20,
-      styles: { fontSize: 7 },
-      headStyles: { fillColor: [34,197,94] },
-    })
-    doc.save('payroll.pdf')
-  }
-
   const fmt = (v: number|string) => `₱ ${Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`
-
-  const totalNet = payrolls.reduce((s,p) => s+Number(p.net_pay),0)
 
   const selectStyle: React.CSSProperties = {
     background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:7,
@@ -172,10 +154,7 @@ export default function PayrollPage() {
         {activeTab==='Payroll' && (
           <div style={{display:'flex',gap:10}}>
             <button onClick={exportCSV} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(34,197,94,0.12)',border:'1px solid rgba(34,197,94,0.3)',color:'#22c55e',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-              ↓ Export CSV
-            </button>
-            <button onClick={exportPDF} style={{display:'flex',alignItems:'center',gap:7,padding:'9px 18px',borderRadius:10,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#ef4444',fontWeight:650,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
-              ↓ Export PDF
+              ↓ Export
             </button>
             <button className="af-btn-primary" style={{cursor:'pointer',border:'none'}} onClick={()=>router.push('/dashboard/payroll/new')}>
               + Add New
@@ -222,20 +201,6 @@ export default function PayrollPage() {
         {(filterMonth||filterFrom||filterTo) && (
           <button onClick={()=>{setFilterMonth('');setFilterFrom('');setFilterTo('');setPage(1)}} style={{alignSelf:'flex-end',padding:'8px 14px',borderRadius:8,background:'none',border:'1px solid var(--border2)',color:'var(--muted)',fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>
         )}
-      </div>
-
-      {/* Summary */}
-      <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
-        {[
-          {label:'Total Net Payroll',value:fmt(totalNet),color:'var(--accent)'},
-          {label:'Total Records',    value:String(total),       color:'#3b82f6'},
-          {label:'Showing',          value:`${payrolls.length} entries`,color:'var(--muted)'},
-        ].map(c=>(
-          <div key={c.label} style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:12,padding:'16px 22px',minWidth:160}}>
-            <div style={{fontSize:10,color:'var(--muted)',fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',marginBottom:6}}>{c.label}</div>
-            <div style={{fontSize:22,fontWeight:800,color:c.color}}>{c.value}</div>
-          </div>
-        ))}
       </div>
 
       {error && <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:10,padding:'10px 16px',marginBottom:16,color:'#ef4444',fontSize:13}}>{error}</div>}

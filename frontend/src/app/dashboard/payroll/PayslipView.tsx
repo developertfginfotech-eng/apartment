@@ -18,7 +18,7 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('apt_token')}`,
 })
 
-const fmt = (v: number | string) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const fmt = (v: number | string) => `₱ ${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export default function PayslipView({ payrollId }: { payrollId: number }) {
   const router = useRouter()
