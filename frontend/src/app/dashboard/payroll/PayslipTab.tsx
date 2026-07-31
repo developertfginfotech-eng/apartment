@@ -54,9 +54,9 @@ export default function PayslipTab() {
     <>
       <div style={{display:'flex',gap:12,marginBottom:18,flexWrap:'wrap',alignItems:'flex-end'}}>
         <div className="af-field" style={{margin:0,minWidth:140}}>
-          <DatePicker value={from} onChange={setFrom} placeholder="MM-DD-YYYY" /></div>
+          <DatePicker value={from} onChange={setFrom} /></div>
         <div className="af-field" style={{margin:0,minWidth:140}}>
-          <DatePicker value={to} onChange={setTo} placeholder="MM-DD-YYYY" /></div>
+          <DatePicker value={to} onChange={setTo} /></div>
         <div className="af-field" style={{margin:0,minWidth:180}}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…" style={{padding:'8px 10px'}}/></div>
         <button className="af-btn-primary" style={{cursor:'pointer',border:'none',padding:'9px 22px'}} onClick={runSearch}>Search</button>

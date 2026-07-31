@@ -263,7 +263,7 @@ export default function OwnerForm({ ownerId }: { ownerId?: number }) {
 
               <div className="af-field">
                 <label>Registration Date</label>
-                <DatePicker value={form.registration_date} onChange={v => setField('registration_date', v)} placeholder="MM-DD-YYYY" />
+                <DatePicker value={form.registration_date} onChange={v => setField('registration_date', v)} />
               </div>
               <div className="af-field">
                 <label>Country</label>

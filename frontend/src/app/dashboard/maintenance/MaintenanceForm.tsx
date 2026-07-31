@@ -253,7 +253,7 @@ export default function MaintenanceForm({ maintenanceId }: { maintenanceId?: num
             </div>
             <div className="af-field">
               <label>Date<span style={{ color: '#f87171' }}> *</span></label>
-              <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="MM-DD-YYYY HH:MM" showTime />
+              <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="MM/DD/YYYY HH:MM" showTime />
             </div>
             <div className="af-field">
               <label>Requested By</label>

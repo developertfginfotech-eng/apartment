@@ -1,10 +1,9 @@
-// Locale is pinned to 'en-US' (not the visitor's browser locale) so the
-// month/day/year order stays fixed regardless of where the app is opened.
+// Numeric MM/DD/YYYY, independent of the visitor's browser locale.
 export function formatDate(value?: string | Date | null): string {
   if (!value) return '—'
   const d = value instanceof Date ? value : parseDateLike(value)
   if (!d || Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
 }
 
 // Normalizes any stored date-like string (MM-DD-YYYY text, YYYY-MM-DD, or a
@@ -22,7 +21,8 @@ export function formatDateTime(value?: string | Date | null): string {
   if (!value) return '—'
   const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
-  return `${d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+  const datePart = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
+  return `${datePart}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
 }
 
 function parseDateLike(v: string): Date | null {

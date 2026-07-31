@@ -37,8 +37,8 @@ function toYMD(d: Date): string {
 function formatDisplay(v: string, showTime?: boolean): string {
   const d = parseYMD(v)
   if (!d) return ''
-  // Pinned to 'en-US' so month/day/year order stays fixed regardless of browser locale.
-  const dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+  // Numeric MM/DD/YYYY, independent of browser locale.
+  const dateStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
   if (!showTime) return dateStr
   const timePart = splitValue(v).timePart
   if (!timePart) return dateStr
@@ -47,7 +47,7 @@ function formatDisplay(v: string, showTime?: boolean): string {
   return `${dateStr}, ${t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
 }
 
-export default function DatePicker({ value, onChange, placeholder = 'Select date', style, showTime }: DatePickerProps) {
+export default function DatePicker({ value, onChange, placeholder = 'MM/DD/YYYY', style, showTime }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const [mounted, setMounted] = useState(false)
